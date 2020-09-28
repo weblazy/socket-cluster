@@ -1,9 +1,9 @@
 package websocket_cluster
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -15,12 +15,12 @@ import (
 
 type (
 	MasterConf struct {
-		Addr     string //Socket config
-		Password string //Password for auth when node connect on
+		SocketConf *SocketConfig //Socket config
+		Password   string        //Password for auth when node connect on
 	}
 	MasterInfo struct {
 		masterConf MasterConf
-		nodeMap    goutil.Map // V is *websocket.Conn
+		nodeMap    goutil.Map // V is *nodeConn
 		timer      *timingwheel.TimingWheel
 		startTime  time.Time
 	}
@@ -28,24 +28,10 @@ type (
 		conn    *websocket.Conn
 		address string //Outside address
 	}
-
-	Auth struct {
-		TransAddress string //Node address ip:port
-		Password     string //Password for auth when node connect on
-	}
 )
 
 var (
 	masterInfo MasterInfo
-
-	upgrader = websocket.Upgrader{
-		ReadBufferSize:    4096,
-		WriteBufferSize:   4096,
-		EnableCompression: true,
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
 )
 
 // Start master node.
@@ -68,100 +54,75 @@ func StartMaster(cfg MasterConf) {
 		timer:      timer,
 	}
 	e := echo.New()
-	e.GET("/ws", serveMaster)
-	e.Start(cfg.Addr)
+	e.GET("/ws", masterHandler)
+	addr := fmt.Sprintf("%s:%d", cfg.SocketConf.Ip, cfg.SocketConf.Port)
+	e.Start(addr)
 }
 
-func serveMaster(c echo.Context) error {
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+func masterHandler(c echo.Context) error {
+	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
 			log.Println(err)
 		}
 		return err
 	}
+	masterInfo.timer.SetTimer(conn.RemoteAddr().String(), conn, authTime)
 	for {
-		_, message, err := ws.ReadMessage()
+		_, message, err := conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
+			} else {
+				log.Printf("socket close: %v", err)
 			}
 			break
 		}
+		masterInfo.OnMessage(conn, message)
 		fmt.Printf("%#v\n", string(message))
 	}
 	return nil
 }
 
-func serveTrans(c echo.Context) error {
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+func (masterInfo *MasterInfo) OnMessage(conn *websocket.Conn, message []byte) {
+	data := make(map[string]interface{})
+	err := json.Unmarshal(message, &data)
 	if err != nil {
-		if _, ok := err.(websocket.HandshakeError); !ok {
-			log.Println(err)
-		}
-		return err
+		log.Printf("error: %v", err)
 	}
-	for {
-		_, message, err := ws.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
-			}
-			break
-		}
-		fmt.Printf("%#v\n", string(message))
+	v1, ok := data["type"]
+	if !ok {
+		log.Printf("type is nil")
 	}
-	return nil
-}
-
-func serveClient(c echo.Context) error {
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		if _, ok := err.(websocket.HandshakeError); !ok {
-			log.Println(err)
-		}
-		return err
+	switch v1 {
+	case "auth":
+		AuthConn(conn, data["data"].(map[string]interface{}))
 	}
-	for {
-		_, message, err := ws.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
-			}
-			break
-		}
-		fmt.Printf("%#v\n", string(message))
-	}
-	return nil
 }
 
 // Auth the node
-// func Auth(args *Auth) *tp.Status {
-// 	session := m.Session()
-// 	sid := conn.RemoteAddr().String()
-
-// 	peer := m.Peer()
-// 	psession, ok := peer.GetSession(sid)
-// 	masterInfo.timer.RemoveTimer(sid) //Cancel timeingwheel task
-// 	if args.Password != masterInfo.masterConf.Password && ok {
-// 		logx.Errorf("Connect:%s,Wrong password:%s", sid, args.Password)
-// 		psession.Close()
-// 		return StatusUnauthorized
-// 	}
-// 	masterInfo.setSession(psession, args.TransAddress)
-// 	masterInfo.broadcastAddresses() //Notify all node nodes that new nodes have joined
-// 	return nil
-// }
+func AuthConn(conn *websocket.Conn, args map[string]interface{}) error {
+	sid := conn.RemoteAddr().String()
+	masterInfo.timer.RemoveTimer(sid) //Cancel timeingwheel task
+	if args["password"].(string) != masterInfo.masterConf.Password {
+		logx.Errorf("Connect:%s,Wrong password:%s", sid, args["password"].(string))
+		conn.Close()
+		return fmt.Errorf("auth faild")
+	}
+	masterInfo.setConn(conn, args["trans_address"].(string))
+	masterInfo.broadcastAddresses() //Notify all node nodes that new nodes have joined
+	return nil
+}
 
 //Notify all node nodes that new nodes have joined
 func (mi *MasterInfo) broadcastAddresses() {
 	nodeList := make([]string, 0)
 	mi.nodeMap.Range(func(k interface{}, v interface{}) bool {
-		nodeList = append(nodeList, v.(nodeConn).address)
+		nodeList = append(nodeList, v.(*nodeConn).address)
 		return true
 	})
 	mi.nodeMap.Range(func(k interface{}, v interface{}) bool {
-		err := v.(nodeConn).conn.WriteJSON(nodeList)
+		err := v.(*nodeConn).conn.WriteJSON(nodeList)
 		if err != nil {
 			fmt.Printf("%#v\n", err)
 		}

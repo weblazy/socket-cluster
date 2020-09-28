@@ -9,11 +9,11 @@ import (
 func node() {
 	websocket_cluster.StartNode(websocket_cluster.NodeConf{
 		TransConf: websocket_cluster.SocketConfig{
-			Addr: "127.0.0.1",
+			Ip:   "127.0.0.1",
 			Port: 8080,
 		},
 		ClientConf: websocket_cluster.SocketConfig{
-			Addr: "127.0.0.1",
+			Ip:   "127.0.0.1",
 			Port: 8080,
 		},
 		RedisConf: redis.RedisConf{
