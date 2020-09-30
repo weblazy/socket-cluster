@@ -9,8 +9,8 @@ import (
 
 type (
 	Auth struct {
-		TransAddress string //Node address ip:port
-		Password     string //Password for auth when node connect on
+		TransAddress string `json:"trans_address"` //Node address ip:port
+		Password     string `json:"password"`      //Password for auth when node connect on
 	}
 
 	SocketConfig struct {

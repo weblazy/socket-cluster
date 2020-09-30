@@ -3,13 +3,12 @@ package websocket_cluster
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
-	"github.com/weblazy/core/logx"
 	"github.com/weblazy/core/timingwheel"
+	"github.com/weblazy/easy/utils/logx"
 	"github.com/weblazy/goutil"
 )
 
@@ -19,7 +18,7 @@ type (
 		Password   string        //Password for auth when node connect on
 	}
 	MasterInfo struct {
-		masterConf MasterConf
+		masterConf *MasterConf
 		nodeMap    goutil.Map // V is *nodeConn
 		timer      *timingwheel.TimingWheel
 		startTime  time.Time
@@ -31,23 +30,44 @@ type (
 )
 
 var (
-	masterInfo MasterInfo
+	masterInfo *MasterInfo
 )
 
+// NewPeer creates a new peer.
+func NewMasterConf() *MasterConf {
+	return &MasterConf{
+		SocketConf: &SocketConfig{
+			Ip:   "127.0.0.1",
+			Port: 8080,
+		},
+		Password: defaultPassword,
+	}
+}
+
+func (conf *MasterConf) WithPassword(password string) *MasterConf {
+	conf.Password = password
+	return conf
+}
+
+func (conf *MasterConf) WithSocketConfig(socketConf *SocketConfig) *MasterConf {
+	conf.SocketConf = socketConf
+	return conf
+}
+
 // Start master node.
-func StartMaster(cfg MasterConf) {
+func StartMaster(cfg *MasterConf) {
 	timer, err := timingwheel.NewTimingWheel(time.Second, 300, func(k, v interface{}) {
-		logx.Errorf("%s auth timeout", k)
+		logx.Info(fmt.Sprintf("%s auth timeout", k))
 		err := v.(*websocket.Conn).Close()
 		if err != nil {
-			logx.Error(err)
+			logx.Info(err)
 		}
 	})
 	defer timer.Stop()
 	if err != nil {
-		logx.Fatal(err)
+		logx.Info(err)
 	}
-	masterInfo = MasterInfo{
+	masterInfo = &MasterInfo{
 		masterConf: cfg,
 		nodeMap:    goutil.AtomicMap(),
 		startTime:  time.Now(),
@@ -56,14 +76,17 @@ func StartMaster(cfg MasterConf) {
 	e := echo.New()
 	e.GET("/ws", masterHandler)
 	addr := fmt.Sprintf("%s:%d", cfg.SocketConf.Ip, cfg.SocketConf.Port)
-	e.Start(addr)
+	err = e.Start(addr)
+	if err != nil {
+		logx.Info(err)
+	}
 }
 
 func masterHandler(c echo.Context) error {
 	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
-			log.Println(err)
+			logx.Info(err)
 		}
 		return err
 	}
@@ -72,14 +95,14 @@ func masterHandler(c echo.Context) error {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				logx.Info(err)
 			} else {
-				log.Printf("socket close: %v", err)
+				logx.Infof("socket close: %v", err)
 			}
 			break
 		}
 		masterInfo.OnMessage(conn, message)
-		fmt.Printf("%#v\n", string(message))
+		logx.Infof(string(message))
 	}
 	return nil
 }
@@ -88,11 +111,11 @@ func (masterInfo *MasterInfo) OnMessage(conn *websocket.Conn, message []byte) {
 	data := make(map[string]interface{})
 	err := json.Unmarshal(message, &data)
 	if err != nil {
-		log.Printf("error: %v", err)
+		logx.Info(err)
 	}
 	v1, ok := data["type"]
 	if !ok {
-		log.Printf("type is nil")
+		logx.Info("type is nil")
 	}
 	switch v1 {
 	case "auth":
@@ -105,7 +128,7 @@ func AuthConn(conn *websocket.Conn, args map[string]interface{}) error {
 	sid := conn.RemoteAddr().String()
 	masterInfo.timer.RemoveTimer(sid) //Cancel timeingwheel task
 	if args["password"].(string) != masterInfo.masterConf.Password {
-		logx.Errorf("Connect:%s,Wrong password:%s", sid, args["password"].(string))
+		logx.Infof("Connect:%s,Wrong password:%s", sid, args["password"].(string))
 		conn.Close()
 		return fmt.Errorf("auth faild")
 	}
@@ -124,7 +147,7 @@ func (mi *MasterInfo) broadcastAddresses() {
 	mi.nodeMap.Range(func(k interface{}, v interface{}) bool {
 		err := v.(*nodeConn).conn.WriteJSON(nodeList)
 		if err != nil {
-			fmt.Printf("%#v\n", err)
+			logx.Info(err)
 		}
 		return true
 	})
