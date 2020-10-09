@@ -14,8 +14,8 @@ import (
 
 type (
 	MasterConf struct {
-		SocketConf *SocketConfig //Socket config
-		Password   string        //Password for auth when node connect on
+		Port     int64  //Socket config
+		Password string //Password for auth when node connect on
 	}
 	MasterInfo struct {
 		masterConf *MasterConf
@@ -36,10 +36,7 @@ var (
 // NewPeer creates a new peer.
 func NewMasterConf() *MasterConf {
 	return &MasterConf{
-		SocketConf: &SocketConfig{
-			Ip:   "127.0.0.1",
-			Port: 8080,
-		},
+		Port:     defaultMasterPort,
 		Password: defaultPassword,
 	}
 }
@@ -49,8 +46,8 @@ func (conf *MasterConf) WithPassword(password string) *MasterConf {
 	return conf
 }
 
-func (conf *MasterConf) WithSocketConfig(socketConf *SocketConfig) *MasterConf {
-	conf.SocketConf = socketConf
+func (conf *MasterConf) WithPort(port int64) *MasterConf {
+	conf.Port = port
 	return conf
 }
 
@@ -74,9 +71,8 @@ func StartMaster(cfg *MasterConf) {
 		timer:      timer,
 	}
 	e := echo.New()
-	e.GET("/ws", masterHandler)
-	addr := fmt.Sprintf("%s:%d", cfg.SocketConf.Ip, cfg.SocketConf.Port)
-	err = e.Start(addr)
+	e.GET("/master", masterHandler)
+	err = e.Start(fmt.Sprintf(":%d", cfg.Port))
 	if err != nil {
 		logx.Info(err)
 	}
@@ -145,7 +141,11 @@ func (mi *MasterInfo) broadcastAddresses() {
 		return true
 	})
 	mi.nodeMap.Range(func(k interface{}, v interface{}) bool {
-		err := v.(*nodeConn).conn.WriteJSON(nodeList)
+		data := map[string]interface{}{
+			"type": "UpdateNodeList",
+			"data": nodeList,
+		}
+		err := v.(*nodeConn).conn.WriteJSON(data)
 		if err != nil {
 			logx.Info(err)
 		}

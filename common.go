@@ -29,4 +29,5 @@ var (
 			return true
 		},
 	}
+	defaultMasterPort int64 = 9527
 )

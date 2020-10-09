@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/url"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
@@ -22,13 +21,19 @@ import (
 
 type (
 	NodeConf struct {
+		Host          string
+		Path          string
+		RedisNodeList []RedisNode
 		RedisConf     redis.RedisConf
 		RedisMaxCount uint32
-		ClientConf    SocketConfig
-		TransConf     SocketConfig
+		Port          int64
 		MasterAddress string //Master address
 		Password      string //Password for auth when connect to master
 		PingInterval  int64  //Heartbeat interval
+	}
+	RedisNode struct {
+		RedisConf redis.RedisConf
+		Position  uint32
 	}
 
 	NodeInfo struct {
@@ -51,44 +56,23 @@ type (
 		MessageType string      `json:"message_type"`
 		data        interface{} `json:"data"`
 	}
-
-	NodeOption func(opt *NodeConf)
 )
 
 var (
 	nodeInfo *NodeInfo
 )
 
-const (
-	PERSISTENCE_CONNECTION_PING_INTERVAL = 25
-	redisInterval                        = 10
-	redisZsortKey                        = "tpcluster_node"
-)
-
 // NewPeer creates a new peer.
-func NewNodeConf() *NodeConf {
+func NewNodeConf(host, path, masterAddress string, redisConf redis.RedisConf) *NodeConf {
 	return &NodeConf{
-		TransConf: SocketConfig{
-			Ip:   "127.0.0.1",
-			Port: 8080,
-		},
-		ClientConf: SocketConfig{
-			Ip:   "127.0.0.1",
-			Port: 8080,
-		},
-		RedisConf: redis.RedisConf{
-			Host: "127.0.0.1:6379",
-			Type: "node",
-		},
-		MasterAddress: defaultMasterAddress,
+		Host:          host,
+		Path:          path,
+		Port:          9528,
+		RedisConf:     redisConf,
+		MasterAddress: masterAddress,
 		Password:      defaultPassword,
 		PingInterval:  defaultPingInterval,
 	}
-}
-
-func (conf *NodeConf) WithMasterAddress(masterAddress string) *NodeConf {
-	conf.MasterAddress = masterAddress
-	return conf
 }
 
 func (conf *NodeConf) WithPassword(password string) *NodeConf {
@@ -96,18 +80,8 @@ func (conf *NodeConf) WithPassword(password string) *NodeConf {
 	return conf
 }
 
-func (conf *NodeConf) WithTransConf(transConf SocketConfig) *NodeConf {
-	conf.TransConf = transConf
-	return conf
-}
-
-func (conf *NodeConf) WithClientConf(clientConf SocketConfig) *NodeConf {
-	conf.ClientConf = clientConf
-	return conf
-}
-
-func (conf *NodeConf) WithRedisConf(redisConf redis.RedisConf) *NodeConf {
-	conf.RedisConf = redisConf
+func (conf *NodeConf) WithPort(port int64) *NodeConf {
+	conf.Port = port
 	return conf
 }
 
@@ -118,7 +92,7 @@ func (conf *NodeConf) WithPing(pingInterval int64) *NodeConf {
 
 // NewPeer creates a new peer.
 func StartNode(cfg *NodeConf) {
-	redis := redis.NewRedis(cfg.RedisConf.Host, cfg.RedisConf.Type, cfg.RedisConf.Pass)
+	rds := redis.NewRedis(cfg.RedisConf.Host, cfg.RedisConf.Type, cfg.RedisConf.Pass)
 	timer, err := timingwheel.NewTimingWheel(time.Second, 300, func(k, v interface{}) {
 		logx.Infof("%s auth timeout", k)
 		err := v.(*websocket.Conn).Close()
@@ -130,35 +104,40 @@ func StartNode(cfg *NodeConf) {
 	if err != nil {
 		logx.Info(err)
 	}
+	userHashRing := unsafehash.NewConsistent(cfg.RedisMaxCount)
+	for _, value := range cfg.RedisNodeList {
+		rdsObj := redis.NewRedis(value.RedisConf.Host, value.RedisConf.Type, value.RedisConf.Pass)
+		userHashRing.Add(unsafehash.NewNode(value.RedisConf.Host, value.Position, rdsObj))
+	}
+	groupHashRing := unsafehash.NewConsistent(cfg.RedisMaxCount)
+	for _, value := range cfg.RedisNodeList {
+		rdsObj := redis.NewRedis(value.RedisConf.Host, value.RedisConf.Type, value.RedisConf.Pass)
+		groupHashRing.Add(unsafehash.NewNode(value.RedisConf.Host, value.Position, rdsObj))
+	}
 	nodeInfo = &NodeInfo{
 		nodeConf:      cfg,
-		bizRedis:      redis,
+		bizRedis:      rds,
 		uidSessions:   syncx.NewConcurrentDoubleMap(32),
 		startTime:     time.Now(),
 		timer:         timer,
-		userHashRing:  unsafehash.NewConsistent(cfg.RedisMaxCount),
-		groupHashRing: unsafehash.NewConsistent(cfg.RedisMaxCount),
+		userHashRing:  userHashRing,
+		groupHashRing: groupHashRing,
 		transConns:    goutil.AtomicMap(),
 		clientConns:   goutil.AtomicMap(),
 	}
-	nodeInfo.clientAddress = fmt.Sprintf("%s:%d", cfg.ClientConf.Ip, cfg.ClientConf.Port)
-	nodeInfo.transAddress = fmt.Sprintf("%s:%d", cfg.TransConf.Ip, cfg.TransConf.Port)
-	e := echo.New()
-	e.GET("/ws", transHandler)
-	go func() {
-		err := e.Start(nodeInfo.transAddress)
-		if err != nil {
-			logx.Info(err)
-		}
-	}()
+	nodeInfo.clientAddress = fmt.Sprintf("%s%s/client", cfg.Host, cfg.Path)
+	nodeInfo.transAddress = fmt.Sprintf("%s%s/trans", cfg.Host, cfg.Path)
 
+	e := echo.New()
+	e.GET(fmt.Sprintf("%s/trans", cfg.Path), transHandler)
+	e.GET(fmt.Sprintf("%s/client", cfg.Path), clientHandler)
 	SendPing()
 	UpdateRedis()
 	go ConnectToMaster(cfg)
-	e1 := echo.New()
-	e1.GET("/ws", clientHandler)
-	log.Fatal(e1.Start(nodeInfo.clientAddress))
-
+	err = e.Start(fmt.Sprintf(":%d", cfg.Port))
+	if err != nil {
+		logx.Info(err)
+	}
 }
 
 func transHandler(c echo.Context) error {
@@ -199,7 +178,9 @@ func clientHandler(c echo.Context) error {
 			break
 		}
 		logx.Info(string(message))
+		nodeInfo.OnClientMessage(conn, message)
 	}
+	nodeInfo.clientConns.Delete(conn.RemoteAddr().String())
 	return nil
 }
 
@@ -230,10 +211,7 @@ func UpdateRedis() {
 
 //Connect to master
 func ConnectToMaster(cfg *NodeConf) {
-	u := url.URL{Scheme: "ws", Host: cfg.MasterAddress, Path: "/ws"}
-	logx.Infof("connecting to %s", u.String())
-
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	conn, _, err := websocket.DefaultDialer.Dial(cfg.MasterAddress, nil)
 	if err != nil {
 		logx.Info("dial:", err)
 	}
@@ -245,9 +223,11 @@ func ConnectToMaster(cfg *NodeConf) {
 			_, message, err := conn.ReadMessage()
 			if err != nil {
 				log.Println("read:", err)
+
 				return
 			}
 			logx.Infof("recv: %s", message)
+			nodeInfo.OnMasterMessage(message)
 		}
 	}()
 
@@ -283,6 +263,22 @@ func IsOnline(uid string) bool {
 	return false
 }
 
+func (nodeInfo *NodeInfo) OnClientMessage(conn *websocket.Conn, message []byte) {
+	data := make(map[string]interface{})
+	err := json.Unmarshal(message, &data)
+	if err != nil {
+		logx.Info(err)
+	}
+	v1, ok := data["type"]
+	if !ok {
+		logx.Info("type is nil")
+	}
+	switch v1 {
+	case "auth":
+		AuthClient(conn, data["data"].(map[string]interface{}))
+	}
+}
+
 func (nodeInfo *NodeInfo) OnTransMessage(conn *websocket.Conn, message []byte) {
 	data := make(map[string]interface{})
 	err := json.Unmarshal(message, &data)
@@ -311,7 +307,7 @@ func (nodeInfo *NodeInfo) OnMasterMessage(message []byte) {
 	}
 	switch v1 {
 	case "UpdateNodeList":
-		nodeInfo.UpdateNodeList(data["data"].([]string))
+		nodeInfo.UpdateNodeList(data["data"].([]interface{}))
 	}
 }
 
@@ -342,12 +338,9 @@ func AuthClient(conn *websocket.Conn, args map[string]interface{}) error {
 }
 
 // Add handles addition request
-func (nodeInfo *NodeInfo) UpdateNodeList(nodeList []string) error {
+func (nodeInfo *NodeInfo) UpdateNodeList(nodeList []interface{}) error {
 	for _, value := range nodeList {
-		u := url.URL{Scheme: "ws", Host: value, Path: "/ws"}
-		logx.Infof("connecting to %s", u.String())
-
-		conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+		conn, _, err := websocket.DefaultDialer.Dial(value.(string), nil)
 		if err != nil {
 			logx.Info("dial:", err)
 		}
