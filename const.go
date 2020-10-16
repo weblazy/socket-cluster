@@ -5,7 +5,7 @@ const (
 	groupPrefix          = "group#"
 	defaultMasterAddress = "127.0.0.1:9527"
 	defaultPassword      = "password"
-	defaultPingInterval  = 1
+	defaultPingInterval  = 5
 	redisInterval        = 10
 	redisZsortKey        = "tpcluster_node"
 )
