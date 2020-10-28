@@ -3,7 +3,6 @@ package websocket_cluster
 import (
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -14,10 +13,6 @@ import (
 )
 
 type (
-	MasterConf struct {
-		Port     int64  //Socket config
-		Password string //Password for auth when node connect on
-	}
 	MasterInfo struct {
 		masterConf *MasterConf
 		nodeMap    goutil.Map // V is *Connection
@@ -27,31 +22,12 @@ type (
 	nodeConn struct {
 		conn    *Connection
 		address string //Outside address
-		mutex   sync.Mutex
 	}
 )
 
 var (
 	masterInfo *MasterInfo
 )
-
-// NewPeer creates a new peer.
-func NewMasterConf() *MasterConf {
-	return &MasterConf{
-		Port:     defaultMasterPort,
-		Password: defaultPassword,
-	}
-}
-
-func (conf *MasterConf) WithPassword(password string) *MasterConf {
-	conf.Password = password
-	return conf
-}
-
-func (conf *MasterConf) WithPort(port int64) *MasterConf {
-	conf.Port = port
-	return conf
-}
 
 // Start master node.
 func StartMaster(cfg *MasterConf) {
@@ -103,8 +79,8 @@ func masterHandler(c echo.Context) error {
 			break
 		}
 		masterInfo.OnMessage(conn, message)
-		logx.Infof(string(message))
 	}
+	masterInfo.nodeMap.Delete(connect.RemoteAddr().String())
 	return nil
 }
 
@@ -125,15 +101,15 @@ func (masterInfo *MasterInfo) OnMessage(conn *Connection, message []byte) {
 }
 
 // Auth the node
-func AuthConn(conn *Connection, args map[string]interface{}) error {
+func AuthConn(conn *Connection, params map[string]interface{}) error {
 	sid := conn.Conn.RemoteAddr().String()
 	masterInfo.timer.RemoveTimer(sid) //Cancel timeingwheel task
-	if args["password"].(string) != masterInfo.masterConf.Password {
-		logx.Infof("Connect:%s,Wrong password:%s", sid, args["password"].(string))
+	if params["password"].(string) != masterInfo.masterConf.Password {
+		logx.Infof("Connect:%s,Wrong password:%s", sid, params["password"].(string))
 		conn.Conn.Close()
 		return fmt.Errorf("auth faild")
 	}
-	masterInfo.setConn(conn, args["trans_address"].(string))
+	masterInfo.setConn(conn, params["trans_address"].(string))
 	masterInfo.broadcastAddresses() //Notify all node nodes that new nodes have joined
 	return nil
 }
@@ -146,10 +122,11 @@ func (mi *MasterInfo) broadcastAddresses() {
 		return true
 	})
 	mi.nodeMap.Range(func(k interface{}, v interface{}) bool {
-		data := map[string]interface{}{
-			"type": "UpdateNodeList",
-			"data": nodeList,
+		data := Message{
+			MessageType: "UpdateNodeList",
+			Data:        nodeList,
 		}
+
 		err := v.(*nodeConn).conn.WriteJSON(data)
 		if err != nil {
 			logx.Info(err)

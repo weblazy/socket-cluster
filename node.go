@@ -20,77 +20,31 @@ import (
 )
 
 type (
-	NodeConf struct {
-		Host          string
-		Path          string
-		RedisNodeList []*RedisNode
-		RedisConf     redis.RedisConf
-		RedisMaxCount uint32
-		Port          int64
-		MasterAddress string //Master address
-		Password      string //Password for auth when connect to master
-		PingInterval  int64  //Heartbeat interval
-	}
 	RedisNode struct {
 		RedisConf redis.RedisConf
 		Position  uint32
 	}
 
 	NodeInfo struct {
-		bizRedis          *redis.Redis
-		nodeConf          *NodeConf
-		masterConn        *Connection
-		uidSessions       *syncx.ConcurrentDoubleMap
-		clientConns       goutil.Map               //External communication value is *session
-		clientAddress     string                   //External communication address
-		transConns        goutil.Map               //Internal communication value is *Connection
-		transAddress      string                   //Internal communication address
-		timer             *timingwheel.TimingWheel //Timingwheel
-		startTime         time.Time
-		userHashRing      *unsafehash.Consistent //UsHash ring storage userId
-		groupHashRing     *unsafehash.Consistent //UsHash ring storage groupId
-		transReceiveConns goutil.Map
-	}
-
-	Message struct {
-		uid         string      `json:"uid"`
-		MessageType string      `json:"message_type"`
-		data        interface{} `json:"data"`
+		bizRedis         *redis.Redis
+		nodeConf         *NodeConf
+		masterConn       *Connection
+		uidSessions      *syncx.ConcurrentDoubleMap
+		clientConns      goutil.Map               //External communication value is *session
+		clientAddress    string                   //External communication address
+		transClientConns goutil.Map               //Internal communication value is *Connection
+		transAddress     string                   //Internal communication address
+		timer            *timingwheel.TimingWheel //Timingwheel
+		startTime        time.Time
+		userHashRing     *unsafehash.Consistent //UsHash ring storage userId
+		groupHashRing    *unsafehash.Consistent //UsHash ring storage groupId
+		transServerConns goutil.Map
 	}
 )
 
 var (
 	nodeInfo *NodeInfo
 )
-
-// NewPeer creates a new peer.
-func NewNodeConf(host, path, masterAddress string, redisConf redis.RedisConf, redisNodeList []*RedisNode) *NodeConf {
-	return &NodeConf{
-		Host:          host,
-		Path:          path,
-		Port:          9528,
-		RedisConf:     redisConf,
-		MasterAddress: masterAddress,
-		Password:      defaultPassword,
-		PingInterval:  defaultPingInterval,
-		RedisNodeList: redisNodeList,
-	}
-}
-
-func (conf *NodeConf) WithPassword(password string) *NodeConf {
-	conf.Password = password
-	return conf
-}
-
-func (conf *NodeConf) WithPort(port int64) *NodeConf {
-	conf.Port = port
-	return conf
-}
-
-func (conf *NodeConf) WithPing(pingInterval int64) *NodeConf {
-	conf.PingInterval = pingInterval
-	return conf
-}
 
 // NewPeer creates a new peer.
 func StartNode(cfg *NodeConf) {
@@ -117,16 +71,16 @@ func StartNode(cfg *NodeConf) {
 		groupHashRing.Add(unsafehash.NewNode(value.RedisConf.Host, value.Position, rdsObj))
 	}
 	nodeInfo = &NodeInfo{
-		nodeConf:          cfg,
-		bizRedis:          rds,
-		uidSessions:       syncx.NewConcurrentDoubleMap(32),
-		startTime:         time.Now(),
-		timer:             timer,
-		userHashRing:      userHashRing,
-		groupHashRing:     groupHashRing,
-		transConns:        goutil.AtomicMap(),
-		clientConns:       goutil.AtomicMap(),
-		transReceiveConns: goutil.AtomicMap(),
+		nodeConf:         cfg,
+		bizRedis:         rds,
+		uidSessions:      syncx.NewConcurrentDoubleMap(32),
+		startTime:        time.Now(),
+		timer:            timer,
+		userHashRing:     userHashRing,
+		groupHashRing:    groupHashRing,
+		transClientConns: goutil.AtomicMap(),
+		clientConns:      goutil.AtomicMap(),
+		transServerConns: goutil.AtomicMap(),
 	}
 	nodeInfo.clientAddress = fmt.Sprintf("%s%s/client", cfg.Host, cfg.Path)
 	nodeInfo.transAddress = fmt.Sprintf("%s%s/trans", cfg.Host, cfg.Path)
@@ -196,7 +150,7 @@ func (nodeInfo *NodeInfo) SendPing() {
 			time.Sleep(time.Duration(nodeInfo.nodeConf.PingInterval) * time.Second)
 			// nodeInfo.masterConn.WriteMessage()
 			nodeInfo.masterConn.WriteMessage(websocket.PingMessage, []byte{})
-			nodeInfo.transConns.Range(func(k, v interface{}) bool {
+			nodeInfo.transClientConns.Range(func(k, v interface{}) bool {
 				err := v.(*Connection).WriteMessage(websocket.PingMessage, []byte{})
 				if err != nil {
 					logx.Info(err)
@@ -244,9 +198,9 @@ func (nodeInfo *NodeInfo) ConnectToMaster(cfg *NodeConf) {
 		Password:     nodeInfo.nodeConf.Password,
 		TransAddress: nodeInfo.transAddress,
 	}
-	data := map[string]interface{}{
-		"type": "auth",
-		"data": auth,
+	data := Message{
+		MessageType: "auth",
+		Data:        auth,
 	}
 	err = nodeInfo.masterConn.WriteJSON(data)
 	if err != nil {
@@ -277,9 +231,9 @@ func (nodeInfo *NodeInfo) OnClientMessage(conn *Connection, message []byte) {
 	if err != nil {
 		logx.Info(err)
 	}
-	v1, ok := data["type"]
+	v1, ok := data["message_type"]
 	if !ok {
-		logx.Info("type is nil")
+		logx.Info("message_type is nil")
 	}
 	switch v1 {
 	case "auth":
@@ -295,9 +249,9 @@ func (nodeInfo *NodeInfo) OnTransMessage(conn *Connection, message []byte) {
 	if err != nil {
 		logx.Info(err)
 	}
-	v1, ok := data["type"]
+	v1, ok := data["message_type"]
 	if !ok {
-		logx.Info("type is nil")
+		logx.Info("message_type is nil")
 	}
 	switch v1 {
 	case "auth":
@@ -316,9 +270,9 @@ func (nodeInfo *NodeInfo) OnMasterMessage(message []byte) {
 	if err != nil {
 		logx.Info(err)
 	}
-	v1, ok := data["type"]
+	v1, ok := data["message_type"]
 	if !ok {
-		logx.Info("type is nil")
+		logx.Info("message_type is nil")
 	}
 	switch v1 {
 	case "UpdateNodeList":
@@ -335,7 +289,7 @@ func (nodeInfo *NodeInfo) AuthTrans(conn *Connection, args map[string]interface{
 		conn.Conn.Close()
 		return fmt.Errorf("auth faild")
 	}
-	nodeInfo.transConns.Store(sid, conn)
+	nodeInfo.transClientConns.Store(sid, conn)
 	return nil
 }
 
@@ -359,7 +313,7 @@ func (nodeInfo *NodeInfo) UpdateNodeList(nodeList []interface{}) error {
 		if value.(string) == nodeInfo.transAddress {
 			continue
 		}
-		_, ok := nodeInfo.transReceiveConns.LoadOrStore(value.(string), "")
+		_, ok := nodeInfo.transServerConns.LoadOrStore(value.(string), "")
 		if ok {
 			continue
 		}
@@ -367,7 +321,7 @@ func (nodeInfo *NodeInfo) UpdateNodeList(nodeList []interface{}) error {
 		conn := &Connection{Conn: connect}
 		if err != nil {
 			logx.Info("dial:", err)
-			nodeInfo.transReceiveConns.Delete(value.(string))
+			nodeInfo.transServerConns.Delete(value.(string))
 			continue
 		}
 
@@ -375,9 +329,9 @@ func (nodeInfo *NodeInfo) UpdateNodeList(nodeList []interface{}) error {
 			Password:     nodeInfo.nodeConf.Password,
 			TransAddress: nodeInfo.transAddress,
 		}
-		data := map[string]interface{}{
-			"type": "auth",
-			"data": auth,
+		data := Message{
+			MessageType: "auth",
+			Data:        auth,
 		}
 		err = conn.WriteJSON(data)
 		if err != nil {
@@ -515,7 +469,7 @@ func (nodeInfo *NodeInfo) SendToUid(uid string, path string, req interface{}) er
 				// }
 
 			} else {
-				connect, ok := nodeInfo.transConns.Load(ip)
+				connect, ok := nodeInfo.transClientConns.Load(ip)
 				if ok {
 					err = connect.(*Connection).WriteJSON(req)
 					if err != nil {
@@ -535,7 +489,7 @@ func (nodeInfo *NodeInfo) SendToUid(uid string, path string, req interface{}) er
 //Send message to a uid
 func (nodeInfo *NodeInfo) SendToTrans(uid string, path string, req interface{}) error {
 	mapreduce.MapVoid(func(source chan<- interface{}) {
-		nodeInfo.transConns.Range(func(key, value interface{}) bool {
+		nodeInfo.transClientConns.Range(func(key, value interface{}) bool {
 			if key == nodeInfo.transAddress {
 				return true
 			}
