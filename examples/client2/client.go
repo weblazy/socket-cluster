@@ -20,7 +20,7 @@ func client() {
 	// 	TransAddress: "ws://localhost:9528/client",
 	// }
 	err = conn.WriteJSON(map[string]interface{}{
-		"type": "auth",
+		"message_type": "auth",
 		"data": map[string]interface{}{
 			"password":      "password",
 			"trans_address": "ws://localhost:9528/client",
@@ -31,7 +31,17 @@ func client() {
 		logx.Info(err)
 	}
 	err = conn.WriteJSON(map[string]interface{}{
-		"type": "send",
+		"message_type": "login",
+		"data": map[string]interface{}{
+			"password": "password2",
+			"username": "admin2",
+		},
+	})
+	if err != nil {
+		logx.Info(err)
+	}
+	err = conn.WriteJSON(map[string]interface{}{
+		"message_type": "send",
 		"data": map[string]interface{}{
 			"password":      "password",
 			"trans_address": "ws://localhost:9528/client",

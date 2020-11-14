@@ -241,6 +241,7 @@ func (nodeInfo *NodeInfo) OnClientMessage(conn *Connection, message []byte) {
 	case "send":
 		nodeInfo.SendToUid(data["data"].(map[string]interface{})["uid"].(string), "", data)
 	}
+	nodeInfo.nodeConf.onMessage(&Context{Conn: conn, Message: message})
 }
 
 func (nodeInfo *NodeInfo) OnTransMessage(conn *Connection, message []byte) {

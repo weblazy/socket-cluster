@@ -90,9 +90,10 @@ func (masterInfo *MasterInfo) OnMessage(conn *Connection, message []byte) {
 	if err != nil {
 		logx.Info(err)
 	}
-	v1, ok := data["type"]
+	v1, ok := data["message_type"]
 	if !ok {
-		logx.Info("type is nil")
+		logx.Info(data)
+		logx.Info("message_type is nil")
 	}
 	switch v1 {
 	case "auth":

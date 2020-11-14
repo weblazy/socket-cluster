@@ -18,5 +18,5 @@ func node2() {
 	websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host2, *path2, *masterAddress, redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
 		RedisConf: redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"},
 		Position:  1,
-	}}).WithPort(*port2))
+	}}, onMessage).WithPort(*port2))
 }
