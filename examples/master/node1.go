@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
+	"strconv"
 	websocket_cluster "websocket-cluster"
 	"websocket-cluster/examples/auth"
 	"websocket-cluster/examples/model"
@@ -32,37 +32,85 @@ func node1() {
 	}}, onMessage).WithPort(*port1))
 }
 
-func onMessage(context *websocket_cluster.Context) {
+func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Context) {
 	logx.Info("message1", string(context.Message))
-	data := make(map[string]interface{})
-	err := json.Unmarshal(context.Message, &data)
+	messageMap := make(map[string]interface{})
+	err := json.Unmarshal(context.Message, &messageMap)
 	if err != nil {
 		logx.Info(err)
 	}
-	v1, ok := data["message_type"]
+	v1, ok := messageMap["message_type"]
 	if !ok {
 		logx.Info("message_type is nil")
 	}
 	switch v1 {
 	case "login":
-		content := data["data"].(map[string]interface{})
-		// nodeInfo.AuthClient(conn, data["data"].(map[string]interface{}))
-		obj, err := model.AuthHandler.GetOne("username = ? and password = ?", content["username"].(string), content["password"].(string))
+		data := messageMap["data"].(map[string]interface{})
+		obj, err := model.AuthHandler.GetOne("username = ? and password = ?", data["username"].(string), data["password"].(string))
 		if err != nil {
 			logx.Info(err)
+			return
 		}
-		token, err := auth.AuthManager.Add(fmt.Sprintf("%d", obj.Id))
+		uid := strconv.FormatInt(obj.Id, 10)
+		token, err := auth.AuthManager.Add(uid)
 		logx.Info(token)
 		if err != nil {
 			logx.Info(err)
+			return
 		} else {
 			logx.Info(token)
 			id, err := auth.AuthManager.Validate(token)
 			logx.Info(id)
 			logx.Info(err)
 		}
-	case "chatMessage":
-		// nodeInfo.SendToUid(data["data"].(map[string]interface{})["uid"].(string), "", data)
+		nodeInfo.AuthClient(context.Conn, uid)
+		list, err := model.MessageHandler.GetList("receive_uid = ? and status = 0", uid)
+		if err != nil {
+			logx.Info(err)
+			return
+		}
+		err = context.Conn.WriteJSON(map[string]interface{}{
+			"message_type": "chat_message_list",
+			"data": map[string]interface{}{
+				"list":        list,
+				"receive_uid": uid,
+			},
+		})
+		if err != nil {
+			logx.Info(err)
+		}
+	case "chat_message_list":
+		data := messageMap["data"].(map[string]interface{})
+		receiveUid := data["receive_uid"].(string)
+		list := data["list"].([]interface{})
+		for k1 := range list {
+			v1 := list[k1].(map[string]interface{})
+			message := model.Message{
+				ReceiveUid:  receiveUid,
+				MessageType: "text",
+				SendUid:     context.Uid,
+				Content:     v1["content"].(string),
+				Status:      0,
+			}
+			err := model.MessageHandler.Insert(nil, &message)
+			if err != nil {
+				logx.Info(err)
+				return
+			}
+			v1["id"] = message.Id
+			v1["send_uid"] = context.Uid
+			list[k1] = v1
+		}
+		messageMap["list"] = list
+		messageMap["receive_uid"] = receiveUid
+		nodeInfo.SendToUid(receiveUid, messageMap)
+	case "ackReceive":
+		data := messageMap["data"].(map[string]interface{})
+		messageIdList := data["message_id_list"].([]interface{})
+		uid := context.Uid
+		model.MessageHandler.Update(nil, map[string]interface{}{
+			"status": 1,
+		}, "receive_uid = ? and id in(?) and status = 0", uid, messageIdList)
 	default:
 		logx.Info(string(context.Message))
 	}

@@ -13,17 +13,18 @@ type (
 		MasterAddress string //Master address
 		Password      string //Password for auth when connect to master
 		PingInterval  int64  //Heartbeat interval
-		onMessage     func(context *Context)
+		onMessage     func(nodeInfo *NodeInfo, context *Context)
 	}
 
 	Context struct {
 		Conn    *Connection
+		Uid     string
 		Message []byte
 	}
 )
 
 // NewPeer creates a new peer.
-func NewNodeConf(host, path, masterAddress string, redisConf redis.RedisConf, redisNodeList []*RedisNode, onMessage func(context *Context)) *NodeConf {
+func NewNodeConf(host, path, masterAddress string, redisConf redis.RedisConf, redisNodeList []*RedisNode, onMessage func(nodeInfo *NodeInfo, context *Context)) *NodeConf {
 	return &NodeConf{
 		Host:          host,
 		Path:          path,

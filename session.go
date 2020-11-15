@@ -3,12 +3,10 @@ package websocket_cluster
 import (
 	"sync/atomic"
 	"unsafe"
-
-	"github.com/gorilla/websocket"
 )
 
 type Session struct {
-	Conn *websocket.Conn
+	Conn *Connection
 	Uid  string
 }
 

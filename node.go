@@ -42,9 +42,7 @@ type (
 	}
 )
 
-var (
-	nodeInfo *NodeInfo
-)
+var ()
 
 // NewPeer creates a new peer.
 func StartNode(cfg *NodeConf) {
@@ -70,7 +68,7 @@ func StartNode(cfg *NodeConf) {
 		rdsObj := redis.NewRedis(value.RedisConf.Host, value.RedisConf.Type, value.RedisConf.Pass)
 		groupHashRing.Add(unsafehash.NewNode(value.RedisConf.Host, value.Position, rdsObj))
 	}
-	nodeInfo = &NodeInfo{
+	nodeInfo := &NodeInfo{
 		nodeConf:         cfg,
 		bizRedis:         rds,
 		uidSessions:      syncx.NewConcurrentDoubleMap(32),
@@ -231,17 +229,13 @@ func (nodeInfo *NodeInfo) OnClientMessage(conn *Connection, message []byte) {
 	if err != nil {
 		logx.Info(err)
 	}
-	v1, ok := data["message_type"]
-	if !ok {
-		logx.Info("message_type is nil")
+	sid := conn.Conn.RemoteAddr().String()
+	session, ok := nodeInfo.clientConns.Load(sid)
+	uid := ""
+	if ok {
+		uid = session.(*Session).Uid
 	}
-	switch v1 {
-	case "auth":
-		nodeInfo.AuthClient(conn, data["data"].(map[string]interface{}))
-	case "send":
-		nodeInfo.SendToUid(data["data"].(map[string]interface{})["uid"].(string), "", data)
-	}
-	nodeInfo.nodeConf.onMessage(&Context{Conn: conn, Message: message})
+	nodeInfo.nodeConf.onMessage(nodeInfo, &Context{Conn: conn, Message: message, Uid: uid})
 }
 
 func (nodeInfo *NodeInfo) OnTransMessage(conn *Connection, message []byte) {
@@ -257,8 +251,9 @@ func (nodeInfo *NodeInfo) OnTransMessage(conn *Connection, message []byte) {
 	switch v1 {
 	case "auth":
 		nodeInfo.AuthTrans(conn, data["data"].(map[string]interface{}))
-	case "send":
-		nodeInfo.uidSessions.RangeNextMap(data["data"].(map[string]interface{})["uid"].(string), func(k1, k2 string, se interface{}) bool {
+	case "chat_message_list":
+		receiveUid := data["data"].(map[string]interface{})["receive_uid"].(string)
+		nodeInfo.uidSessions.RangeNextMap(receiveUid, func(k1, k2 string, se interface{}) bool {
 			err = se.(*Session).Conn.WriteJSON(data)
 			return true
 		})
@@ -295,16 +290,12 @@ func (nodeInfo *NodeInfo) AuthTrans(conn *Connection, args map[string]interface{
 }
 
 // Auth the node
-func (nodeInfo *NodeInfo) AuthClient(conn *Connection, args map[string]interface{}) error {
+func (nodeInfo *NodeInfo) AuthClient(conn *Connection, uid string) error {
 	sid := conn.Conn.RemoteAddr().String()
 	nodeInfo.timer.RemoveTimer(sid) //Cancel timeingwheel task
-	if args["password"].(string) != nodeInfo.nodeConf.Password {
-		logx.Infof("Connect:%s,Wrong password:%s", sid, args["password"].(string))
-		conn.Conn.Close()
-		return fmt.Errorf("auth faild")
-	}
-	nodeInfo.clientConns.Store(sid, conn)
-	nodeInfo.BindUid(args["uid"].(string), &Session{Conn: conn.Conn, Uid: args["uid"].(string)})
+	session := &Session{Conn: conn, Uid: uid}
+	nodeInfo.clientConns.Store(sid, session)
+	nodeInfo.BindUid(uid, session)
 	return nil
 }
 
@@ -432,7 +423,7 @@ func (nodeInfo *NodeInfo) BindUid(uid string, se *Session) error {
 	if err != nil {
 		return err
 	}
-	sid := se.Conn.RemoteAddr().String()
+	sid := se.Conn.Conn.RemoteAddr().String()
 	nodeInfo.uidSessions.StoreWithPlugin(uid, sid, se, func() {
 		oldUid := se.CasUid(uid)
 		if oldUid != "" && oldUid != uid {
@@ -443,7 +434,7 @@ func (nodeInfo *NodeInfo) BindUid(uid string, se *Session) error {
 }
 
 //Send message to a uid
-func (nodeInfo *NodeInfo) SendToUid(uid string, path string, req interface{}) error {
+func (nodeInfo *NodeInfo) SendToUid(uid string, req interface{}) error {
 	now := time.Now().Unix()
 	node := nodeInfo.userHashRing.Get(uid)
 	ipMap, err := node.Extra.(*redis.Redis).Hgetall(userPrefix + uid)
