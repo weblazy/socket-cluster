@@ -366,7 +366,7 @@ func (nodeInfo *NodeInfo) LeaveGroup(gid, uid string) error {
 	return nil
 }
 
-func (nodeInfo *NodeInfo) SendToGroup(gid string, path string, req interface{}) error {
+func (nodeInfo *NodeInfo) SendToGroup(gid string, req interface{}) error {
 	uids := nodeInfo.GroupOnline(gid)
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		for k1, _ := range uids {

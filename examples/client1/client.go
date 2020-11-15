@@ -63,7 +63,7 @@ func OnClientMessage(conn *websocket_cluster.Connection, message []byte) {
 			messageIdList = append(messageIdList, int64(list[k1].(map[string]interface{})["id"].(float64)))
 		}
 		err = conn.WriteJSON(map[string]interface{}{
-			"message_type": "ackReceive",
+			"message_type": "ack_receive",
 			"data": map[string]interface{}{
 				"message_id_list": messageIdList,
 			},
