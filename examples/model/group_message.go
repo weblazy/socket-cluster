@@ -9,14 +9,14 @@ import (
 var GroupMessageHandler = GroupMessage{}
 
 type GroupMessage struct {
-	Id               int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
-	GroupId          string     `json:"group_id" gorm:"column:group_id;NOT NULL;default:0;comment:'分组id';type:VARCHAR(255)"`
-	GroupMessageType string     `json:"message_type" gorm:"column:message_type;NOT NULL;default:'';comment:'消息类型';type:VARCHAR(255)"`
-	SendUid          string     `json:"send_uid" gorm:"column:send_uid;NOT NULL;default:'';comment:'发送者id';type:VARCHAR(255)"`
-	Content          string     `json:"content" gorm:"column:content;NOT NULL;default:'';comment:'消息内容';type:VARCHAR(255)"`
-	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at;NOT NULL;default:CURRENT_TIMESTAMP;type:TIMESTAMP"`
-	UpdatedAt        time.Time  `json:"updated_at" gorm:"column:updated_at;NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;type:TIMESTAMP"`
-	DeletedAt        *time.Time `json:"deleted_at" gorm:"column:deleted_at;type:DATETIME"`
+	Id          int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
+	GroupId     string     `json:"group_id" gorm:"column:group_id;NOT NULL;default:0;comment:'分组id';type:VARCHAR(255)"`
+	MessageType string     `json:"message_type" gorm:"column:message_type;NOT NULL;default:'';comment:'消息类型';type:VARCHAR(255)"`
+	SendUid     string     `json:"send_uid" gorm:"column:send_uid;NOT NULL;default:'';comment:'发送者id';type:VARCHAR(255)"`
+	Content     string     `json:"content" gorm:"column:content;NOT NULL;default:'';comment:'消息内容';type:VARCHAR(255)"`
+	CreatedAt   time.Time  `json:"created_at" gorm:"column:created_at;NOT NULL;default:CURRENT_TIMESTAMP;type:TIMESTAMP"`
+	UpdatedAt   time.Time  `json:"updated_at" gorm:"column:updated_at;NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;type:TIMESTAMP"`
+	DeletedAt   *time.Time `json:"deleted_at" gorm:"column:deleted_at;type:DATETIME"`
 }
 
 func (*GroupMessage) TableName() string {

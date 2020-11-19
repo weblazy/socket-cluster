@@ -64,17 +64,10 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			logx.Info(err)
 		}
 		nodeInfo.AuthClient(context.Conn, uid)
-		groupList, err := model.UserGroupHandler.GetList("uid = ?", uid)
+		_, err = model.UserGroupHandler.GetList("uid = ?", uid)
 		if err != nil {
 			logx.Info(err)
 			return
-		}
-		for k1 := range groupList {
-			err = nodeInfo.JoinGroup(strconv.FormatInt(groupList[k1].GroupId, 10), uid)
-			if err != nil {
-				logx.Info(err)
-				return
-			}
 		}
 
 		list, err := model.MessageHandler.GetList("receive_uid = ? and status = 0", uid)
@@ -133,14 +126,13 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		list := data["list"].([]interface{})
 		for k1 := range list {
 			v1 := list[k1].(map[string]interface{})
-			message := model.Message{
-				ReceiveUid:  groupId,
+			message := model.GroupMessage{
+				GroupId:     groupId,
 				MessageType: "text",
 				SendUid:     context.Uid,
 				Content:     v1["content"].(string),
-				Status:      0,
 			}
-			err := model.MessageHandler.Insert(nil, &message)
+			err := model.GroupMessageHandler.Insert(nil, &message)
 			if err != nil {
 				logx.Info(err)
 				return
@@ -151,7 +143,18 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		}
 		messageMap["list"] = list
 		messageMap["group_id"] = groupId
-		nodeInfo.SendToGroup(groupId, messageMap)
+		groupIdInt, _ := strconv.ParseInt(groupId, 10, 64)
+		userGroupList, err := model.UserGroupHandler.GetList("group_id = ?", groupIdInt)
+		if err != nil {
+			logx.Info(err)
+			return
+		}
+		uids := make([]string, 0)
+		for k1 := range userGroupList {
+			uidStr := strconv.FormatInt(userGroupList[k1].Uid, 10)
+			uids = append(uids, uidStr)
+		}
+		nodeInfo.SendToUids(uids, messageMap)
 	default:
 		logx.Info(string(context.Message))
 	}

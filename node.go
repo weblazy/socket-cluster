@@ -85,6 +85,8 @@ func StartNode(cfg *NodeConf) {
 
 	e := echo.New()
 	e.GET(fmt.Sprintf("%s/trans", cfg.Path), nodeInfo.transHandler)
+	e.OPTIONS(fmt.Sprintf("%s/web", cfg.Path), nodeInfo.optionHandler)
+	e.Any(fmt.Sprintf("%s/web", cfg.Path), nodeInfo.webHandler)
 	e.GET(fmt.Sprintf("%s/client", cfg.Path), nodeInfo.clientHandler)
 	nodeInfo.SendPing()
 	nodeInfo.UpdateRedis()
@@ -93,6 +95,18 @@ func StartNode(cfg *NodeConf) {
 	if err != nil {
 		logx.Info(err)
 	}
+}
+
+func (nodeInfo *NodeInfo) optionHandler(c echo.Context) error {
+	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
+	c.String(200, "")
+	return nil
+}
+func (nodeInfo *NodeInfo) webHandler(c echo.Context) error {
+	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
+	return c.JSON(200, "pong")
 }
 
 func (nodeInfo *NodeInfo) transHandler(c echo.Context) error {
@@ -347,27 +361,64 @@ func (nodeInfo *NodeInfo) UpdateNodeList(nodeList []interface{}) error {
 	return nil
 }
 
-func (nodeInfo *NodeInfo) JoinGroup(gid, uid string) error {
-	now := time.Now().Unix()
-	node := nodeInfo.groupHashRing.Get(gid)
-	err := node.Extra.(*redis.Redis).Hset(groupPrefix+gid, uid, strconv.FormatInt(now, 10))
-	if err != nil {
-		logx.Info(err)
-	}
-	return nil
-}
+// func (nodeInfo *NodeInfo) JoinGroup(gid, uid string) error {
+// 	now := time.Now().Unix()
+// 	node := nodeInfo.groupHashRing.Get(gid)
+// 	err := node.Extra.(*redis.Redis).Hset(groupPrefix+gid, uid, strconv.FormatInt(now, 10))
+// 	if err != nil {
+// 		logx.Info(err)
+// 	}
+// 	return nil
+// }
 
-func (nodeInfo *NodeInfo) LeaveGroup(gid, uid string) error {
-	node := nodeInfo.groupHashRing.Get(gid)
-	_, err := node.Extra.(*redis.Redis).Hdel(groupPrefix+gid, uid)
-	if err != nil {
-		logx.Info(err)
-	}
-	return nil
-}
+// func (nodeInfo *NodeInfo) LeaveGroup(gid, uid string) error {
+// 	node := nodeInfo.groupHashRing.Get(gid)
+// 	_, err := node.Extra.(*redis.Redis).Hdel(groupPrefix+gid, uid)
+// 	if err != nil {
+// 		logx.Info(err)
+// 	}
+// 	return nil
+// }
 
-func (nodeInfo *NodeInfo) SendToGroup(gid string, req interface{}) error {
-	uids := nodeInfo.GroupOnline(gid)
+// func (nodeInfo *NodeInfo) SendToGroup(gid string, req interface{}) error {
+// 	uids := nodeInfo.GroupOnline(gid)
+// 	mapreduce.MapVoid(func(source chan<- interface{}) {
+// 		for k1, _ := range uids {
+// 			nodeInfo.uidSessions.RangeShard(uids[k1], func(key2 string, value interface{}) bool {
+// 				source <- value
+// 				return true
+// 			})
+// 		}
+// 	}, func(item interface{}) {
+// 		se := item.(*Session)
+// 		err := se.Conn.WriteJSON(req)
+// 		if err != nil {
+// 			logx.Info(err)
+// 		}
+// 	})
+// 	return nil
+// }
+
+//Get online users in the group
+// func (nodeInfo *NodeInfo) GroupOnline(gid string) []string {
+// 	now := time.Now().Unix()
+// 	node := nodeInfo.groupHashRing.Get(gid)
+// 	uids := make([]string, 0)
+// 	addrMap, err := node.Extra.(*redis.Redis).Hgetall(groupPrefix + gid)
+// 	if err == nil {
+// 		return uids
+// 	}
+// 	for key, value := range addrMap {
+// 		old, _ := strconv.ParseInt(value, 10, 64)
+// 		if now < old {
+// 			uids = append(uids, key)
+// 		}
+// 	}
+// 	return uids
+// }
+
+func (nodeInfo *NodeInfo) SendToUids(uidList []string, req interface{}) error {
+	uids := nodeInfo.UidsOnline(uidList)
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		for k1, _ := range uids {
 			nodeInfo.uidSessions.RangeShard(uids[k1], func(key2 string, value interface{}) bool {
@@ -385,21 +436,38 @@ func (nodeInfo *NodeInfo) SendToGroup(gid string, req interface{}) error {
 	return nil
 }
 
-//Get online users in the group
-func (nodeInfo *NodeInfo) GroupOnline(gid string) []string {
-	now := time.Now().Unix()
-	node := nodeInfo.groupHashRing.Get(gid)
-	uids := make([]string, 0)
-	addrMap, err := node.Extra.(*redis.Redis).Hgetall(groupPrefix + gid)
-	if err == nil {
-		return uids
-	}
-	for key, value := range addrMap {
-		old, _ := strconv.ParseInt(value, 10, 64)
-		if now < old {
-			uids = append(uids, key)
+type NodeMap struct {
+	node *unsafehash.Node
+	uids []string
+}
+
+// Get online users in the group
+func (nodeInfo *NodeInfo) UidsOnline(uids []string) []string {
+	// now := time.Now().Unix()
+	nodes := make(map[string]*NodeMap, 0)
+	for k1 := range uids {
+		node := nodeInfo.userHashRing.Get(uids[k1])
+		if _, ok := nodes[node.Id]; ok {
+			nodes[node.Id].uids = append(nodes[node.Id].uids, uids[k1])
+		} else {
+			nodes[node.Id] = &NodeMap{
+				node: node,
+				uids: []string{uids[k1]},
+			}
 		}
 	}
+	// for k1 := range nodes {
+	// 	nodeMap := nodes[k1]
+	// 	arr, err := nodeMap.node.Extra.(*redis.Redis).Mget(nodeMap.uids...)
+
+	// }
+
+	// for key, value := range arr {
+	// 	old, _ := strconv.ParseInt(value, 10, 64)
+	// 	if now < old {
+	// 		uids = append(uids, key)
+	// 	}
+	// }
 	return uids
 }
 
