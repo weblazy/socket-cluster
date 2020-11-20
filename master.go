@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	"github.com/weblazy/core/timingwheel"
 	"github.com/weblazy/easy/utils/logx"
 	"github.com/weblazy/goutil"

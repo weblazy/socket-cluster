@@ -1,6 +1,9 @@
 package websocket_cluster
 
-import "github.com/weblazy/core/database/redis"
+import (
+	"github.com/labstack/echo/v4"
+	"github.com/weblazy/core/database/redis"
+)
 
 type (
 	NodeConf struct {
@@ -14,6 +17,7 @@ type (
 		Password      string //Password for auth when connect to master
 		PingInterval  int64  //Heartbeat interval
 		onMessage     func(nodeInfo *NodeInfo, context *Context)
+		router        func(g *echo.Group)
 	}
 
 	Context struct {
@@ -35,6 +39,7 @@ func NewNodeConf(host, path, masterAddress string, redisConf redis.RedisConf, re
 		PingInterval:  defaultPingInterval,
 		RedisNodeList: redisNodeList,
 		onMessage:     onMessage,
+		router:        func(g *echo.Group) {},
 	}
 
 }
@@ -51,5 +56,10 @@ func (conf *NodeConf) WithPort(port int64) *NodeConf {
 
 func (conf *NodeConf) WithPing(pingInterval int64) *NodeConf {
 	conf.PingInterval = pingInterval
+	return conf
+}
+
+func (conf *NodeConf) WithRouter(router func(g *echo.Group)) *NodeConf {
+	conf.router = router
 	return conf
 }

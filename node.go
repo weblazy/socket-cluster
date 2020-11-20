@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/gorilla/websocket"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	"github.com/weblazy/core/consistenthash/unsafehash"
 	"github.com/weblazy/core/database/redis"
 	"github.com/weblazy/core/mapreduce"
@@ -85,9 +85,10 @@ func StartNode(cfg *NodeConf) {
 
 	e := echo.New()
 	e.GET(fmt.Sprintf("%s/trans", cfg.Path), nodeInfo.transHandler)
-	e.OPTIONS(fmt.Sprintf("%s/web", cfg.Path), nodeInfo.optionHandler)
-	e.Any(fmt.Sprintf("%s/web", cfg.Path), nodeInfo.webHandler)
 	e.GET(fmt.Sprintf("%s/client", cfg.Path), nodeInfo.clientHandler)
+	webGroup := e.Group(fmt.Sprintf("%s/web", cfg.Path), originMiddlewareFunc)
+	webGroup.OPTIONS("/login", optionHandler)
+	cfg.router(webGroup)
 	nodeInfo.SendPing()
 	nodeInfo.UpdateRedis()
 	go nodeInfo.ConnectToMaster(cfg)
@@ -97,16 +98,24 @@ func StartNode(cfg *NodeConf) {
 	}
 }
 
-func (nodeInfo *NodeInfo) optionHandler(c echo.Context) error {
+func optionHandler(c echo.Context) error {
 	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
 	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
 	c.String(200, "")
 	return nil
 }
-func (nodeInfo *NodeInfo) webHandler(c echo.Context) error {
+func webHandler(c echo.Context) error {
 	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
 	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
 	return c.JSON(200, "pong")
+}
+
+func originMiddlewareFunc(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+		c.Response().Header().Set("Access-Control-Allow-Headers", "*")
+		return next(c)
+	}
 }
 
 func (nodeInfo *NodeInfo) transHandler(c echo.Context) error {

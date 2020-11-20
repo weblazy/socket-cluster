@@ -5,9 +5,11 @@ import (
 	"flag"
 	"strconv"
 	websocket_cluster "websocket-cluster"
+	"websocket-cluster/examples/api"
 	"websocket-cluster/examples/auth"
 	"websocket-cluster/examples/model"
 
+	"github.com/labstack/echo/v4"
 	"github.com/weblazy/core/database/redis"
 	"github.com/weblazy/easy/utils/logx"
 )
@@ -29,7 +31,7 @@ func node1() {
 	websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host1, *path1, *masterAddress, redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
 		RedisConf: redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"},
 		Position:  1,
-	}}, onMessage).WithPort(*port1))
+	}}, onMessage).WithPort(*port1).WithRouter(Router))
 }
 
 func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Context) {
@@ -158,4 +160,14 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 	default:
 		logx.Info(string(context.Message))
 	}
+}
+
+// @desc
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func Router(g *echo.Group) {
+	g.POST("/login", api.Login)
+	g.POST("/chatInit", api.ChatInit)
+	g.POST("/getGroupMembers", api.GetGroupMembers)
 }
