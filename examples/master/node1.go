@@ -74,10 +74,26 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		if len(list) == 0 {
 			return
 		}
+		chatMessageList := make([]map[string]interface{}, 0)
+		for k1 := range list {
+			v1 := list[k1]
+			obj := map[string]interface{}{
+				"username":  v1.Username,
+				"avatar":    v1.Avatar,
+				"id":        v1.SendUid,
+				"type":      "friend",
+				"content":   v1.Content,
+				"cid":       v1.Id,
+				"mine":      false,
+				"fromid":    v1.SendUid,
+				"timestamp": v1.CreatedAt.Unix() * 1000,
+			}
+			chatMessageList = append(chatMessageList, obj)
+		}
 		err = context.Conn.WriteJSON(map[string]interface{}{
 			"message_type": "chat_message_list",
 			"data": map[string]interface{}{
-				"list":        list,
+				"list":        chatMessageList,
 				"receive_uid": uid,
 			},
 		})
@@ -114,7 +130,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		messageIdList := data["message_id_list"].([]interface{})
 		uid := context.Uid
 		model.MessageHandler.Update(nil, map[string]interface{}{
-			"status": 1,
+			"status": 0,
 		}, "receive_uid = ? and id in(?) and status = 0", uid, messageIdList)
 	case "send_to_group":
 		data := messageMap["data"].(map[string]interface{})

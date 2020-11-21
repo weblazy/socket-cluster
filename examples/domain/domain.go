@@ -125,7 +125,7 @@ func GetGroupMembers(uid int64) ([]map[string]interface{}, error) {
 			v1 := userList[k1]
 			obj := make(map[string]interface{})
 			obj["username"] = v1.Username
-			obj["id"] = v1.Id
+			obj["id"] = strconv.FormatInt(v1.Id, 10)
 			obj["avatar"] = v1.Avatar
 			obj["sign"] = v1.Username + "的个性签名"
 			resp = append(resp, obj)
