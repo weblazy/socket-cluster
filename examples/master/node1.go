@@ -151,6 +151,8 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		groupIdFloat := data["group_id"].(float64)
 		groupId := strconv.FormatFloat(groupIdFloat, 'f', -1, 64)
 		message := model.GroupMessage{
+			Username:    data["username"].(string),
+			Avatar:      data["avatar"].(string),
 			GroupId:     groupId,
 			MessageType: "text",
 			SendUid:     context.Uid,
