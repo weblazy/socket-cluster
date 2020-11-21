@@ -274,7 +274,7 @@ func (nodeInfo *NodeInfo) OnTransMessage(conn *Connection, message []byte) {
 	case "auth":
 		nodeInfo.AuthTrans(conn, data["data"].(map[string]interface{}))
 	case "chat_message_list":
-		receiveUid := data["data"].(map[string]interface{})["receive_uid"].(string)
+		receiveUid := data["receive_uid"].(string)
 		nodeInfo.uidSessions.RangeNextMap(receiveUid, func(k1, k2 string, se interface{}) bool {
 			err = se.(*Session).Conn.WriteJSON(data)
 			return true
@@ -429,13 +429,15 @@ func (nodeInfo *NodeInfo) SendToUids(uidList []string, req interface{}) error {
 	uids := nodeInfo.UidsOnline(uidList)
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		for k1, _ := range uids {
-			nodeInfo.uidSessions.RangeShard(uids[k1], func(key2 string, value interface{}) bool {
+			nodeInfo.uidSessions.RangeNextMap(uids[k1], func(key1 string, key2 string, value interface{}) bool {
 				source <- value
 				return true
 			})
 		}
 	}, func(item interface{}) {
+		fmt.Printf("%#v\n", item)
 		se := item.(*Session)
+		req.(map[string]interface{})["receive_uid"] = se.Uid
 		err := se.Conn.WriteJSON(req)
 		if err != nil {
 			logx.Info(err)

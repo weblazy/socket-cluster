@@ -10,6 +10,8 @@ var GroupMessageHandler = GroupMessage{}
 
 type GroupMessage struct {
 	Id          int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
+	Username    string     `json:"username" gorm:"column:username;NOT NULL;default:'';comment:'用户名';type:VARCHAR(255)"`
+	Avatar      string     `json:"avatar" gorm:"column:avatar;NOT NULL;default:'';comment:'头像';type:VARCHAR(255)"`
 	GroupId     string     `json:"group_id" gorm:"column:group_id;NOT NULL;default:0;comment:'分组id';type:VARCHAR(255)"`
 	MessageType string     `json:"message_type" gorm:"column:message_type;NOT NULL;default:'';comment:'消息类型';type:VARCHAR(255)"`
 	SendUid     string     `json:"send_uid" gorm:"column:send_uid;NOT NULL;default:'';comment:'发送者id';type:VARCHAR(255)"`

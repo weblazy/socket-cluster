@@ -106,9 +106,9 @@ func ChatInit(uid int64) (map[string]interface{}, error) {
 // @auth liuguoqiang 2020-11-20
 // @param
 // @return
-func GetGroupMembers(uid int64) ([]map[string]interface{}, error) {
-	resp := make([]map[string]interface{}, 0)
-	userGroupList, err := model.UserGroupHandler.GetList("group_id = ?", uid)
+func GetGroupMembers(groupId int64) (map[string]interface{}, error) {
+	resp := make(map[string]interface{})
+	userGroupList, err := model.UserGroupHandler.GetList("group_id = ?", groupId)
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +116,7 @@ func GetGroupMembers(uid int64) ([]map[string]interface{}, error) {
 	for k1 := range userGroupList {
 		uids = append(uids, userGroupList[k1].Uid)
 	}
+	list := make([]map[string]interface{}, 0)
 	if len(uids) > 0 {
 		userList, err := model.AuthHandler.GetList("id in(?)", uids)
 		if err != nil {
@@ -128,8 +129,9 @@ func GetGroupMembers(uid int64) ([]map[string]interface{}, error) {
 			obj["id"] = strconv.FormatInt(v1.Id, 10)
 			obj["avatar"] = v1.Avatar
 			obj["sign"] = v1.Username + "的个性签名"
-			resp = append(resp, obj)
+			list = append(list, obj)
 		}
 	}
+	resp["list"] = list
 	return resp, nil
 }

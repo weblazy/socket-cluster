@@ -92,15 +92,15 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		}
 		err = context.Conn.WriteJSON(map[string]interface{}{
 			"message_type": "chat_message_list",
+			"receive_uid":  uid,
 			"data": map[string]interface{}{
-				"list":        chatMessageList,
-				"receive_uid": uid,
+				"list": chatMessageList,
 			},
 		})
 		if err != nil {
 			logx.Info(err)
 		}
-	case "chat_message":
+	case "send_to_user":
 		data := messageMap["data"].(map[string]interface{})
 		receiveUidFloat := data["receive_uid"].(float64)
 		receiveUid := strconv.FormatFloat(receiveUidFloat, 'f', -1, 64)
@@ -133,11 +133,12 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		chatMessageList = append(chatMessageList, obj)
 		nodeInfo.SendToUid(receiveUid, map[string]interface{}{
 			"message_type": "chat_message_list",
+			"receive_uid":  receiveUid,
 			"data": map[string]interface{}{
-				"list":        chatMessageList,
-				"receive_uid": receiveUid,
+				"list": chatMessageList,
 			},
 		})
+
 	case "ack_receive":
 		data := messageMap["data"].(map[string]interface{})
 		messageIdList := data["message_id_list"].([]interface{})
@@ -147,27 +148,19 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		}, "receive_uid = ? and id in(?) and status = 0", uid, messageIdList)
 	case "send_to_group":
 		data := messageMap["data"].(map[string]interface{})
-		groupId := data["group_id"].(string)
-		list := data["list"].([]interface{})
-		for k1 := range list {
-			v1 := list[k1].(map[string]interface{})
-			message := model.GroupMessage{
-				GroupId:     groupId,
-				MessageType: "text",
-				SendUid:     context.Uid,
-				Content:     v1["content"].(string),
-			}
-			err := model.GroupMessageHandler.Insert(nil, &message)
-			if err != nil {
-				logx.Info(err)
-				return
-			}
-			v1["id"] = message.Id
-			v1["send_uid"] = context.Uid
-			list[k1] = v1
+		groupIdFloat := data["group_id"].(float64)
+		groupId := strconv.FormatFloat(groupIdFloat, 'f', -1, 64)
+		message := model.GroupMessage{
+			GroupId:     groupId,
+			MessageType: "text",
+			SendUid:     context.Uid,
+			Content:     data["content"].(string),
 		}
-		messageMap["list"] = list
-		messageMap["group_id"] = groupId
+		err := model.GroupMessageHandler.Insert(nil, &message)
+		if err != nil {
+			logx.Info(err)
+			return
+		}
 		groupIdInt, _ := strconv.ParseInt(groupId, 10, 64)
 		userGroupList, err := model.UserGroupHandler.GetList("group_id = ?", groupIdInt)
 		if err != nil {
@@ -179,7 +172,25 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			uidStr := strconv.FormatInt(userGroupList[k1].Uid, 10)
 			uids = append(uids, uidStr)
 		}
-		nodeInfo.SendToUids(uids, messageMap)
+		chatMessageList := make([]map[string]interface{}, 0)
+		obj := map[string]interface{}{
+			"username":  message.Username,
+			"avatar":    message.Avatar,
+			"id":        message.GroupId,
+			"type":      "group",
+			"content":   message.Content,
+			"cid":       message.Id,
+			"mine":      false,
+			"fromid":    message.SendUid,
+			"timestamp": message.CreatedAt.Unix() * 1000,
+		}
+		chatMessageList = append(chatMessageList, obj)
+		nodeInfo.SendToUids(uids, map[string]interface{}{
+			"message_type": "chat_message_list",
+			"data": map[string]interface{}{
+				"list": chatMessageList,
+			},
+		})
 	default:
 		logx.Info(string(context.Message))
 	}
