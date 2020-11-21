@@ -100,31 +100,44 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		if err != nil {
 			logx.Info(err)
 		}
-	case "chat_message_list":
+	case "chat_message":
 		data := messageMap["data"].(map[string]interface{})
-		receiveUid := data["receive_uid"].(string)
-		list := data["list"].([]interface{})
-		for k1 := range list {
-			v1 := list[k1].(map[string]interface{})
-			message := model.Message{
-				ReceiveUid:  receiveUid,
-				MessageType: "text",
-				SendUid:     context.Uid,
-				Content:     v1["content"].(string),
-				Status:      0,
-			}
-			err := model.MessageHandler.Insert(nil, &message)
-			if err != nil {
-				logx.Info(err)
-				return
-			}
-			v1["id"] = message.Id
-			v1["send_uid"] = context.Uid
-			list[k1] = v1
+		receiveUidFloat := data["receive_uid"].(float64)
+		receiveUid := strconv.FormatFloat(receiveUidFloat, 'f', -1, 64)
+		message := model.Message{
+			Username:    data["username"].(string),
+			Avatar:      data["avatar"].(string),
+			ReceiveUid:  receiveUid,
+			MessageType: "text",
+			SendUid:     context.Uid,
+			Content:     data["content"].(string),
+			Status:      0,
 		}
-		messageMap["list"] = list
-		messageMap["receive_uid"] = receiveUid
-		nodeInfo.SendToUid(receiveUid, messageMap)
+		err := model.MessageHandler.Insert(nil, &message)
+		if err != nil {
+			logx.Info(err)
+			return
+		}
+		chatMessageList := make([]map[string]interface{}, 0)
+		obj := map[string]interface{}{
+			"username":  message.Username,
+			"avatar":    message.Avatar,
+			"id":        message.SendUid,
+			"type":      "friend",
+			"content":   message.Content,
+			"cid":       message.Id,
+			"mine":      false,
+			"fromid":    message.SendUid,
+			"timestamp": message.CreatedAt.Unix() * 1000,
+		}
+		chatMessageList = append(chatMessageList, obj)
+		nodeInfo.SendToUid(receiveUid, map[string]interface{}{
+			"message_type": "chat_message_list",
+			"data": map[string]interface{}{
+				"list":        chatMessageList,
+				"receive_uid": receiveUid,
+			},
+		})
 	case "ack_receive":
 		data := messageMap["data"].(map[string]interface{})
 		messageIdList := data["message_id_list"].([]interface{})
