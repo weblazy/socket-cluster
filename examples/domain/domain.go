@@ -34,9 +34,9 @@ func Login(username, password string) (map[string]interface{}, error) {
 // @auth liuguoqiang 2020-11-20
 // @param
 // @return
-func ChatInit(reqUid string) (map[string]interface{}, error) {
+func ChatInit(uid int64) (map[string]interface{}, error) {
 	resp := make(map[string]interface{})
-	user, err := model.AuthHandler.GetOne("id = ?", 1)
+	user, err := model.AuthHandler.GetOne("id = ?", uid)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func ChatInit(reqUid string) (map[string]interface{}, error) {
 	friend["groupname"] = "默认分组"
 	friend["id"] = 1
 	friendList := make([]map[string]interface{}, 0)
-	friends, err := model.FriendHandler.GetList("uid = ? or other_uid = ?", 1, 1)
+	friends, err := model.FriendHandler.GetList("uid = ? or other_uid = ?", uid, uid)
 	uids := make([]int64, 0)
 	for k1 := range friends {
 		v1 := friends[k1]
@@ -75,7 +75,7 @@ func ChatInit(reqUid string) (map[string]interface{}, error) {
 	}
 	friend["list"] = friendList
 	resp["friend"] = []map[string]interface{}{friend}
-	userGroupList, err := model.UserGroupHandler.GetList("uid = ?", 1)
+	userGroupList, err := model.UserGroupHandler.GetList("uid = ?", uid)
 	if err != nil {
 		return nil, err
 	}
@@ -106,9 +106,9 @@ func ChatInit(reqUid string) (map[string]interface{}, error) {
 // @auth liuguoqiang 2020-11-20
 // @param
 // @return
-func GetGroupMembers(reqUid string) ([]map[string]interface{}, error) {
+func GetGroupMembers(uid int64) ([]map[string]interface{}, error) {
 	resp := make([]map[string]interface{}, 0)
-	userGroupList, err := model.UserGroupHandler.GetList("group_id = ?", 1)
+	userGroupList, err := model.UserGroupHandler.GetList("group_id = ?", uid)
 	if err != nil {
 		return nil, err
 	}

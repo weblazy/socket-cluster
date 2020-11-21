@@ -87,7 +87,6 @@ func StartNode(cfg *NodeConf) {
 	e.GET(fmt.Sprintf("%s/trans", cfg.Path), nodeInfo.transHandler)
 	e.GET(fmt.Sprintf("%s/client", cfg.Path), nodeInfo.clientHandler)
 	webGroup := e.Group(fmt.Sprintf("%s/web", cfg.Path), originMiddlewareFunc)
-	webGroup.OPTIONS("/login", optionHandler)
 	cfg.router(webGroup)
 	nodeInfo.SendPing()
 	nodeInfo.UpdateRedis()
@@ -98,7 +97,7 @@ func StartNode(cfg *NodeConf) {
 	}
 }
 
-func optionHandler(c echo.Context) error {
+func OptionHandler(c echo.Context) error {
 	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
 	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
 	c.String(200, "")

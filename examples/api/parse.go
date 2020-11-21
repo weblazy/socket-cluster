@@ -1,7 +1,9 @@
 package api
 
 import (
+	"fmt"
 	"io/ioutil"
+	"strconv"
 	"websocket-cluster/examples/auth"
 
 	"github.com/labstack/echo/v4"
@@ -25,22 +27,25 @@ func ParseJson(c echo.Context) (gjson.Result, *api.Response, error) {
 	return jsonParams, response, nil
 }
 
-func ParseParams(c echo.Context) (string, gjson.Result, *api.Response, error) {
+func ParseParams(c echo.Context) (int64, gjson.Result, *api.Response, error) {
 	request := c.Request()
 	response := api.NewResponse(c)
+
 	var jsonParams gjson.Result
 
 	token := request.Header.Get("token")
-
-	id, err := auth.AuthManager.Validate(token)
+	fmt.Printf("%#v\n", token)
+	idStr, err := auth.AuthManager.Validate(token)
+	id, _ := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return id, jsonParams, response, err
+		return id, jsonParams, response, fmt.Errorf("ss")
 	}
 
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return id, jsonParams, response, err
 	}
+
 	c.Set("requestBody", string(body))
 	if err != nil {
 		return id, jsonParams, response, err

@@ -46,33 +46,27 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		logx.Info("message_type is nil")
 	}
 	switch v1 {
-	case "login":
+	case "init":
 		data := messageMap["data"].(map[string]interface{})
-		obj, err := model.AuthHandler.GetOne("username = ? and password = ?", data["username"].(string), data["password"].(string))
+		token := data["token"].(string)
+		uid, err := auth.AuthManager.Validate(token)
 		if err != nil {
 			logx.Info(err)
 			return
 		}
-		uid := strconv.FormatInt(obj.Id, 10)
-		token, err := auth.AuthManager.Add(uid)
-		logx.Info(token)
+		obj, err := model.AuthHandler.GetOne("id = ?", uid)
 		if err != nil {
 			logx.Info(err)
 			return
-		} else {
-			logx.Info(token)
-			id, err := auth.AuthManager.Validate(token)
-			logx.Info(id)
-			logx.Info(err)
 		}
 		nodeInfo.AuthClient(context.Conn, uid)
-		_, err = model.UserGroupHandler.GetList("uid = ?", uid)
+		_, err = model.UserGroupHandler.GetList("uid = ?", obj.Id)
 		if err != nil {
 			logx.Info(err)
 			return
 		}
 
-		list, err := model.MessageHandler.GetList("receive_uid = ? and status = 0", uid)
+		list, err := model.MessageHandler.GetList("receive_uid = ? and status = 0", obj.Id)
 		if err != nil {
 			logx.Info(err)
 			return
@@ -170,4 +164,7 @@ func Router(g *echo.Group) {
 	g.POST("/login", api.Login)
 	g.POST("/chatInit", api.ChatInit)
 	g.POST("/getGroupMembers", api.GetGroupMembers)
+	g.OPTIONS("/login", websocket_cluster.OptionHandler)
+	g.OPTIONS("/chatInit", websocket_cluster.OptionHandler)
+	g.OPTIONS("/getGroupMembers", websocket_cluster.OptionHandler)
 }
