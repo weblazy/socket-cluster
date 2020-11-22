@@ -6,9 +6,9 @@ import (
 	gormx "github.com/jinzhu/gorm"
 )
 
-var MessageHandler = Message{}
+var UserMessageHandler = UserMessage{}
 
-type Message struct {
+type UserMessage struct {
 	Id          int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
 	Username    string     `json:"username" gorm:"column:username;NOT NULL;default:'';comment:'用户名';type:VARCHAR(255)"`
 	Avatar      string     `json:"avatar" gorm:"column:avatar;NOT NULL;default:'';comment:'头像';type:VARCHAR(255)"`
@@ -22,44 +22,44 @@ type Message struct {
 	DeletedAt   *time.Time `json:"deleted_at" gorm:"column:deleted_at;type:DATETIME"`
 }
 
-func (*Message) TableName() string {
-	return "message"
+func (*UserMessage) TableName() string {
+	return "user_message"
 }
 
-func (*Message) Insert(db *gormx.DB, data *Message) error {
+func (*UserMessage) Insert(db *gormx.DB, data *UserMessage) error {
 	if db == nil {
 		db = Orm()
 	}
 	return db.Create(data).Error
 }
 
-func (*Message) GetOne(where string, args ...interface{}) (*Message, error) {
-	var obj Message
+func (*UserMessage) GetOne(where string, args ...interface{}) (*UserMessage, error) {
+	var obj UserMessage
 	return &obj, Orm().Where(where, args...).Take(&obj).Error
 }
 
-func (*Message) GetList(where string, args ...interface{}) ([]*Message, error) {
-	var list []*Message
+func (*UserMessage) GetList(where string, args ...interface{}) ([]*UserMessage, error) {
+	var list []*UserMessage
 	db := Orm()
 	return list, db.Where(where, args...).Find(&list).Error
 }
 
-func (*Message) GetCount(where string, args ...interface{}) (int, error) {
+func (*UserMessage) GetCount(where string, args ...interface{}) (int, error) {
 	var number int
-	err := Orm().Model(&Message{}).Where(where, args...).Count(&number).Error
+	err := Orm().Model(&UserMessage{}).Where(where, args...).Count(&number).Error
 	return number, err
 }
 
-func (*Message) Delete(db *gormx.DB, where string, args ...interface{}) error {
+func (*UserMessage) Delete(db *gormx.DB, where string, args ...interface{}) error {
 	if db == nil {
 		db = Orm()
 	}
-	return db.Where(where, args...).Delete(&Message{}).Error
+	return db.Where(where, args...).Delete(&UserMessage{}).Error
 }
 
-func (*Message) Update(db *gormx.DB, data map[string]interface{}, where string, args ...interface{}) error {
+func (*UserMessage) Update(db *gormx.DB, data map[string]interface{}, where string, args ...interface{}) error {
 	if db == nil {
 		db = Orm()
 	}
-	return db.Model(&Message{}).Where(where, args...).Update(data).Error
+	return db.Model(&UserMessage{}).Where(where, args...).Update(data).Error
 }

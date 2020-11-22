@@ -66,7 +66,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			return
 		}
 
-		list, err := model.MessageHandler.GetList("receive_uid = ? and status = 0", obj.Id)
+		list, err := model.UserMessageHandler.GetList("receive_uid = ? and status = 0", obj.Id)
 		if err != nil {
 			logx.Info(err)
 			return
@@ -104,7 +104,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		data := messageMap["data"].(map[string]interface{})
 		receiveUidFloat := data["receive_uid"].(float64)
 		receiveUid := strconv.FormatFloat(receiveUidFloat, 'f', -1, 64)
-		message := model.Message{
+		message := model.UserMessage{
 			Username:    data["username"].(string),
 			Avatar:      data["avatar"].(string),
 			ReceiveUid:  receiveUid,
@@ -113,7 +113,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			Content:     data["content"].(string),
 			Status:      0,
 		}
-		err := model.MessageHandler.Insert(nil, &message)
+		err := model.UserMessageHandler.Insert(nil, &message)
 		if err != nil {
 			logx.Info(err)
 			return
@@ -143,7 +143,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		data := messageMap["data"].(map[string]interface{})
 		messageIdList := data["message_id_list"].([]interface{})
 		uid := context.Uid
-		model.MessageHandler.Update(nil, map[string]interface{}{
+		model.UserMessageHandler.Update(nil, map[string]interface{}{
 			"status": 0,
 		}, "receive_uid = ? and id in(?) and status = 0", uid, messageIdList)
 	case "send_to_group":

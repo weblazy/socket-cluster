@@ -51,7 +51,7 @@ func ChatInit(uid int64) (map[string]interface{}, error) {
 	friend["groupname"] = "默认分组"
 	friend["id"] = 1
 	friendList := make([]map[string]interface{}, 0)
-	friends, err := model.FriendHandler.GetList("uid = ? or other_uid = ?", uid, uid)
+	friends, err := model.FriendHandler.GetList("uid = ? or friend_uid = ?", uid, uid)
 	uids := make([]int64, 0)
 	for k1 := range friends {
 		v1 := friends[k1]
