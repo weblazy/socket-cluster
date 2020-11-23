@@ -138,7 +138,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			chatUserMessageList = append(chatUserMessageList, obj)
 		}
 
-		UserGroupMessageList, err := model.UserGroupMessageHandler.GetList("id > ?", lastUserMessageId)
+		UserGroupMessageList, err := model.UserGroupMessageHandler.GetList("id > ?", lastGroupMessageId)
 		if err != nil {
 			logx.Info(err)
 			return
@@ -205,27 +205,16 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			logx.Info(err)
 			return
 		}
-		chatMessageList := make([]map[string]interface{}, 0)
-		obj := map[string]interface{}{
-			"username":  message.Username,
-			"avatar":    message.Avatar,
-			"id":        message.SendUid,
-			"type":      "friend",
-			"content":   message.Content,
-			"cid":       message.Id,
-			"mine":      false,
-			"fromid":    message.SendUid,
-			"timestamp": message.CreatedAt.Unix() * 1000,
-		}
-		chatMessageList = append(chatMessageList, obj)
-		nodeInfo.SendToUid(receiveUid, map[string]interface{}{
-			"message_type": "chat_message_list",
+		err = context.Conn.WriteJSON(map[string]interface{}{
+			"message_type": "have_new_message",
 			"receive_uid":  receiveUid,
 			"data": map[string]interface{}{
-				"list": chatMessageList,
+				"last_user_message_id": message.Id,
 			},
 		})
-
+		if err != nil {
+			logx.Info(err)
+		}
 	case "ack_receive":
 		data := messageMap["data"].(map[string]interface{})
 		messageIdList := data["message_id_list"].([]interface{})
@@ -261,23 +250,10 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			uidStr := strconv.FormatInt(userGroupList[k1].Uid, 10)
 			uids = append(uids, uidStr)
 		}
-		chatMessageList := make([]map[string]interface{}, 0)
-		obj := map[string]interface{}{
-			"username":  message.Username,
-			"avatar":    message.Avatar,
-			"id":        message.GroupId,
-			"type":      "group",
-			"content":   message.Content,
-			"cid":       message.Id,
-			"mine":      false,
-			"fromid":    message.SendUid,
-			"timestamp": message.CreatedAt.Unix() * 1000,
-		}
-		chatMessageList = append(chatMessageList, obj)
 		nodeInfo.SendToUids(uids, map[string]interface{}{
-			"message_type": "chat_message_list",
+			"message_type": "have_new_message",
 			"data": map[string]interface{}{
-				"list": chatMessageList,
+				"last_group_message_id": message.Id,
 			},
 		})
 	default:
