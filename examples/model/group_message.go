@@ -43,6 +43,12 @@ func (*GroupMessage) GetList(where string, args ...interface{}) ([]*GroupMessage
 	return list, db.Where(where, args...).Find(&list).Error
 }
 
+func (*GroupMessage) GetListPage(pageSize int64, where string, args ...interface{}) ([]*GroupMessage, error) {
+	var list []*GroupMessage
+	db := Orm()
+	return list, db.Where(where, args...).Limit(pageSize).Find(&list).Error
+}
+
 func (*GroupMessage) GetCount(where string, args ...interface{}) (int, error) {
 	var number int
 	err := Orm().Model(&GroupMessage{}).Where(where, args...).Count(&number).Error

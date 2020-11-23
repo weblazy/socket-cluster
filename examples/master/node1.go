@@ -103,7 +103,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 	case "pull_message":
 		data := messageMap["data"].(map[string]interface{})
 		lastUserMessageId := int64(data["last_user_message_id"].(float64))
-		lastGroupMessageId := int64(data["last_group_message_id"].(float64))
+		groupList := data["group_list"].(map[string]interface{})
 		uid, _ := strconv.ParseInt(context.Uid, 10, 64)
 
 		_, err = model.UserGroupHandler.GetList("uid = ?", uid)
@@ -112,18 +112,18 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			return
 		}
 
-		UserMessageList, err := model.UserMessageHandler.GetList("receive_uid = ? and id > ?", uid, lastUserMessageId)
+		userMessageList, err := model.UserMessageHandler.GetList("receive_uid = ? and id > ?", uid, lastUserMessageId)
 		if err != nil {
 			logx.Info(err)
 			return
 		}
 
-		if len(UserMessageList) == 0 {
+		if len(userMessageList) == 0 {
 			return
 		}
 		chatUserMessageList := make([]map[string]interface{}, 0)
-		for k1 := range UserMessageList {
-			v1 := UserMessageList[k1]
+		for k1 := range userMessageList {
+			v1 := userMessageList[k1]
 			obj := map[string]interface{}{
 				"username":  v1.Username,
 				"avatar":    v1.Avatar,
@@ -138,23 +138,34 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			chatUserMessageList = append(chatUserMessageList, obj)
 		}
 
-		UserGroupMessageList, err := model.UserGroupMessageHandler.GetList("id > ?", lastGroupMessageId)
+		userGroupList, err := model.UserGroupHandler.GetList("uid = ?", uid)
 		if err != nil {
 			logx.Info(err)
 			return
 		}
-		if len(UserGroupMessageList) == 0 {
+		if len(userGroupList) == 0 {
 			return
-		}
-		groupMessageIds := make([]int64, 0)
-		for k1 := range UserGroupMessageList {
-			groupMessageIds = append(groupMessageIds, UserGroupMessageList[k1].GroupMessageId)
 		}
 
-		GroupMessageList, err := model.GroupMessageHandler.GetList("id in(?)", groupMessageIds)
-		if err != nil {
-			logx.Info(err)
-			return
+		GroupMessageList := make([]*model.GroupMessage, 0)
+		for k1 := range userGroupList {
+			v1 := userGroupList[k1]
+			groupId := strconv.FormatInt(v1.GroupId, 10)
+			v2, ok := groupList[groupId].(map[string]interface{})
+			if ok {
+				lastGroupMessageId := int64(v2["last_group_message_id"].(float64))
+				if lastGroupMessageId < v1.LastMessageId {
+					TempGroupMessageList, err := model.GroupMessageHandler.GetListPage(50, "id > ?", lastGroupMessageId)
+					if err != nil {
+						logx.Info(err)
+						return
+					}
+					if len(TempGroupMessageList) == 0 {
+						return
+					}
+					GroupMessageList = append(GroupMessageList, TempGroupMessageList...)
+				}
+			}
 		}
 		if len(GroupMessageList) == 0 {
 			return
