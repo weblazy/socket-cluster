@@ -44,6 +44,12 @@ func (*UserMessage) GetList(where string, args ...interface{}) ([]*UserMessage, 
 	return list, db.Where(where, args...).Find(&list).Error
 }
 
+func (*UserMessage) GetListPage(pageSize int64, where string, args ...interface{}) ([]*UserMessage, error) {
+	var list []*UserMessage
+	db := Orm()
+	return list, db.Where(where, args...).Limit(pageSize).Find(&list).Error
+}
+
 func (*UserMessage) GetCount(where string, args ...interface{}) (int, error) {
 	var number int
 	err := Orm().Model(&UserMessage{}).Where(where, args...).Count(&number).Error

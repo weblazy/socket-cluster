@@ -100,6 +100,86 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		if err != nil {
 			logx.Info(err)
 		}
+	case "pull_group_message":
+		uid, _ := strconv.ParseInt(context.Uid, 10, 64)
+		data := messageMap["data"].(map[string]interface{})
+		groupId := int64(data["group_id"].(float64))
+		lastGroupMessageId := int64(data["last_group_message_id"].(float64))
+		GroupMessageList, err := model.GroupMessageHandler.GetListPage(50, "group_id = ? and id > ?", groupId, lastGroupMessageId)
+		if err != nil {
+			logx.Info(err)
+			return
+		}
+		if len(GroupMessageList) == 0 {
+			return
+		}
+		chatGroupMessageList := make([]map[string]interface{}, 0)
+		for k1 := range GroupMessageList {
+			v1 := GroupMessageList[k1]
+			obj := map[string]interface{}{
+				"username":  v1.Username,
+				"avatar":    v1.Avatar,
+				"id":        v1.SendUid,
+				"type":      "group",
+				"content":   v1.Content,
+				"cid":       v1.Id,
+				"mine":      false,
+				"fromid":    v1.SendUid,
+				"timestamp": v1.CreatedAt.Unix() * 1000,
+			}
+			chatGroupMessageList = append(chatGroupMessageList, obj)
+		}
+
+		err = context.Conn.WriteJSON(map[string]interface{}{
+			"message_type": "gorup_message_list",
+			"receive_uid":  uid,
+			"data": map[string]interface{}{
+				"user_group_message_list": chatGroupMessageList,
+			},
+		})
+		if err != nil {
+			logx.Info(err)
+		}
+
+	case "pull_user_message":
+		uid, _ := strconv.ParseInt(context.Uid, 10, 64)
+		data := messageMap["data"].(map[string]interface{})
+		lastUserMessageId := int64(data["last_user_message_id"].(float64))
+		userMessageList, err := model.UserMessageHandler.GetListPage(50, "receive_uid = ? or send_uid = ? and id > ?", uid, uid, lastUserMessageId)
+		if err != nil {
+			logx.Info(err)
+			return
+		}
+		if len(userMessageList) == 0 {
+			return
+		}
+		chatUserMessageList := make([]map[string]interface{}, 0)
+		for k1 := range userMessageList {
+			v1 := userMessageList[k1]
+			obj := map[string]interface{}{
+				"username":  v1.Username,
+				"avatar":    v1.Avatar,
+				"id":        v1.SendUid,
+				"type":      "group",
+				"content":   v1.Content,
+				"cid":       v1.Id,
+				"mine":      false,
+				"fromid":    v1.SendUid,
+				"timestamp": v1.CreatedAt.Unix() * 1000,
+			}
+			chatUserMessageList = append(chatUserMessageList, obj)
+		}
+
+		err = context.Conn.WriteJSON(map[string]interface{}{
+			"message_type": "user_message_list",
+			"receive_uid":  uid,
+			"data": map[string]interface{}{
+				"user_message_list": chatUserMessageList,
+			},
+		})
+		if err != nil {
+			logx.Info(err)
+		}
 	case "pull_message":
 		data := messageMap["data"].(map[string]interface{})
 		lastUserMessageId := int64(data["last_user_message_id"].(float64))

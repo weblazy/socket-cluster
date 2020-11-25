@@ -23,6 +23,7 @@ func Login(username, password string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return map[string]interface{}{
+		"uid":      user.Id,
 		"username": user.Username,
 		"email":    user.Username + "@qq.com",
 		"avatar":   user.Avatar,
