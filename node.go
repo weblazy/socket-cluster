@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -26,19 +27,21 @@ type (
 	}
 
 	NodeInfo struct {
-		bizRedis         *redis.Redis
-		nodeConf         *NodeConf
-		masterConn       *Connection
-		uidSessions      *syncx.ConcurrentDoubleMap
-		clientConns      goutil.Map               //External communication value is *session
-		clientAddress    string                   //External communication address
-		transClientConns goutil.Map               //Internal communication value is *Connection
-		transAddress     string                   //Internal communication address
-		timer            *timingwheel.TimingWheel //Timingwheel
-		startTime        time.Time
-		userHashRing     *unsafehash.Consistent //UsHash ring storage userId
-		groupHashRing    *unsafehash.Consistent //UsHash ring storage groupId
-		transServerConns goutil.Map
+		bizRedis      *redis.Redis
+		nodeConf      *NodeConf
+		masterConn    *Connection
+		uidSessions   *syncx.ConcurrentDoubleMap
+		clientConns   goutil.Map               //External communication value is *session
+		clientAddress string                   //External communication address
+		transAddress  string                   //Internal communication address
+		timer         *timingwheel.TimingWheel //Timingwheel
+		startTime     time.Time
+		userHashRing  *unsafehash.Consistent //UsHash ring storage userId
+		groupHashRing *unsafehash.Consistent //UsHash ring storage groupId
+
+		// transServerConns goutil.Map
+		// transClientConns goutil.Map //Internal communication value is *Connection
+		transConns goutil.Map
 	}
 )
 
@@ -69,16 +72,17 @@ func StartNode(cfg *NodeConf) {
 		groupHashRing.Add(unsafehash.NewNode(value.RedisConf.Host, value.Position, rdsObj))
 	}
 	nodeInfo := &NodeInfo{
-		nodeConf:         cfg,
-		bizRedis:         rds,
-		uidSessions:      syncx.NewConcurrentDoubleMap(32),
-		startTime:        time.Now(),
-		timer:            timer,
-		userHashRing:     userHashRing,
-		groupHashRing:    groupHashRing,
-		transClientConns: goutil.AtomicMap(),
-		clientConns:      goutil.AtomicMap(),
-		transServerConns: goutil.AtomicMap(),
+		nodeConf:      cfg,
+		bizRedis:      rds,
+		uidSessions:   syncx.NewConcurrentDoubleMap(32),
+		startTime:     time.Now(),
+		timer:         timer,
+		userHashRing:  userHashRing,
+		groupHashRing: groupHashRing,
+		// transClientConns: goutil.AtomicMap(),
+		clientConns: goutil.AtomicMap(),
+		transConns:  goutil.AtomicMap(),
+		// transServerConns: goutil.AtomicMap(),
 	}
 	nodeInfo.clientAddress = fmt.Sprintf("%s%s/client", cfg.Host, cfg.Path)
 	nodeInfo.transAddress = fmt.Sprintf("%s%s/trans", cfg.Host, cfg.Path)
@@ -170,7 +174,7 @@ func (nodeInfo *NodeInfo) SendPing() {
 			time.Sleep(time.Duration(nodeInfo.nodeConf.PingInterval) * time.Second)
 			// nodeInfo.masterConn.WriteMessage()
 			nodeInfo.masterConn.WriteMessage(websocket.PingMessage, []byte{})
-			nodeInfo.transClientConns.Range(func(k, v interface{}) bool {
+			nodeInfo.transConns.Range(func(k, v interface{}) bool {
 				err := v.(*Connection).WriteMessage(websocket.PingMessage, []byte{})
 				if err != nil {
 					logx.Info(err)
@@ -307,7 +311,7 @@ func (nodeInfo *NodeInfo) AuthTrans(conn *Connection, args map[string]interface{
 		conn.Conn.Close()
 		return fmt.Errorf("auth faild")
 	}
-	nodeInfo.transClientConns.Store(sid, conn)
+	nodeInfo.transConns.Store(sid, conn)
 	return nil
 }
 
@@ -324,18 +328,21 @@ func (nodeInfo *NodeInfo) AuthClient(conn *Connection, uid string) error {
 // Add handles addition request
 func (nodeInfo *NodeInfo) UpdateNodeList(nodeList []interface{}) error {
 	for _, value := range nodeList {
-		if value.(string) == nodeInfo.transAddress {
+		//数字小的连接数字大的
+		if strings.Compare(nodeInfo.transAddress, value.(string)) >= 0 {
 			continue
 		}
-		_, ok := nodeInfo.transServerConns.LoadOrStore(value.(string), "")
+		//已经建立连接
+		_, ok := nodeInfo.transConns.LoadOrStore(value.(string), "")
 		if ok {
 			continue
 		}
+
 		connect, _, err := websocket.DefaultDialer.Dial(value.(string), nil)
 		conn := &Connection{Conn: connect}
 		if err != nil {
 			logx.Info("dial:", err)
-			nodeInfo.transServerConns.Delete(value.(string))
+			nodeInfo.transConns.Delete(value.(string))
 			continue
 		}
 
@@ -351,16 +358,18 @@ func (nodeInfo *NodeInfo) UpdateNodeList(nodeList []interface{}) error {
 		if err != nil {
 			logx.Info(err)
 		}
+		nodeInfo.transConns.Store(value.(string), conn)
 		go func(conn *Connection) {
 			defer conn.Conn.Close()
 			for {
 				_, message, err := conn.Conn.ReadMessage()
 				if err != nil {
-					log.Println("read:", err)
-
-					return
+					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+						logx.Info(err)
+					}
+					break
 				}
-				logx.Infof("recv: %s", message)
+				logx.Info(string(message))
 				nodeInfo.OnTransMessage(conn, message)
 			}
 		}(conn)
@@ -539,7 +548,7 @@ func (nodeInfo *NodeInfo) SendToUid(uid string, req interface{}) error {
 				// }
 
 			} else {
-				connect, ok := nodeInfo.transClientConns.Load(ip)
+				connect, ok := nodeInfo.transConns.Load(ip)
 				if ok {
 					err = connect.(*Connection).WriteJSON(req)
 					if err != nil {
@@ -559,7 +568,7 @@ func (nodeInfo *NodeInfo) SendToUid(uid string, req interface{}) error {
 //Send message to a uid
 func (nodeInfo *NodeInfo) SendToTrans(uid string, path string, req interface{}) error {
 	mapreduce.MapVoid(func(source chan<- interface{}) {
-		nodeInfo.transClientConns.Range(func(key, value interface{}) bool {
+		nodeInfo.transConns.Range(func(key, value interface{}) bool {
 			if key == nodeInfo.transAddress {
 				return true
 			}
