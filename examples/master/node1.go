@@ -105,6 +105,14 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		data := messageMap["data"].(map[string]interface{})
 		groupId := int64(data["group_id"].(float64))
 		lastGroupMessageId := int64(data["last_group_message_id"].(float64))
+		if lastGroupMessageId == 0 {
+			group, err := model.UserGroupHandler.GetOne("uid = ? and group_id = ?", uid, groupId)
+			if err != nil {
+				logx.Info(err)
+				return
+			}
+			lastGroupMessageId = group.ReadLastMessageId
+		}
 		GroupMessageList, err := model.GroupMessageHandler.GetListPage(50, "group_id = ? and id > ?", groupId, lastGroupMessageId)
 		if err != nil {
 			logx.Info(err)
@@ -145,6 +153,14 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		uid, _ := strconv.ParseInt(context.Uid, 10, 64)
 		data := messageMap["data"].(map[string]interface{})
 		lastUserMessageId := int64(data["last_user_message_id"].(float64))
+		if lastUserMessageId == 0 {
+			user, err := model.AuthHandler.GetOne("uid = ?", uid)
+			if err != nil {
+				logx.Info(err)
+				return
+			}
+			lastUserMessageId = user.ReadLastMessageId
+		}
 		userMessageList, err := model.UserMessageHandler.GetListPage(50, "receive_uid = ? or send_uid = ? and id > ?", uid, uid, lastUserMessageId)
 		if err != nil {
 			logx.Info(err)
@@ -313,6 +329,21 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		model.UserMessageHandler.Update(nil, map[string]interface{}{
 			"status": 0,
 		}, "receive_uid = ? and id in(?) and status = 0", uid, messageIdList)
+	case "ack_user_message":
+		data := messageMap["data"].(map[string]interface{})
+		lastMessageId := data["last_message_id"].([]interface{})
+		uid := context.Uid
+		model.AuthHandler.Update(nil, map[string]interface{}{
+			"read_last_message_id": lastMessageId,
+		}, "id = ?", uid)
+	case "ack_group_message":
+		data := messageMap["data"].(map[string]interface{})
+		groupId := data["group_id"].([]interface{})
+		lastMessageId := data["last_message_id"].([]interface{})
+		uid := context.Uid
+		model.UserGroupHandler.Update(nil, map[string]interface{}{
+			"read_last_message_id": lastMessageId,
+		}, "uid = ? and group_id = ?", uid, groupId)
 	case "send_to_group":
 		data := messageMap["data"].(map[string]interface{})
 		groupIdFloat := data["group_id"].(float64)
