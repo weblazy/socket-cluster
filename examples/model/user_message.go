@@ -10,6 +10,7 @@ var UserMessageHandler = UserMessage{}
 
 type UserMessage struct {
 	Id          int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
+	NotifyUid   string     `json:"notify_uid" gorm:"column:notify_uid;NOT NULL;default:'';comment:'通知者id';type:VARCHAR(255)"`
 	Username    string     `json:"username" gorm:"column:username;NOT NULL;default:'';comment:'用户名';type:VARCHAR(255)"`
 	Avatar      string     `json:"avatar" gorm:"column:avatar;NOT NULL;default:'';comment:'头像';type:VARCHAR(255)"`
 	ReceiveUid  string     `json:"receive_uid" gorm:"column:receive_uid;NOT NULL;default:'';comment:'发送者id';type:VARCHAR(255)"`

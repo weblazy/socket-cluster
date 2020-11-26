@@ -90,11 +90,27 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			}
 			chatMessageList = append(chatMessageList, obj)
 		}
+
+		//查询是否存在未读群消息
+		userGroupList, err := model.UserGroupHandler.GetList("uid  = ? and last_message_id > read_last_message_id", uid)
+		if err != nil {
+			logx.Info(err)
+			return
+		}
+		groupList := make([]map[string]interface{}, 0)
+		for k1 := range userGroupList {
+			v1 := userGroupList[k1]
+			groupList = append(groupList, map[string]interface{}{
+				"group_id":        v1.GroupId,
+				"last_message_id": v1.LastMessageId,
+			})
+		}
 		err = context.Conn.WriteJSON(map[string]interface{}{
 			"message_type": "chat_message_list",
 			"receive_uid":  uid,
 			"data": map[string]interface{}{
-				"list": chatMessageList,
+				"list":       chatMessageList,
+				"group_list": groupList,
 			},
 		})
 		if err != nil {
@@ -105,6 +121,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		data := messageMap["data"].(map[string]interface{})
 		groupId := int64(data["group_id"].(float64))
 		lastGroupMessageId := int64(data["last_group_message_id"].(float64))
+		sort := data["sort"].(string)
 		if lastGroupMessageId == 0 {
 			group, err := model.UserGroupHandler.GetOne("uid = ? and group_id = ?", uid, groupId)
 			if err != nil {
@@ -113,17 +130,23 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			}
 			lastGroupMessageId = group.ReadLastMessageId
 		}
-		GroupMessageList, err := model.GroupMessageHandler.GetListPage(50, "group_id = ? and id > ?", groupId, lastGroupMessageId)
+		var groupMessageList []*model.GroupMessage
+		if sort == "desc" {
+			groupMessageList, err = model.GroupMessageHandler.GetListPage(50, "id desc", "group_id = ? and id < ?", groupId, lastGroupMessageId)
+		} else {
+			groupMessageList, err = model.GroupMessageHandler.GetListPage(50, "id asc", "group_id = ? and id > ?", groupId, lastGroupMessageId)
+
+		}
 		if err != nil {
 			logx.Info(err)
 			return
 		}
-		if len(GroupMessageList) == 0 {
+		if len(groupMessageList) == 0 {
 			return
 		}
 		chatGroupMessageList := make([]map[string]interface{}, 0)
-		for k1 := range GroupMessageList {
-			v1 := GroupMessageList[k1]
+		for k1 := range groupMessageList {
+			v1 := groupMessageList[k1]
 			obj := map[string]interface{}{
 				"username":  v1.Username,
 				"avatar":    v1.Avatar,
