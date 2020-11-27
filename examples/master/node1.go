@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"hash/fnv"
 	"strconv"
 	websocket_cluster "websocket-cluster"
 	"websocket-cluster/examples/api"
@@ -34,6 +35,12 @@ func node1() {
 	}}, onMessage).WithPort(*port1).WithRouter(Router))
 }
 
+func getIndex(key string) int64 {
+	h := fnv.New32a()
+	h.Write([]byte(key))
+	return int64(h.Sum32()) % model.TableNum
+}
+
 func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Context) {
 	logx.Info("message1", string(context.Message))
 	messageMap := make(map[string]interface{})
@@ -54,6 +61,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			logx.Info(err)
 			return
 		}
+		userIndex := getIndex(uid)
 		obj, err := model.AuthHandler.GetOne("id = ?", uid)
 		if err != nil {
 			logx.Info(err)
@@ -66,7 +74,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			return
 		}
 
-		list, err := model.UserMessageHandler.GetList("receive_uid = ? and status = 0", obj.Id)
+		list, err := model.UserMessageModel(userIndex).GetList("receive_uid = ? and status = 0", obj.Id)
 		if err != nil {
 			logx.Info(err)
 			return
@@ -120,6 +128,8 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		uid, _ := strconv.ParseInt(context.Uid, 10, 64)
 		data := messageMap["data"].(map[string]interface{})
 		groupId := int64(data["group_id"].(float64))
+		groupIndex := getIndex(strconv.FormatInt(groupId, 10))
+
 		lastGroupMessageId := int64(data["last_group_message_id"].(float64))
 		sort := data["sort"].(string)
 		if lastGroupMessageId == 0 {
@@ -132,9 +142,9 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		}
 		var groupMessageList []*model.GroupMessage
 		if sort == "desc" {
-			groupMessageList, err = model.GroupMessageHandler.GetListPage(50, "id desc", "group_id = ? and id < ?", groupId, lastGroupMessageId)
+			groupMessageList, err = model.GroupMessageModel(groupIndex).GetListPage(50, "id desc", "group_id = ? and id < ?", groupId, lastGroupMessageId)
 		} else {
-			groupMessageList, err = model.GroupMessageHandler.GetListPage(50, "id asc", "group_id = ? and id > ?", groupId, lastGroupMessageId)
+			groupMessageList, err = model.GroupMessageModel(groupIndex).GetListPage(50, "id asc", "group_id = ? and id > ?", groupId, lastGroupMessageId)
 
 		}
 		if err != nil {
@@ -174,6 +184,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 
 	case "pull_user_message":
 		uid, _ := strconv.ParseInt(context.Uid, 10, 64)
+		userIndex := getIndex(context.Uid)
 		data := messageMap["data"].(map[string]interface{})
 		lastUserMessageId := int64(data["last_user_message_id"].(float64))
 		if lastUserMessageId == 0 {
@@ -184,7 +195,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			}
 			lastUserMessageId = user.ReadLastMessageId
 		}
-		userMessageList, err := model.UserMessageHandler.GetListPage(50, "receive_uid = ? or send_uid = ? and id > ?", uid, uid, lastUserMessageId)
+		userMessageList, err := model.UserMessageModel(userIndex).GetListPage(50, "receive_uid = ? or send_uid = ? and id > ?", uid, uid, lastUserMessageId)
 		if err != nil {
 			logx.Info(err)
 			return
@@ -224,14 +235,14 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		lastUserMessageId := int64(data["last_user_message_id"].(float64))
 		groupList := data["group_list"].(map[string]interface{})
 		uid, _ := strconv.ParseInt(context.Uid, 10, 64)
-
+		userIndex := getIndex(context.Uid)
 		_, err = model.UserGroupHandler.GetList("uid = ?", uid)
 		if err != nil {
 			logx.Info(err)
 			return
 		}
 
-		userMessageList, err := model.UserMessageHandler.GetList("receive_uid = ? and id > ?", uid, lastUserMessageId)
+		userMessageList, err := model.UserMessageModel(userIndex).GetList("receive_uid = ? and id > ?", uid, lastUserMessageId)
 		if err != nil {
 			logx.Info(err)
 			return
@@ -274,7 +285,8 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			if ok {
 				lastGroupMessageId := int64(v2["last_group_message_id"].(float64))
 				if lastGroupMessageId < v1.LastMessageId {
-					TempGroupMessageList, err := model.GroupMessageHandler.GetListPage(50, "id > ?", lastGroupMessageId)
+					groupIndex := getIndex(groupId)
+					TempGroupMessageList, err := model.GroupMessageModel(groupIndex).GetListPage(50, "id asc", "id > ?", lastGroupMessageId)
 					if err != nil {
 						logx.Info(err)
 						return
@@ -321,6 +333,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		data := messageMap["data"].(map[string]interface{})
 		receiveUidFloat := data["receive_uid"].(float64)
 		receiveUid := strconv.FormatFloat(receiveUidFloat, 'f', -1, 64)
+		userIndex := getIndex(context.Uid)
 		message := model.UserMessage{
 			Username:    data["username"].(string),
 			Avatar:      data["avatar"].(string),
@@ -330,7 +343,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			Content:     data["content"].(string),
 			Status:      0,
 		}
-		err := model.UserMessageHandler.Insert(nil, &message)
+		err := model.UserMessageModel(userIndex).Insert(nil, &message)
 		if err != nil {
 			logx.Info(err)
 			return
@@ -349,7 +362,8 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		data := messageMap["data"].(map[string]interface{})
 		messageIdList := data["message_id_list"].([]interface{})
 		uid := context.Uid
-		model.UserMessageHandler.Update(nil, map[string]interface{}{
+		userIndex := getIndex(context.Uid)
+		model.UserMessageModel(userIndex).Update(nil, map[string]interface{}{
 			"status": 0,
 		}, "receive_uid = ? and id in(?) and status = 0", uid, messageIdList)
 	case "ack_user_message":
@@ -371,6 +385,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 		data := messageMap["data"].(map[string]interface{})
 		groupIdFloat := data["group_id"].(float64)
 		groupId := strconv.FormatFloat(groupIdFloat, 'f', -1, 64)
+		groupIndex := getIndex(groupId)
 		message := model.GroupMessage{
 			Username:    data["username"].(string),
 			Avatar:      data["avatar"].(string),
@@ -379,7 +394,7 @@ func onMessage(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.
 			SendUid:     context.Uid,
 			Content:     data["content"].(string),
 		}
-		err := model.GroupMessageHandler.Insert(nil, &message)
+		err := model.GroupMessageModel(groupIndex).Insert(nil, &message)
 		if err != nil {
 			logx.Info(err)
 			return

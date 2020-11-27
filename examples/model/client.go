@@ -2,11 +2,14 @@ package model
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/jinzhu/gorm"
 	g "github.com/sunmi-OS/gocore/gorm"
 	"github.com/sunmi-OS/gocore/utils"
 )
+
+const TableNum int64 = 10
 
 func Orm() *gorm.DB {
 	db := g.Gorm().GetORM("dbDefault")
@@ -25,5 +28,16 @@ func CreateTable() {
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='分组表' AUTO_INCREMENT=1;").AutoMigrate(&Group{})
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='用户分组绑定表' AUTO_INCREMENT=1;").AutoMigrate(&UserGroup{})
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='分组消息表' AUTO_INCREMENT=1;").AutoMigrate(&GroupMessage{})
+	for i := 0; i < int(TableNum); i++ {
+		index := strconv.FormatInt(int64(i), 10)
+		userMessageMap[int64(i)] = &UserMessage{
+			table: "user_message_" + index,
+		}
+		groupMessageMap[int64(i)] = &GroupMessage{
+			table: "group_message_" + index,
+		}
+		Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='用户消息表' AUTO_INCREMENT=1;").AutoMigrate(userMessageMap[int64(i)])
+		Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='分组消息表' AUTO_INCREMENT=1;").AutoMigrate(groupMessageMap[int64(i)])
+	}
 	fmt.Println("数据库初始化完成")
 }

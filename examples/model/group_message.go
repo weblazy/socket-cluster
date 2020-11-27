@@ -6,8 +6,6 @@ import (
 	gormx "github.com/jinzhu/gorm"
 )
 
-var GroupMessageHandler = GroupMessage{}
-
 type GroupMessage struct {
 	Id          int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
 	Username    string     `json:"username" gorm:"column:username;NOT NULL;default:'';comment:'用户名';type:VARCHAR(255)"`
@@ -19,10 +17,21 @@ type GroupMessage struct {
 	CreatedAt   time.Time  `json:"created_at" gorm:"column:created_at;NOT NULL;default:CURRENT_TIMESTAMP;type:TIMESTAMP"`
 	UpdatedAt   time.Time  `json:"updated_at" gorm:"column:updated_at;NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;type:TIMESTAMP"`
 	DeletedAt   *time.Time `json:"deleted_at" gorm:"column:deleted_at;type:DATETIME"`
+	table       string     `json:"-"`
 }
 
-func (*GroupMessage) TableName() string {
-	return "group_message"
+var groupMessageMap map[int64]*GroupMessage = make(map[int64]*GroupMessage)
+
+// @desc
+// @auth liuguoqiang 2020-11-26
+// @param
+// @return
+func GroupMessageModel(index int64) *GroupMessage {
+	return groupMessageMap[index]
+}
+
+func (this *GroupMessage) TableName() string {
+	return this.table
 }
 
 func (*GroupMessage) Insert(db *gormx.DB, data *GroupMessage) error {

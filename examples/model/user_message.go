@@ -6,8 +6,6 @@ import (
 	gormx "github.com/jinzhu/gorm"
 )
 
-var UserMessageHandler = UserMessage{}
-
 type UserMessage struct {
 	Id          int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
 	NotifyUid   string     `json:"notify_uid" gorm:"column:notify_uid;NOT NULL;default:'';comment:'通知者id';type:VARCHAR(255)"`
@@ -21,12 +19,22 @@ type UserMessage struct {
 	CreatedAt   time.Time  `json:"created_at" gorm:"column:created_at;NOT NULL;default:CURRENT_TIMESTAMP;type:TIMESTAMP"`
 	UpdatedAt   time.Time  `json:"updated_at" gorm:"column:updated_at;NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;type:TIMESTAMP"`
 	DeletedAt   *time.Time `json:"deleted_at" gorm:"column:deleted_at;type:DATETIME"`
+	table       string     `json:"-"`
 }
 
-func (*UserMessage) TableName() string {
-	return "user_message"
+var userMessageMap map[int64]*UserMessage = make(map[int64]*UserMessage)
+
+// @desc
+// @auth liuguoqiang 2020-11-26
+// @param
+// @return
+func UserMessageModel(index int64) *UserMessage {
+	return userMessageMap[index]
 }
 
+func (this *UserMessage) TableName() string {
+	return this.table
+}
 func (*UserMessage) Insert(db *gormx.DB, data *UserMessage) error {
 	if db == nil {
 		db = Orm()
