@@ -23,10 +23,15 @@ type UserMsg struct {
 }
 
 type MaxStruct struct {
-	Max int64 `json:"max"`
+	Max   int64  `json:"max"`
+	table string `json:"-"`
 }
 
 var userMsgMap map[int64]*UserMsg = make(map[int64]*UserMsg)
+
+func (this *MaxStruct) TableName() string {
+	return this.table
+}
 
 // @desc
 // @auth liuguoqiang 2020-11-26
@@ -60,7 +65,7 @@ func (this *UserMsg) GetList(where string, args ...interface{}) ([]*UserMsg, err
 func (this *UserMsg) GetListPage(pageSize int64, where string, args ...interface{}) ([]*UserMsg, error) {
 	var list []*UserMsg
 	db := Orm()
-	return list, db.Where(where, args...).Limit(pageSize).Find(&list).Error
+	return list, db.Table(this.TableName()).Where(where, args...).Limit(pageSize).Find(&list).Error
 }
 
 func (this *UserMsg) Count(where string, args ...interface{}) (int, error) {
@@ -84,6 +89,6 @@ func (this *UserMsg) Update(db *gormx.DB, data map[string]interface{}, where str
 }
 
 func (this *UserMsg) Max(where string, args ...interface{}) (int64, error) {
-	var obj MaxStruct
-	return obj.Max, Orm().Where(where, args...).Take(&obj).Error
+	obj := MaxStruct{table: this.table}
+	return obj.Max, Orm().Select("max(id) as max").Where(where, args...).Take(&obj).Error
 }

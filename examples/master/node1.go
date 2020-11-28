@@ -43,7 +43,7 @@ func getIndex(key string) int64 {
 }
 
 func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Context) {
-	logx.Info("msg1", string(context.Msg))
+	logx.Info("msg:", string(context.Msg))
 	msgMap := make(map[string]interface{})
 	err := json.Unmarshal(context.Msg, &msgMap)
 	if err != nil {
@@ -165,16 +165,16 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 		uidInt, _ := strconv.ParseInt(context.Uid, 10, 64)
 		userIndex := getIndex(context.Uid)
 		data := msgMap["data"].(map[string]interface{})
-		maxUserMsgId := int64(data["max_user_msg_id"].(float64))
-		if maxUserMsgId == 0 {
-			user, err := model.AuthHandler.GetOne("uid = ?", uidInt)
+		lastUserMsgId := int64(data["last_user_msg_id"].(float64))
+		if lastUserMsgId == 0 {
+			user, err := model.AuthHandler.GetOne("id = ?", uidInt)
 			if err != nil {
 				logx.Info(err)
 				return
 			}
-			maxUserMsgId = user.MaxPulledMsgId
+			lastUserMsgId = user.MaxPulledMsgId
 		}
-		userMsgList, err := model.UserMsgModel(userIndex).GetListPage(50, "notify_uid = ? and id > ?", uidInt, maxUserMsgId)
+		userMsgList, err := model.UserMsgModel(userIndex).GetListPage(50, "notify_uid = ? and id > ?", uidInt, lastUserMsgId)
 		if err != nil {
 			logx.Info(err)
 			return
