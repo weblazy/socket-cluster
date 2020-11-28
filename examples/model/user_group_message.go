@@ -10,7 +10,7 @@ var UserGroupMsgHandler = UserGroupMsg{}
 
 type UserGroupMsg struct {
 	Id         int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
-	GroupMsgId int64      `json:"group_message_id" gorm:"column:group_message_id;NOT NULL;default:0;comment:'分组消息id';type:INT"`
+	GroupMsgId int64      `json:"group_msg_id" gorm:"column:group_msg_id;NOT NULL;default:0;comment:'分组消息id';type:INT"`
 	ReceiveUid string     `json:"receive_uid" gorm:"column:receive_uid;NOT NULL;default:'';comment:'接收id';type:VARCHAR(255)"`
 	Status     int64      `json:"status" gorm:"column:status;NOT NULL;default:0;comment:'0未已查看1已经查看';type:TINYINT"`
 	CreatedAt  time.Time  `json:"created_at" gorm:"column:created_at;NOT NULL;default:CURRENT_TIMESTAMP;type:TIMESTAMP"`
@@ -19,7 +19,7 @@ type UserGroupMsg struct {
 }
 
 func (*UserGroupMsg) TableName() string {
-	return "group_message"
+	return "group_msg"
 }
 
 func (*UserGroupMsg) Insert(db *gormx.DB, data *UserGroupMsg) error {

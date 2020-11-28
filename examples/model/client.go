@@ -31,10 +31,10 @@ func CreateTable() {
 	for i := 0; i < int(TableNum); i++ {
 		index := strconv.FormatInt(int64(i), 10)
 		userMsgMap[int64(i)] = &UserMsg{
-			table: "user_message_" + index,
+			table: "user_msg_" + index,
 		}
 		groupMsgMap[int64(i)] = &GroupMsg{
-			table: "group_message_" + index,
+			table: "group_msg_" + index,
 		}
 		Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='用户消息表' AUTO_INCREMENT=1;").AutoMigrate(userMsgMap[int64(i)])
 		Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='分组消息表' AUTO_INCREMENT=1;").AutoMigrate(groupMsgMap[int64(i)])

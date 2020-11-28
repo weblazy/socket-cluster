@@ -20,7 +20,7 @@ func client() {
 	}
 
 	err = conn.WriteJSON(map[string]interface{}{
-		"message_type": "login",
+		"msg_type": "login",
 		"data": map[string]interface{}{
 			"password": "password2",
 			"username": "admin2",
@@ -31,7 +31,7 @@ func client() {
 	}
 	list := []map[string]interface{}{map[string]interface{}{"content": time.Now().Format("2006-01-02 15:04:05")}}
 	err = conn.WriteJSON(map[string]interface{}{
-		"message_type": "chat_message_list",
+		"msg_type": "chat_msg_list",
 		"data": map[string]interface{}{
 			"list":        list,
 			"receive_uid": "1",
@@ -41,42 +41,42 @@ func client() {
 		logx.Info(err)
 	}
 	for {
-		_, message, err := conn.ReadMsg()
+		_, msg, err := conn.ReadMsg()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				logx.Info(err)
 			}
 			break
 		}
-		logx.Info(string(message))
-		OnClientMsg(&websocket_cluster.Connection{Conn: conn}, message)
+		logx.Info(string(msg))
+		OnClientMsg(&websocket_cluster.Connection{Conn: conn}, msg)
 	}
 }
 
-func OnClientMsg(conn *websocket_cluster.Connection, message []byte) {
-	messageMap := make(map[string]interface{})
-	err := json.Unmarshal(message, &messageMap)
+func OnClientMsg(conn *websocket_cluster.Connection, msg []byte) {
+	msgMap := make(map[string]interface{})
+	err := json.Unmarshal(msg, &msgMap)
 	if err != nil {
 		logx.Info(err)
 	}
-	v1, ok := messageMap["message_type"]
+	v1, ok := msgMap["msg_type"]
 	if !ok {
-		logx.Info("message_type is nil")
+		logx.Info("msg_type is nil")
 	}
 	switch v1 {
 	case "auth":
 
-	case "chat_message_list":
-		data := messageMap["data"].(map[string]interface{})
+	case "chat_msg_list":
+		data := msgMap["data"].(map[string]interface{})
 		list := data["list"].([]interface{})
-		messageIdList := make([]int64, 0)
+		msgIdList := make([]int64, 0)
 		for k1 := range list {
-			messageIdList = append(messageIdList, list[k1].(map[string]interface{})["id"].(int64))
+			msgIdList = append(msgIdList, list[k1].(map[string]interface{})["id"].(int64))
 		}
 		err = conn.WriteJSON(map[string]interface{}{
-			"message_type": "ack_receive",
+			"msg_type": "ack_receive",
 			"data": map[string]interface{}{
-				"message_id_list": messageIdList,
+				"msg_id_list": msgIdList,
 			},
 		})
 		if err != nil {
