@@ -11,6 +11,7 @@ import (
 	"websocket-cluster/examples/model"
 
 	"github.com/labstack/echo/v4"
+	"github.com/spf13/cast"
 	"github.com/weblazy/core/database/redis"
 	"github.com/weblazy/easy/utils/logx"
 )
@@ -56,69 +57,47 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 	case "init":
 		data := msgMap["data"].(map[string]interface{})
 		token := data["token"].(string)
-		uid, err := auth.AuthManager.Validate(token)
+		uidStr, err := auth.AuthManager.Validate(token)
+		uidInt := cast.ToInt64(uidStr)
 		if err != nil {
 			logx.Info(err)
 			return
 		}
-		userIndex := getIndex(uid)
-		obj, err := model.AuthHandler.GetOne("id = ?", uid)
+		userIndex := getIndex(uidStr)
+		obj, err := model.AuthModel().GetOne("id = ?", uidInt)
 		if err != nil {
 			logx.Info(err)
 			return
 		}
-		nodeInfo.AuthClient(context.Conn, uid)
-		_, err = model.UserGroupHandler.GetList("uid = ?", obj.Id)
+		nodeInfo.AuthClient(context.Conn, uidStr)
+		maxUserMsgId, err := model.UserMsgModel(userIndex).Max("notify_uid = ?", obj.Id)
+		if err != nil {
+			logx.Info(err)
+			return
+		}
+		list, err := model.UserGroupModel().GetList("uid = ?", obj.Id)
 		if err != nil {
 			logx.Info(err)
 			return
 		}
 
-		list, err := model.UserMsgModel(userIndex).GetList("receive_uid = ? and status = 0", obj.Id)
-		if err != nil {
-			logx.Info(err)
-			return
-		}
 		if len(list) == 0 {
 			return
 		}
-		chatMsgList := make([]map[string]interface{}, 0)
+		userGroupList := make([]map[string]interface{}, 0)
 		for k1 := range list {
 			v1 := list[k1]
 			obj := map[string]interface{}{
-				"username":  v1.Username,
-				"avatar":    v1.Avatar,
-				"id":        v1.SendUid,
-				"type":      "friend",
-				"content":   v1.Content,
-				"cid":       v1.Id,
-				"mine":      false,
-				"fromid":    v1.SendUid,
-				"timestamp": v1.CreatedAt.Unix() * 1000,
+				"group_id":         v1.GroupId,
+				"max_group_msg_id": v1.MaxMsgId,
 			}
-			chatMsgList = append(chatMsgList, obj)
-		}
-
-		//查询是否存在未读群消息
-		userGroupList, err := model.UserGroupHandler.GetList("uid  = ? and last_msg_id > read_last_msg_id", uid)
-		if err != nil {
-			logx.Info(err)
-			return
-		}
-		groupList := make([]map[string]interface{}, 0)
-		for k1 := range userGroupList {
-			v1 := userGroupList[k1]
-			groupList = append(groupList, map[string]interface{}{
-				"group_id":    v1.GroupId,
-				"last_msg_id": v1.LastMsgId,
-			})
+			userGroupList = append(userGroupList, obj)
 		}
 		err = context.Conn.WriteJSON(map[string]interface{}{
-			"msg_type":    "chat_msg_list",
-			"receive_uid": uid,
+			"msg_type": "init",
 			"data": map[string]interface{}{
-				"list":       chatMsgList,
-				"group_list": groupList,
+				"user_group_list": userGroupList,
+				"max_user_msg_id": maxUserMsgId,
 			},
 		})
 		if err != nil {
@@ -138,7 +117,7 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 				logx.Info(err)
 				return
 			}
-			lastGroupMsgId = group.ReadLastMsgId
+			lastGroupMsgId = group.MaxPulledMsgId
 		}
 		var groupMsgList []*model.GroupMsg
 		if sort == "desc" {
@@ -182,20 +161,20 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 			logx.Info(err)
 		}
 
-	case "pull_user_msg":
-		uid, _ := strconv.ParseInt(context.Uid, 10, 64)
+	case "sync_user_msg":
+		uidInt, _ := strconv.ParseInt(context.Uid, 10, 64)
 		userIndex := getIndex(context.Uid)
 		data := msgMap["data"].(map[string]interface{})
-		lastUserMsgId := int64(data["last_user_msg_id"].(float64))
-		if lastUserMsgId == 0 {
-			user, err := model.AuthHandler.GetOne("uid = ?", uid)
+		maxUserMsgId := int64(data["max_user_msg_id"].(float64))
+		if maxUserMsgId == 0 {
+			user, err := model.AuthHandler.GetOne("uid = ?", uidInt)
 			if err != nil {
 				logx.Info(err)
 				return
 			}
-			lastUserMsgId = user.MaxReadMsgId
+			maxUserMsgId = user.MaxPulledMsgId
 		}
-		userMsgList, err := model.UserMsgModel(userIndex).GetListPage(50, "receive_uid = ? or send_uid = ? and id > ?", uid, uid, lastUserMsgId)
+		userMsgList, err := model.UserMsgModel(userIndex).GetListPage(50, "notify_uid = ? and id > ?", uidInt, maxUserMsgId)
 		if err != nil {
 			logx.Info(err)
 			return
@@ -203,28 +182,25 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 		if len(userMsgList) == 0 {
 			return
 		}
-		chatUserMsgList := make([]map[string]interface{}, 0)
+		list := make([]map[string]interface{}, 0)
 		for k1 := range userMsgList {
 			v1 := userMsgList[k1]
 			obj := map[string]interface{}{
-				"username":  v1.Username,
-				"avatar":    v1.Avatar,
-				"id":        v1.SendUid,
-				"type":      "group",
-				"content":   v1.Content,
-				"cid":       v1.Id,
-				"mine":      false,
-				"fromid":    v1.SendUid,
-				"timestamp": v1.CreatedAt.Unix() * 1000,
+				"username":    v1.Username,
+				"avatar":      v1.Avatar,
+				"send_uid":    v1.SendUid,
+				"receive_uid": v1.ReceiveUid,
+				"user_msg_id": v1.Id,
+				"content":     v1.Content,
+				"created_at":  v1.CreatedAt.Unix(),
 			}
-			chatUserMsgList = append(chatUserMsgList, obj)
+			list = append(list, obj)
 		}
 
 		err = context.Conn.WriteJSON(map[string]interface{}{
-			"msg_type":    "user_msg_list",
-			"receive_uid": uid,
+			"msg_type": "sync_user_msg",
 			"data": map[string]interface{}{
-				"user_msg_list": chatUserMsgList,
+				"user_msg_list": list,
 			},
 		})
 		if err != nil {
@@ -284,7 +260,7 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 			v2, ok := groupList[groupId].(map[string]interface{})
 			if ok {
 				lastGroupMsgId := int64(v2["last_group_msg_id"].(float64))
-				if lastGroupMsgId < v1.LastMsgId {
+				if lastGroupMsgId < v1.MaxMsgId {
 					groupIndex := getIndex(groupId)
 					TempGroupMsgList, err := model.GroupMsgModel(groupIndex).GetListPage(50, "id asc", "id > ?", lastGroupMsgId)
 					if err != nil {

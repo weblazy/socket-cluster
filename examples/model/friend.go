@@ -9,17 +9,23 @@ import (
 var FriendHandler = Friend{}
 
 type Friend struct {
-	Id        int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
-	Uid       int64      `json:"uid" gorm:"column:uid;NOT NULL;default:0;comment:'发起请求用户id';type:INT"`
-	FriendUid int64      `json:"friend_uid" gorm:"column:friend_uid;NOT NULL;default:0;comment:'接收请求用户id';type:INT"`
-	Status    int64      `json:"status" gorm:"column:status;NOT NULL;default:0;comment:'0未同意1已同意';type:TINYINT"`
-	CreatedAt time.Time  `json:"created_at" gorm:"column:created_at;NOT NULL;default:CURRENT_TIMESTAMP;type:TIMESTAMP"`
-	UpdatedAt time.Time  `json:"updated_at" gorm:"column:updated_at;NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;type:TIMESTAMP"`
-	DeletedAt *time.Time `json:"deleted_at" gorm:"column:deleted_at;type:DATETIME"`
+	Id        int64 `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
+	Uid       int64 `json:"uid" gorm:"column:uid;NOT NULL;default:0;comment:'发起请求用户id';type:INT"`
+	FriendUid int64 `json:"friend_uid" gorm:"column:friend_uid;NOT NULL;default:0;comment:'接收请求用户id';type:INT"`
+
+	MaxReadMsgId int64      `json:"max_read_msg_id" gorm:"column:max_read_msg_id;NOT NULL;default:0;comment:'已读最大消息id';type:INT"`
+	Status       int64      `json:"status" gorm:"column:status;NOT NULL;default:0;comment:'0未同意1已同意';type:TINYINT"`
+	CreatedAt    time.Time  `json:"created_at" gorm:"column:created_at;NOT NULL;default:CURRENT_TIMESTAMP;type:TIMESTAMP"`
+	UpdatedAt    time.Time  `json:"updated_at" gorm:"column:updated_at;NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;type:TIMESTAMP"`
+	DeletedAt    *time.Time `json:"deleted_at" gorm:"column:deleted_at;type:DATETIME"`
 }
 
 func (*Friend) TableName() string {
 	return "friend"
+}
+
+func FriendModel() *Friend {
+	return &FriendHandler
 }
 
 func (*Friend) Insert(db *gormx.DB, data *Friend) error {
@@ -40,7 +46,7 @@ func (*Friend) GetList(where string, args ...interface{}) ([]*Friend, error) {
 	return list, db.Where(where, args...).Find(&list).Error
 }
 
-func (*Friend) GetCount(where string, args ...interface{}) (int, error) {
+func (*Friend) Count(where string, args ...interface{}) (int, error) {
 	var number int
 	err := Orm().Model(&Friend{}).Where(where, args...).Count(&number).Error
 	return number, err

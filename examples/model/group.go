@@ -21,6 +21,10 @@ func (*Group) TableName() string {
 	return "group"
 }
 
+func GroupModel() *Group {
+	return &GroupHandler
+}
+
 func (*Group) Insert(db *gormx.DB, data *Group) error {
 	if db == nil {
 		db = Orm()
@@ -39,7 +43,7 @@ func (*Group) GetList(where string, args ...interface{}) ([]*Group, error) {
 	return list, db.Where(where, args...).Find(&list).Error
 }
 
-func (*Group) GetCount(where string, args ...interface{}) (int, error) {
+func (*Group) Count(where string, args ...interface{}) (int, error) {
 	var number int
 	err := Orm().Model(&Group{}).Where(where, args...).Count(&number).Error
 	return number, err

@@ -40,7 +40,7 @@ func (*UserGroupMsg) GetList(where string, args ...interface{}) ([]*UserGroupMsg
 	return list, db.Where(where, args...).Find(&list).Error
 }
 
-func (*UserGroupMsg) GetCount(where string, args ...interface{}) (int, error) {
+func (*UserGroupMsg) Count(where string, args ...interface{}) (int, error) {
 	var number int
 	err := Orm().Model(&UserGroupMsg{}).Where(where, args...).Count(&number).Error
 	return number, err

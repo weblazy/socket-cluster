@@ -58,22 +58,22 @@ func (*GroupMsg) GetListPage(pageSize int64, order string, where string, args ..
 	return list, db.Where(where, args...).Order(order).Limit(pageSize).Find(&list).Error
 }
 
-func (*GroupMsg) GetCount(where string, args ...interface{}) (int, error) {
+func (this *GroupMsg) Count(where string, args ...interface{}) (int, error) {
 	var number int
-	err := Orm().Model(&GroupMsg{}).Where(where, args...).Count(&number).Error
+	err := Orm().Model(&GroupMsg{table: this.table}).Where(where, args...).Count(&number).Error
 	return number, err
 }
 
-func (*GroupMsg) Delete(db *gormx.DB, where string, args ...interface{}) error {
+func (this *GroupMsg) Delete(db *gormx.DB, where string, args ...interface{}) error {
 	if db == nil {
 		db = Orm()
 	}
-	return db.Where(where, args...).Delete(&GroupMsg{}).Error
+	return db.Where(where, args...).Delete(&GroupMsg{table: this.table}).Error
 }
 
-func (*GroupMsg) Update(db *gormx.DB, data map[string]interface{}, where string, args ...interface{}) error {
+func (this *GroupMsg) Update(db *gormx.DB, data map[string]interface{}, where string, args ...interface{}) error {
 	if db == nil {
 		db = Orm()
 	}
-	return db.Model(&GroupMsg{}).Where(where, args...).Update(data).Error
+	return db.Model(&GroupMsg{table: this.table}).Where(where, args...).Update(data).Error
 }

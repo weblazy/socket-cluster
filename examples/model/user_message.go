@@ -22,6 +22,10 @@ type UserMsg struct {
 	table      string     `json:"-"`
 }
 
+type MaxStruct struct {
+	Max int64 `json:"max"`
+}
+
 var userMsgMap map[int64]*UserMsg = make(map[int64]*UserMsg)
 
 // @desc
@@ -35,46 +39,51 @@ func UserMsgModel(index int64) *UserMsg {
 func (this *UserMsg) TableName() string {
 	return this.table
 }
-func (*UserMsg) Insert(db *gormx.DB, data *UserMsg) error {
+func (this *UserMsg) Insert(db *gormx.DB, data *UserMsg) error {
 	if db == nil {
 		db = Orm()
 	}
 	return db.Create(data).Error
 }
 
-func (*UserMsg) GetOne(where string, args ...interface{}) (*UserMsg, error) {
+func (this *UserMsg) GetOne(where string, args ...interface{}) (*UserMsg, error) {
 	var obj UserMsg
 	return &obj, Orm().Where(where, args...).Take(&obj).Error
 }
 
-func (*UserMsg) GetList(where string, args ...interface{}) ([]*UserMsg, error) {
+func (this *UserMsg) GetList(where string, args ...interface{}) ([]*UserMsg, error) {
 	var list []*UserMsg
 	db := Orm()
 	return list, db.Where(where, args...).Find(&list).Error
 }
 
-func (*UserMsg) GetListPage(pageSize int64, where string, args ...interface{}) ([]*UserMsg, error) {
+func (this *UserMsg) GetListPage(pageSize int64, where string, args ...interface{}) ([]*UserMsg, error) {
 	var list []*UserMsg
 	db := Orm()
 	return list, db.Where(where, args...).Limit(pageSize).Find(&list).Error
 }
 
-func (*UserMsg) GetCount(where string, args ...interface{}) (int, error) {
+func (this *UserMsg) Count(where string, args ...interface{}) (int, error) {
 	var number int
-	err := Orm().Model(&UserMsg{}).Where(where, args...).Count(&number).Error
+	err := Orm().Model(&UserMsg{table: this.table}).Where(where, args...).Count(&number).Error
 	return number, err
 }
 
-func (*UserMsg) Delete(db *gormx.DB, where string, args ...interface{}) error {
+func (this *UserMsg) Delete(db *gormx.DB, where string, args ...interface{}) error {
 	if db == nil {
 		db = Orm()
 	}
 	return db.Where(where, args...).Delete(&UserMsg{}).Error
 }
 
-func (*UserMsg) Update(db *gormx.DB, data map[string]interface{}, where string, args ...interface{}) error {
+func (this *UserMsg) Update(db *gormx.DB, data map[string]interface{}, where string, args ...interface{}) error {
 	if db == nil {
 		db = Orm()
 	}
-	return db.Model(&UserMsg{}).Where(where, args...).Update(data).Error
+	return db.Model(&UserMsg{table: this.table}).Where(where, args...).Update(data).Error
+}
+
+func (this *UserMsg) Max(where string, args ...interface{}) (int64, error) {
+	var obj MaxStruct
+	return obj.Max, Orm().Where(where, args...).Take(&obj).Error
 }
