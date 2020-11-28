@@ -41,7 +41,7 @@ func client() {
 		logx.Info(err)
 	}
 	for {
-		_, message, err := conn.ReadMessage()
+		_, message, err := conn.ReadMsg()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				logx.Info(err)
@@ -49,11 +49,11 @@ func client() {
 			break
 		}
 		logx.Info(string(message))
-		OnClientMessage(&websocket_cluster.Connection{Conn: conn}, message)
+		OnClientMsg(&websocket_cluster.Connection{Conn: conn}, message)
 	}
 }
 
-func OnClientMessage(conn *websocket_cluster.Connection, message []byte) {
+func OnClientMsg(conn *websocket_cluster.Connection, message []byte) {
 	messageMap := make(map[string]interface{})
 	err := json.Unmarshal(message, &messageMap)
 	if err != nil {

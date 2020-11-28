@@ -9,11 +9,11 @@ import (
 var UserGroupHandler = UserGroup{}
 
 type UserGroup struct {
-	Id                int64 `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
-	Uid               int64 `json:"uid" gorm:"column:uid;NOT NULL;default:0;comment:'用户id';type:INT"`
-	GroupId           int64 `json:"group_id" gorm:"column:group_id;NOT NULL;default:0;comment:'分组id';type:INT"`
-	LastMessageId     int64 `json:"last_message_id" gorm:"column:last_message_id;NOT NULL;default:0;comment:'最后一条消息id';type:INT"`
-	ReadLastMessageId int64 `json:"read_last_message_id" gorm:"column:read_last_message_id;NOT NULL;default:0;comment:'已读最后一条消息id';type:INT"`
+	Id            int64 `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
+	Uid           int64 `json:"uid" gorm:"column:uid;NOT NULL;default:0;comment:'用户id';type:INT"`
+	GroupId       int64 `json:"group_id" gorm:"column:group_id;NOT NULL;default:0;comment:'分组id';type:INT"`
+	LastMsgId     int64 `json:"last_message_id" gorm:"column:last_message_id;NOT NULL;default:0;comment:'最后一条消息id';type:INT"`
+	ReadLastMsgId int64 `json:"read_last_message_id" gorm:"column:read_last_message_id;NOT NULL;default:0;comment:'已读最后一条消息id';type:INT"`
 
 	Status    int64      `json:"status" gorm:"column:status;NOT NULL;default:0;comment:'0免打扰1正常';type:TINYINT"`
 	CreatedAt time.Time  `json:"created_at" gorm:"column:created_at;NOT NULL;default:CURRENT_TIMESTAMP;type:TIMESTAMP"`

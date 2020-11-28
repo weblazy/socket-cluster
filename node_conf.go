@@ -21,9 +21,9 @@ type (
 	}
 
 	Context struct {
-		Conn    *Connection
-		Uid     string
-		Message []byte
+		Conn *Connection
+		Uid  string
+		Msg  []byte
 	}
 )
 

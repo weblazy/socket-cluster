@@ -261,7 +261,7 @@ func (nodeInfo *NodeInfo) OnClientMessage(conn *Connection, message []byte) {
 	if ok {
 		uid = session.(*Session).Uid
 	}
-	nodeInfo.nodeConf.onMessage(nodeInfo, &Context{Conn: conn, Message: message, Uid: uid})
+	nodeInfo.nodeConf.onMessage(nodeInfo, &Context{Conn: conn, Msg: message, Uid: uid})
 }
 
 func (nodeInfo *NodeInfo) OnTransMessage(conn *Connection, message []byte) {
