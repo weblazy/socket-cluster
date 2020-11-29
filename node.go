@@ -446,8 +446,12 @@ func (nodeInfo *NodeInfo) SendToUids(uidList []string, req interface{}) error {
 	}, func(item interface{}) {
 		fmt.Printf("%#v\n", item)
 		se := item.(*Session)
-		req.(map[string]interface{})["receive_uid"] = se.Uid
-		err := se.Conn.WriteJSON(req)
+		newMap := make(map[string]interface{})
+		for k, v := range req.(map[string]interface{}) {
+			newMap[k] = v
+		}
+		newMap["receive_uid"] = se.Uid
+		err := se.Conn.WriteJSON(newMap)
 		if err != nil {
 			logx.Info(err)
 		}
@@ -522,6 +526,7 @@ func (nodeInfo *NodeInfo) BindUid(uid string, se *Session) error {
 
 //Send message to a uid
 func (nodeInfo *NodeInfo) SendToUid(uid string, req interface{}) error {
+	req.(map[string]interface{})["receive_uid"] = uid
 	now := time.Now().Unix()
 	node := nodeInfo.userHashRing.Get(uid)
 	ipMap, err := node.Extra.(*redis.Redis).Hgetall(userPrefix + uid)

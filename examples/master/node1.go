@@ -106,7 +106,7 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 	case "pull_group_msg":
 		uid, _ := strconv.ParseInt(context.Uid, 10, 64)
 		data := msgMap["data"].(map[string]interface{})
-		groupId := int64(data["group_id"].(float64))
+		groupId := cast.ToInt64(data["group_id"])
 		groupIndex := getIndex(strconv.FormatInt(groupId, 10))
 
 		lastGroupMsgId := int64(data["last_group_msg_id"].(float64))
@@ -304,28 +304,50 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 		}
 	case "send_to_user":
 		data := msgMap["data"].(map[string]interface{})
-		receiveUidFloat := data["receive_uid"].(float64)
-		receiveUid := strconv.FormatFloat(receiveUidFloat, 'f', -1, 64)
+		receiveUid := cast.ToString(data["receive_uid"])
 		userIndex := getIndex(context.Uid)
-		msg := model.UserMsg{
+		receiveIndex := getIndex(receiveUid)
+		receiveMsg := model.UserMsg{
+			NotifyUid:  receiveUid,
 			Username:   data["username"].(string),
 			Avatar:     data["avatar"].(string),
 			ReceiveUid: receiveUid,
 			MsgType:    "text",
 			SendUid:    context.Uid,
 			Content:    data["content"].(string),
-			Status:     0,
 		}
-		err := model.UserMsgModel(userIndex).Insert(nil, &msg)
+		err := model.UserMsgModel(receiveIndex).Insert(nil, &receiveMsg)
 		if err != nil {
 			logx.Info(err)
 			return
 		}
-		err = context.Conn.WriteJSON(map[string]interface{}{
-			"msg_type":    "have_new_msg",
-			"receive_uid": receiveUid,
+		sendMsg := model.UserMsg{
+			NotifyUid:  context.Uid,
+			Username:   data["username"].(string),
+			Avatar:     data["avatar"].(string),
+			ReceiveUid: receiveUid,
+			MsgType:    "text",
+			SendUid:    context.Uid,
+			Content:    data["content"].(string),
+		}
+		err = model.UserMsgModel(userIndex).Insert(nil, &sendMsg)
+		if err != nil {
+			logx.Info(err)
+			return
+		}
+		nodeInfo.SendToUid(receiveUid, map[string]interface{}{
+			"msg_type": "have_new_msg",
 			"data": map[string]interface{}{
-				"last_user_msg_id": msg.Id,
+				"max_user_msg_id": receiveMsg.Id,
+			},
+		})
+		if err != nil {
+			logx.Info(err)
+		}
+		nodeInfo.SendToUid(context.Uid, map[string]interface{}{
+			"msg_type": "have_new_msg",
+			"data": map[string]interface{}{
+				"max_user_msg_id": sendMsg.Id,
 			},
 		})
 		if err != nil {
@@ -356,8 +378,7 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 		}, "uid = ? and group_id = ?", uid, groupId)
 	case "send_to_group":
 		data := msgMap["data"].(map[string]interface{})
-		groupIdFloat := data["group_id"].(float64)
-		groupId := strconv.FormatFloat(groupIdFloat, 'f', -1, 64)
+		groupId := cast.ToString(data["group_id"])
 		groupIndex := getIndex(groupId)
 		msg := model.GroupMsg{
 			Username: data["username"].(string),
@@ -372,6 +393,9 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 			logx.Info(err)
 			return
 		}
+		model.UserGroupHandler.Update(nil, map[string]interface{}{
+			"max_msg_id": msg.Id,
+		}, "group_id = ? and max_msg_id < ?", groupId, msg.Id)
 		groupIdInt, _ := strconv.ParseInt(groupId, 10, 64)
 		userGroupList, err := model.UserGroupHandler.GetList("group_id = ?", groupIdInt)
 		if err != nil {
@@ -380,13 +404,13 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 		}
 		uids := make([]string, 0)
 		for k1 := range userGroupList {
-			uidStr := strconv.FormatInt(userGroupList[k1].Uid, 10)
-			uids = append(uids, uidStr)
+			uids = append(uids, cast.ToString(userGroupList[k1].Uid))
 		}
 		nodeInfo.SendToUids(uids, map[string]interface{}{
 			"msg_type": "have_new_msg",
 			"data": map[string]interface{}{
-				"last_group_msg_id": msg.Id,
+				"max_group_msg_id": msg.Id,
+				"group_id":         groupId,
 			},
 		})
 	default:

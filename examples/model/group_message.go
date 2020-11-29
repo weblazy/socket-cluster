@@ -34,10 +34,11 @@ func (this *GroupMsg) TableName() string {
 	return this.table
 }
 
-func (*GroupMsg) Insert(db *gormx.DB, data *GroupMsg) error {
+func (this *GroupMsg) Insert(db *gormx.DB, data *GroupMsg) error {
 	if db == nil {
 		db = Orm()
 	}
+	data.table = this.table
 	return db.Create(data).Error
 }
 

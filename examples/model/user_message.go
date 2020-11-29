@@ -48,6 +48,7 @@ func (this *UserMsg) Insert(db *gormx.DB, data *UserMsg) error {
 	if db == nil {
 		db = Orm()
 	}
+	data.table = this.table
 	return db.Create(data).Error
 }
 
