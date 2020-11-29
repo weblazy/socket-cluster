@@ -9,10 +9,10 @@ import (
 var FriendHandler = Friend{}
 
 type Friend struct {
-	Id        int64 `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
-	Uid       int64 `json:"uid" gorm:"column:uid;NOT NULL;default:0;comment:'发起请求用户id';type:INT"`
-	FriendUid int64 `json:"friend_uid" gorm:"column:friend_uid;NOT NULL;default:0;comment:'接收请求用户id';type:INT"`
-
+	Id           int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
+	Uid          int64      `json:"uid" gorm:"column:uid;NOT NULL;default:0;comment:'发起请求用户id';type:INT"`
+	FriendUid    int64      `json:"friend_uid" gorm:"column:friend_uid;NOT NULL;default:0;comment:'接收请求用户id';type:INT"`
+	MaxMsgId     int64      `json:"max_msg_id" gorm:"column:max_msg_id;NOT NULL;default:0;comment:'最大消息id';type:INT"`
 	MaxReadMsgId int64      `json:"max_read_msg_id" gorm:"column:max_read_msg_id;NOT NULL;default:0;comment:'已读最大消息id';type:INT"`
 	Status       int64      `json:"status" gorm:"column:status;NOT NULL;default:0;comment:'0未同意1已同意';type:TINYINT"`
 	CreatedAt    time.Time  `json:"created_at" gorm:"column:created_at;NOT NULL;default:CURRENT_TIMESTAMP;type:TIMESTAMP"`
