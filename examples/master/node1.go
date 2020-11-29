@@ -104,27 +104,37 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 			logx.Info(err)
 		}
 	case "pull_group_msg":
-		uid, _ := strconv.ParseInt(context.Uid, 10, 64)
+		// uid, _ := strconv.ParseInt(context.Uid, 10, 64)
 		data := msgMap["data"].(map[string]interface{})
 		groupId := cast.ToInt64(data["group_id"])
 		groupIndex := getIndex(strconv.FormatInt(groupId, 10))
 
-		lastGroupMsgId := int64(data["last_group_msg_id"].(float64))
+		lastGroupMsgId := cast.ToInt64(data["last_group_msg_id"])
 		sort := data["sort"].(string)
-		if lastGroupMsgId == 0 {
-			group, err := model.UserGroupHandler.GetOne("uid = ? and group_id = ?", uid, groupId)
-			if err != nil {
-				logx.Info(err)
-				return
-			}
-			lastGroupMsgId = group.MaxPulledMsgId
-		}
+		// group, err := model.UserGroupHandler.GetOne("uid = ? and group_id = ?", uid, groupId)
+		// if err != nil {
+		// 	logx.Info(err)
+		// 	return
+		// }
+		// if lastGroupMsgId == 0 {
+		// 	lastGroupMsgId = group.MaxPulledMsgId
+		// } else {
+		// 	if lastGroupMsgId > group.MaxPulledMsgId {
+		// 		err = model.UserGroupHandler.Update(nil, map[string]interface{}{
+		// 			"max_pulled_msg_id": lastGroupMsgId,
+		// 		}, "uid = ? and group_id = ? and max_pulled_msg_id > ?", uid, groupId, lastGroupMsgId)
+		// 		if err != nil {
+		// 			logx.Info(err)
+		// 			return
+		// 		}
+		// 	}
+		// }
 		var groupMsgList []*model.GroupMsg
 		if sort == "desc" {
 			groupMsgList, err = model.GroupMsgModel(groupIndex).GetListPage(50, "id desc", "group_id = ? and id < ?", groupId, lastGroupMsgId)
 		} else {
-			groupMsgList, err = model.GroupMsgModel(groupIndex).GetListPage(50, "id asc", "group_id = ? and id > ?", groupId, lastGroupMsgId)
-
+			//只拉取最新50条
+			groupMsgList, err = model.GroupMsgModel(groupIndex).GetListPage(50, "id asc", "group_id = ? and id <= (select max(id) from "+model.GroupMsgModel(groupIndex).TableName()+" where group_id = ?) and id > ?", groupId, groupId, lastGroupMsgId)
 		}
 		if err != nil {
 			logx.Info(err)
