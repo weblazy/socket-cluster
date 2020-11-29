@@ -52,10 +52,10 @@ func (*GroupMsg) GetList(where string, args ...interface{}) ([]*GroupMsg, error)
 	return list, db.Where(where, args...).Find(&list).Error
 }
 
-func (*GroupMsg) GetListPage(pageSize int64, order string, where string, args ...interface{}) ([]*GroupMsg, error) {
+func (this *GroupMsg) GetListPage(pageSize int64, order string, where string, args ...interface{}) ([]*GroupMsg, error) {
 	var list []*GroupMsg
 	db := Orm()
-	return list, db.Where(where, args...).Order(order).Limit(pageSize).Find(&list).Error
+	return list, db.Table(this.TableName()).Where(where, args...).Order(order).Limit(pageSize).Find(&list).Error
 }
 
 func (this *GroupMsg) Count(where string, args ...interface{}) (int, error) {

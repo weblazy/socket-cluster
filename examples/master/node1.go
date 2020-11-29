@@ -137,24 +137,21 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 		for k1 := range groupMsgList {
 			v1 := groupMsgList[k1]
 			obj := map[string]interface{}{
-				"username":  v1.Username,
-				"avatar":    v1.Avatar,
-				"id":        v1.SendUid,
-				"type":      "group",
-				"content":   v1.Content,
-				"cid":       v1.Id,
-				"mine":      false,
-				"fromid":    v1.SendUid,
-				"timestamp": v1.CreatedAt.Unix() * 1000,
+				"username":     v1.Username,
+				"avatar":       v1.Avatar,
+				"send_uid":     v1.SendUid,
+				"group_id":     groupId,
+				"group_msg_id": v1.Id,
+				"content":      v1.Content,
+				"created_at":   v1.CreatedAt.Unix(),
 			}
 			chatGroupMsgList = append(chatGroupMsgList, obj)
 		}
 
 		err = context.Conn.WriteJSON(map[string]interface{}{
-			"msg_type":    "gorup_msg_list",
-			"receive_uid": uid,
+			"msg_type": "pull_group_msg",
 			"data": map[string]interface{}{
-				"user_group_msg_list": chatGroupMsgList,
+				"group_msg_list": chatGroupMsgList,
 			},
 		})
 		if err != nil {
