@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"strconv"
 	"websocket-cluster/examples/auth"
 	"websocket-cluster/examples/model"
@@ -36,10 +37,20 @@ func Login(username, password string) (map[string]interface{}, error) {
 // @param
 // @return
 func Register(username, password, confirmPassword, email, code string) (map[string]interface{}, error) {
-	user, err := model.AuthHandler.GetOne("email = ?", email)
-	if err != nil {
-		return nil, err
+	if password != confirmPassword {
+		return nil, fmt.Errorf("密码不一致")
 	}
+	_, err := model.AuthHandler.GetOne("email = ?", email)
+	if err == nil {
+		return nil, fmt.Errorf("该邮箱已经注册")
+	}
+	user := model.Auth{
+		Username: username,
+		Email:    email,
+		Avatar:   "http://images.cookmami.com/data_upload_activity_bg_5a30a152a163a.png",
+		Password: password,
+	}
+
 	uid := strconv.FormatInt(user.Id, 10)
 	token, err := auth.AuthManager.Add(uid)
 	if err != nil {

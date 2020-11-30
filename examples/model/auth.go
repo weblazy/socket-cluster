@@ -10,6 +10,7 @@ var AuthHandler = Auth{}
 
 type Auth struct {
 	Id             int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
+	Email          string     `json:"email" gorm:"column:email;NOT NULL;default:'';comment:'邮箱';type:VARCHAR(255)"`
 	Username       string     `json:"username" gorm:"column:username;NOT NULL;default:'';comment:'用户名';type:VARCHAR(255)"`
 	Avatar         string     `json:"avatar" gorm:"column:avatar;NOT NULL;default:'';comment:'头像';type:VARCHAR(255)"`
 	Password       string     `json:"password" gorm:"column:password;NOT NULL;default:'';comment:'密码';type:VARCHAR(255)"`
