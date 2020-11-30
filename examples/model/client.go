@@ -26,6 +26,8 @@ func CreateTable() {
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='好友表' AUTO_INCREMENT=1;").AutoMigrate(&Friend{})
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='分组表' AUTO_INCREMENT=1;").AutoMigrate(&Group{})
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='用户分组绑定表' AUTO_INCREMENT=1;").AutoMigrate(&UserGroup{})
+	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='验证码表' AUTO_INCREMENT=1;").AutoMigrate(&SmsCode{})
+
 	for i := 0; i < int(TableNum); i++ {
 		index := strconv.FormatInt(int64(i), 10)
 		userMsgMap[int64(i)] = &UserMsg{

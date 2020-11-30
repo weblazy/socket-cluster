@@ -47,6 +47,24 @@ func Register(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
+// @desc 发送验证码
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func SendSmsCode(c echo.Context) error {
+	//参数验证绑定
+	req, response, err := ParseJson(c)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	email := req.Get("email").String()
+	resp, err := domain.SendSmsCode(email)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	return response.RetCustomize(0, resp, "")
+}
+
 // @desc 聊天初始化
 // @auth liuguoqiang 2020-11-20
 // @param

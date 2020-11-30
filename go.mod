@@ -15,4 +15,5 @@ require (
 	github.com/weblazy/crypto v1.0.0
 	github.com/weblazy/easy v1.1.0
 	github.com/weblazy/goutil v1.1.2
+	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 )

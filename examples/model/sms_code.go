@@ -14,6 +14,7 @@ type SmsCode struct {
 	Code      string     `json:"code" gorm:"column:code;NOT NULL;default:'';comment:'验证码';type:VARCHAR(255)"`
 	Status    int64      `json:"status" gorm:"column:status;NOT NULL;default:0;comment:'0未发送1已发送2已使用';type:TINYINT"`
 	MsgType   int64      `json:"msg_type" gorm:"column:msg_type;NOT NULL;default:0;comment:'消息类型1注册消息2修改密码';type:TINYINT"`
+	SendTimes int64      `json:"send_times" gorm:"column:send_times;NOT NULL;default:0;comment:'发送次数最大5次';type:TINYINT"`
 	CreatedAt time.Time  `json:"created_at" gorm:"column:created_at;NOT NULL;default:CURRENT_TIMESTAMP;type:TIMESTAMP"`
 	UpdatedAt time.Time  `json:"updated_at" gorm:"column:updated_at;NOT NULL;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;type:TIMESTAMP"`
 	DeletedAt *time.Time `json:"deleted_at" gorm:"column:deleted_at;type:DATETIME"`
@@ -58,9 +59,10 @@ func (*SmsCode) Delete(db *gormx.DB, where string, args ...interface{}) error {
 	return db.Where(where, args...).Delete(&SmsCode{}).Error
 }
 
-func (*SmsCode) Update(db *gormx.DB, data map[string]interface{}, where string, args ...interface{}) error {
+func (*SmsCode) Update(db *gormx.DB, data map[string]interface{}, where string, args ...interface{}) (int64, error) {
 	if db == nil {
 		db = Orm()
 	}
-	return db.Model(&SmsCode{}).Where(where, args...).Update(data).Error
+	db = db.Model(&SmsCode{}).Where(where, args...).Update(data)
+	return db.RowsAffected, db.Error
 }

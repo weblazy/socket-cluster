@@ -2,9 +2,15 @@ package domain
 
 import (
 	"fmt"
+	"math/rand"
+	"os"
 	"strconv"
+	"time"
 	"websocket-cluster/examples/auth"
 	"websocket-cluster/examples/model"
+
+	"github.com/jinzhu/gorm"
+	"gopkg.in/gomail.v2"
 )
 
 type ()
@@ -26,7 +32,7 @@ func Login(username, password string) (map[string]interface{}, error) {
 	return map[string]interface{}{
 		"uid":      user.Id,
 		"username": user.Username,
-		"email":    user.Username + "@qq.com",
+		"email":    user.Email,
 		"avatar":   user.Avatar,
 		"token":    token,
 	}, nil
@@ -44,6 +50,13 @@ func Register(username, password, confirmPassword, email, code string) (map[stri
 	if err == nil {
 		return nil, fmt.Errorf("该邮箱已经注册")
 	}
+	smsCode, err := model.SmsCodeModel().GetOne("email = ? and code  = ? and msg_type = 1", email, code)
+	if err != nil {
+		return nil, fmt.Errorf("该验证码不存在")
+	}
+	if smsCode.Status != 1 || smsCode.CreatedAt.Unix()+3600 < time.Now().Unix() {
+		return nil, fmt.Errorf("该验证码已失效")
+	}
 	user := model.Auth{
 		Username: username,
 		Email:    email,
@@ -51,18 +64,82 @@ func Register(username, password, confirmPassword, email, code string) (map[stri
 		Password: password,
 	}
 
-	uid := strconv.FormatInt(user.Id, 10)
-	token, err := auth.AuthManager.Add(uid)
+	err = model.AuthHandler.Insert(nil, &user)
+	if err != nil {
+		return nil, err
+	}
+	_, err = model.SmsCodeModel().Update(nil, map[string]interface{}{
+		"status": 2,
+	}, "id = ?", smsCode.Id)
 	if err != nil {
 		return nil, err
 	}
 	return map[string]interface{}{
-		"uid":      user.Id,
-		"username": user.Username,
-		"email":    user.Username + "@qq.com",
-		"avatar":   user.Avatar,
-		"token":    token,
+		"uid": user.Id,
 	}, nil
+}
+
+// @desc 发送验证码
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func SendSmsCode(email string) (map[string]interface{}, error) {
+	code := fmt.Sprintf("%06v", rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000))
+	now := time.Now()
+	smsCode, err := model.SmsCodeModel().GetOne("email = ? and created_at > ? and msg_type = 1 and status in(0,1)", email, now.Add(-1*time.Hour))
+	if err == nil {
+		code = smsCode.Code
+	} else {
+		smsCode = &model.SmsCode{
+			Email:   email,
+			Code:    code,
+			MsgType: 1,
+			Status:  0,
+		}
+		err = model.SmsCodeModel().Insert(nil, smsCode)
+		if err != nil {
+			return nil, fmt.Errorf("数据库插入失败")
+		}
+	}
+	tx := model.Orm().Begin()
+	defer tx.RollbackUnlessCommitted()
+	num, err := model.SmsCodeModel().Update(tx, map[string]interface{}{
+		"status":     1,
+		"send_times": gorm.Expr("send_times + 1"),
+	}, "id = ? and send_times + 1 < 6", smsCode.Id)
+	if err != nil {
+		return nil, err
+	}
+	if num == 0 {
+		return nil, fmt.Errorf("一小时之内最多发送五次验证码")
+	}
+	err = SendEmail(email, "注册验证码", fmt.Sprintf("【即时通讯】验证码：%s，1小时内有效，为了保障您的账户安全，请勿向他人泄漏验证码信息。", code))
+	if err != nil {
+		return nil, err
+	}
+	tx.Commit()
+	return map[string]interface{}{}, nil
+}
+
+// @desc SendEmail body支持html格式字符串
+// @auth liuguoqiang 2020-11-30
+// @param
+// @return
+func SendEmail(email, subject, body string) error {
+	m := gomail.NewMessage()
+
+	m.SetHeader("From", "2276282419@qq.com")
+	m.SetHeader("To", email)
+	//m.SetAddressHeader("Cc", "dan@example.com", "Dan")
+	m.SetHeader("Subject", subject)
+	m.SetBody("text/html", body)
+	//m.Attach("/home/Alex/lolcat.jpg")
+	password := os.Getenv("EMAIL_PASSWORD")
+	client := gomail.NewDialer("smtp.qq.com", 587, "2276282419@qq.com", password)
+	if err := client.DialAndSend(m); err != nil {
+		return err
+	}
+	return nil
 }
 
 // @desc 获取群成员
