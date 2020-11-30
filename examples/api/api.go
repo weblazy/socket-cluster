@@ -25,6 +25,28 @@ func Login(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
+// @desc 注册
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func Register(c echo.Context) error {
+	//参数验证绑定
+	req, response, err := ParseJson(c)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	username := req.Get("username").String()
+	password := req.Get("password").String()
+	confirmPassword := req.Get("confirm_password").String()
+	email := req.Get("email").String()
+	code := req.Get("code").String()
+	resp, err := domain.Register(username, password, confirmPassword, email, code)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	return response.RetCustomize(0, resp, "")
+}
+
 // @desc 聊天初始化
 // @auth liuguoqiang 2020-11-20
 // @param

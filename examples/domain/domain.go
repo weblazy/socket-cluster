@@ -31,6 +31,29 @@ func Login(username, password string) (map[string]interface{}, error) {
 	}, nil
 }
 
+// @desc 注册
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func Register(username, password, confirmPassword, email, code string) (map[string]interface{}, error) {
+	user, err := model.AuthHandler.GetOne("email = ?", email)
+	if err != nil {
+		return nil, err
+	}
+	uid := strconv.FormatInt(user.Id, 10)
+	token, err := auth.AuthManager.Add(uid)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"uid":      user.Id,
+		"username": user.Username,
+		"email":    user.Username + "@qq.com",
+		"avatar":   user.Avatar,
+		"token":    token,
+	}, nil
+}
+
 // @desc 获取群成员
 // @auth liuguoqiang 2020-11-20
 // @param

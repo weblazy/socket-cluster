@@ -438,9 +438,11 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 // @return
 func Router(g *echo.Group) {
 	g.POST("/login", api.Login)
+	g.POST("/register", api.Register)
 	g.POST("/chatInit", api.ChatInit)
 	g.POST("/getGroupMembers", api.GetGroupMembers)
 	g.OPTIONS("/login", websocket_cluster.OptionHandler)
+	g.OPTIONS("/register", websocket_cluster.OptionHandler)
 	g.OPTIONS("/chatInit", websocket_cluster.OptionHandler)
 	g.OPTIONS("/getGroupMembers", websocket_cluster.OptionHandler)
 }
