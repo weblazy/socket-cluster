@@ -10,6 +10,7 @@ import (
 	"websocket-cluster/examples/model"
 
 	"github.com/jinzhu/gorm"
+	"github.com/spf13/cast"
 	"gopkg.in/gomail.v2"
 )
 
@@ -246,4 +247,35 @@ func GetGroupMembers(groupId int64) (map[string]interface{}, error) {
 	}
 	resp["list"] = list
 	return resp, nil
+}
+
+// @desc 搜索
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func Search(keyword, searchType string) (map[string]interface{}, error) {
+	if searchType == "email" {
+		user, err := model.AuthHandler.GetOne("email = ?", keyword)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"uid":    user.Id,
+			"name":   user.Username,
+			"email":  user.Email,
+			"avatar": user.Avatar,
+		}, nil
+	} else {
+		groupId := cast.ToInt64(keyword) - 9527
+		group, err := model.GroupHandler.GetOne("id = ?", groupId)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"group_id": group.Id,
+			"name":     group.GroupName,
+			"avatar":   group.Avatar,
+		}, nil
+	}
+
 }

@@ -442,9 +442,12 @@ func Router(g *echo.Group) {
 	g.POST("/sendSmsCode", api.SendSmsCode)
 	g.POST("/chatInit", api.ChatInit)
 	g.POST("/getGroupMembers", api.GetGroupMembers)
+	g.POST("/search", api.Search)
+
 	g.OPTIONS("/login", websocket_cluster.OptionHandler)
 	g.OPTIONS("/register", websocket_cluster.OptionHandler)
 	g.OPTIONS("/sendSmsCode", websocket_cluster.OptionHandler)
 	g.OPTIONS("/chatInit", websocket_cluster.OptionHandler)
 	g.OPTIONS("/getGroupMembers", websocket_cluster.OptionHandler)
+	g.OPTIONS("/search", websocket_cluster.OptionHandler)
 }

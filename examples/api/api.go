@@ -96,3 +96,21 @@ func GetGroupMembers(c echo.Context) error {
 	}
 	return response.RetCustomize(0, resp, "")
 }
+
+// @desc 搜索
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func Search(c echo.Context) error {
+	req, response, err := ParseJson(c)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	keyword := req.Get("keyword").String()
+	searchType := req.Get("search_type").String()
+	resp, err := domain.Search(keyword, searchType)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	return response.RetCustomize(0, resp, "")
+}
