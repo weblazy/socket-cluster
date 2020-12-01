@@ -277,5 +277,124 @@ func Search(keyword, searchType string) (map[string]interface{}, error) {
 			"avatar":   group.Avatar,
 		}, nil
 	}
+}
 
+// @desc 加好友
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func AddFriends(keyword, searchType string) (map[string]interface{}, error) {
+	if searchType == "email" {
+		user, err := model.AuthHandler.GetOne("email = ?", keyword)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"uid":    user.Id,
+			"name":   user.Username,
+			"email":  user.Email,
+			"avatar": user.Avatar,
+		}, nil
+	} else {
+		groupId := cast.ToInt64(keyword) - 9527
+		group, err := model.GroupHandler.GetOne("id = ?", groupId)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"group_id": group.Id,
+			"name":     group.GroupName,
+			"avatar":   group.Avatar,
+		}, nil
+	}
+}
+
+// @desc 接受加好友申请
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func AcceptAddFriends(keyword, searchType string) (map[string]interface{}, error) {
+	if searchType == "email" {
+		user, err := model.AuthHandler.GetOne("email = ?", keyword)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"uid":    user.Id,
+			"name":   user.Username,
+			"email":  user.Email,
+			"avatar": user.Avatar,
+		}, nil
+	} else {
+		groupId := cast.ToInt64(keyword) - 9527
+		group, err := model.GroupHandler.GetOne("id = ?", groupId)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"group_id": group.Id,
+			"name":     group.GroupName,
+			"avatar":   group.Avatar,
+		}, nil
+	}
+}
+
+// @desc 加入群聊
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func JoinGroup(keyword, searchType string) (map[string]interface{}, error) {
+	if searchType == "email" {
+		user, err := model.AuthHandler.GetOne("email = ?", keyword)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"uid":    user.Id,
+			"name":   user.Username,
+			"email":  user.Email,
+			"avatar": user.Avatar,
+		}, nil
+	} else {
+		groupId := cast.ToInt64(keyword) - 9527
+		group, err := model.GroupHandler.GetOne("id = ?", groupId)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"group_id": group.Id,
+			"name":     group.GroupName,
+			"avatar":   group.Avatar,
+		}, nil
+	}
+}
+
+// @desc 建群
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func CreateGroup(keyword, searchType string) (map[string]interface{}, error) {
+	if searchType == "email" {
+		user, err := model.AuthHandler.GetOne("email = ?", keyword)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"uid":    user.Id,
+			"name":   user.Username,
+			"email":  user.Email,
+			"avatar": user.Avatar,
+		}, nil
+	} else {
+		groupId := cast.ToInt64(keyword) - 9527
+		group, err := model.GroupHandler.GetOne("id = ?", groupId)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"group_id": group.Id,
+			"name":     group.GroupName,
+			"avatar":   group.Avatar,
+		}, nil
+	}
 }
