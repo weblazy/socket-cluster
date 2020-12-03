@@ -70,11 +70,11 @@ func SendSmsCode(c echo.Context) error {
 // @param
 // @return
 func ChatInit(c echo.Context) error {
-	id, _, response, err := ParseParams(c)
+	uid, _, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
 	}
-	resp, err := domain.ChatInit(id)
+	resp, err := domain.ChatInit(uid)
 	if err != nil {
 		return response.RetError(err, -1)
 	}
@@ -86,11 +86,11 @@ func ChatInit(c echo.Context) error {
 // @param
 // @return
 func GetGroupMembers(c echo.Context) error {
-	id, _, response, err := ParseParams(c)
+	uid, _, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
 	}
-	resp, err := domain.GetGroupMembers(id)
+	resp, err := domain.GetGroupMembers(uid)
 	if err != nil {
 		return response.RetError(err, -1)
 	}
@@ -102,13 +102,31 @@ func GetGroupMembers(c echo.Context) error {
 // @param
 // @return
 func Search(c echo.Context) error {
-	req, response, err := ParseJson(c)
+	_, req, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
 	}
 	keyword := req.Get("keyword").String()
 	searchType := req.Get("search_type").String()
 	resp, err := domain.Search(keyword, searchType)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	return response.RetCustomize(0, resp, "")
+}
+
+// @desc 建群
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func CreateGroup(c echo.Context) error {
+	uid, req, response, err := ParseParams(c)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	groupName := req.Get("group_name").String()
+	avatar := req.Get("avatar").String()
+	resp, err := domain.CreateGroup(uid, groupName, avatar)
 	if err != nil {
 		return response.RetError(err, -1)
 	}

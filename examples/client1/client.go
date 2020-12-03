@@ -30,7 +30,7 @@ func client() {
 		logx.Info(err)
 	}
 	for {
-		_, msg, err := conn.ReadMsg()
+		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				logx.Info(err)

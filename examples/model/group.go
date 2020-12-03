@@ -10,6 +10,7 @@ var GroupHandler = Group{}
 
 type Group struct {
 	Id        int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
+	Uid       int64      `json:"uid" gorm:"column:uid;NOT NULL;default:0;comment:'发起请求用户id';type:INT"`
 	GroupName string     `json:"group_name" gorm:"column:group_name;NOT NULL;default:'';comment:'分组名';type:VARCHAR(255)"`
 	Avatar    string     `json:"avatar" gorm:"column:avatar;NOT NULL;default:'';comment:'头像';type:VARCHAR(255)"`
 	CreatedAt time.Time  `json:"created_at" gorm:"column:created_at;NOT NULL;default:CURRENT_TIMESTAMP;type:TIMESTAMP"`

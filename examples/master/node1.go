@@ -1,4 +1,4 @@
-package main
+package master
 
 import (
 	"encoding/json"
@@ -6,11 +6,11 @@ import (
 	"hash/fnv"
 	"strconv"
 	websocket_cluster "websocket-cluster"
-	"websocket-cluster/examples/api"
 	"websocket-cluster/examples/auth"
+	"websocket-cluster/examples/common"
 	"websocket-cluster/examples/model"
+	"websocket-cluster/examples/router"
 
-	"github.com/labstack/echo/v4"
 	"github.com/spf13/cast"
 	"github.com/weblazy/core/database/redis"
 	"github.com/weblazy/easy/utils/logx"
@@ -23,17 +23,17 @@ var (
 	masterAddress = flag.String("masterAddress", "ws://127.0.0.1:9527/master", "the  masterAddress")
 )
 
-func node1() {
+func Node1() {
 	flag.Parse()
 	auth.InitAuth(auth.NewAuthConf([]*auth.RedisNode{
 		&auth.RedisNode{
 			RedisConf: redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"},
 			Position:  1,
 		}}))
-	websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host1, *path1, *masterAddress, redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
+	common.NodeINfo1 = websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host1, *path1, *masterAddress, redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
 		RedisConf: redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"},
 		Position:  1,
-	}}, onMsg).WithPort(*port1).WithRouter(Router))
+	}}, onMsg).WithPort(*port1).WithRouter(router.Router))
 }
 
 func getIndex(key string) int64 {
@@ -430,24 +430,4 @@ func onMsg(nodeInfo *websocket_cluster.NodeInfo, context *websocket_cluster.Cont
 	default:
 		logx.Info(string(context.Msg))
 	}
-}
-
-// @desc
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
-func Router(g *echo.Group) {
-	g.POST("/login", api.Login)
-	g.POST("/register", api.Register)
-	g.POST("/sendSmsCode", api.SendSmsCode)
-	g.POST("/chatInit", api.ChatInit)
-	g.POST("/getGroupMembers", api.GetGroupMembers)
-	g.POST("/search", api.Search)
-
-	g.OPTIONS("/login", websocket_cluster.OptionHandler)
-	g.OPTIONS("/register", websocket_cluster.OptionHandler)
-	g.OPTIONS("/sendSmsCode", websocket_cluster.OptionHandler)
-	g.OPTIONS("/chatInit", websocket_cluster.OptionHandler)
-	g.OPTIONS("/getGroupMembers", websocket_cluster.OptionHandler)
-	g.OPTIONS("/search", websocket_cluster.OptionHandler)
 }

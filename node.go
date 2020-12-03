@@ -48,7 +48,7 @@ type (
 var ()
 
 // NewPeer creates a new peer.
-func StartNode(cfg *NodeConf) {
+func StartNode(cfg *NodeConf) *NodeInfo {
 	rds := redis.NewRedis(cfg.RedisConf.Host, cfg.RedisConf.Type, cfg.RedisConf.Pass)
 	timer, err := timingwheel.NewTimingWheel(time.Second, 300, func(k, v interface{}) {
 		logx.Infof("%s auth timeout", k)
@@ -95,10 +95,13 @@ func StartNode(cfg *NodeConf) {
 	nodeInfo.SendPing()
 	nodeInfo.UpdateRedis()
 	go nodeInfo.ConnectToMaster(cfg)
-	err = e.Start(fmt.Sprintf(":%d", cfg.Port))
-	if err != nil {
-		logx.Info(err)
-	}
+	go func() {
+		err = e.Start(fmt.Sprintf(":%d", cfg.Port))
+		if err != nil {
+			logx.Info(err)
+		}
+	}()
+	return nodeInfo
 }
 
 func OptionHandler(c echo.Context) error {

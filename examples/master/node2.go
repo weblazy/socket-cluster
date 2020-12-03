@@ -1,8 +1,10 @@
-package main
+package master
 
 import (
 	"flag"
 	websocket_cluster "websocket-cluster"
+
+	"websocket-cluster/examples/router"
 
 	"github.com/weblazy/core/database/redis"
 )
@@ -13,10 +15,10 @@ var (
 	path2 = flag.String("path2", "/p2", "the  path")
 )
 
-func node2() {
+func Node2() {
 	flag.Parse()
 	websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host2, *path2, *masterAddress, redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
 		RedisConf: redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"},
 		Position:  1,
-	}}, onMsg).WithPort(*port2).WithRouter(Router))
+	}}, onMsg).WithPort(*port2).WithRouter(router.Router))
 }

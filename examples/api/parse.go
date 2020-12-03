@@ -38,7 +38,7 @@ func ParseParams(c echo.Context) (int64, gjson.Result, *api.Response, error) {
 	idStr, err := auth.AuthManager.Validate(token)
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return id, jsonParams, response, fmt.Errorf("ss")
+		return id, jsonParams, response, fmt.Errorf("token验证失败")
 	}
 
 	body, err := ioutil.ReadAll(request.Body)

@@ -7,10 +7,12 @@ import (
 	"strconv"
 	"time"
 	"websocket-cluster/examples/auth"
+	"websocket-cluster/examples/common"
 	"websocket-cluster/examples/model"
 
 	"github.com/jinzhu/gorm"
 	"github.com/spf13/cast"
+	"github.com/weblazy/core/logx"
 	"gopkg.in/gomail.v2"
 )
 
@@ -329,6 +331,34 @@ func JoinGroup(uid, groupId, msgContent string) (map[string]interface{}, error) 
 // @auth liuguoqiang 2020-11-20
 // @param
 // @return
-func CreateGroup(uid, goupName string) (map[string]interface{}, error) {
-	return nil, nil
+func CreateGroup(uid int64, groupName, avatar string) (map[string]interface{}, error) {
+	group := model.Group{
+		Uid:       uid,
+		GroupName: groupName,
+		Avatar:    avatar,
+	}
+	err := model.GroupHandler.Insert(nil, &group)
+	if err != nil {
+		return nil, err
+	}
+	err = model.UserGroupHandler.Insert(nil, &model.UserGroup{
+		Uid:     uid,
+		GroupId: group.Id,
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = common.NodeINfo1.SendToUid(cast.ToString(uid), map[string]interface{}{
+		"msg_type": "create_group",
+		"data": map[string]interface{}{
+			"type":      "group",
+			"avatar":    group.Avatar,
+			"groupname": group.GroupName,
+			"id":        group.Id,
+		},
+	})
+	if err != nil {
+		logx.Info(err)
+	}
+	return map[string]interface{}{}, nil
 }
