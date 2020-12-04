@@ -398,6 +398,7 @@ func CreateGroup(uid int64, groupName, avatar string) (map[string]interface{}, e
 	if err != nil {
 		return nil, err
 	}
+
 	err = common.NodeINfo1.SendToUid(cast.ToString(uid), map[string]interface{}{
 		"msg_type": "create_group",
 		"data": map[string]interface{}{

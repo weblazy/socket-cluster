@@ -57,7 +57,7 @@ func StartNode(cfg *NodeConf) *NodeInfo {
 			logx.Info(err)
 		}
 	})
-	defer timer.Stop()
+	// defer timer.Stop()
 	if err != nil {
 		logx.Info(err)
 	}
@@ -513,6 +513,8 @@ func (nodeInfo *NodeInfo) GetSessionsByUids(uids []string) []*Session {
 func (nodeInfo *NodeInfo) BindUid(uid string, se *Session) error {
 	now := time.Now().Unix()
 	node := nodeInfo.userHashRing.Get(uid)
+	fmt.Printf("%#v\n", userPrefix+uid)
+	fmt.Printf("%#v\n", nodeInfo.transAddress)
 	err := node.Extra.(*redis.Redis).Hset(userPrefix+uid, nodeInfo.transAddress, strconv.FormatInt(now, 10))
 	if err != nil {
 		return err
@@ -548,6 +550,9 @@ func (nodeInfo *NodeInfo) SendToUid(uid string, req interface{}) error {
 				// se, ok := nodeInfo.uidSessions.Load(uid, ip)
 				nodeInfo.uidSessions.RangeNextMap(uid, func(k1, k2 string, se interface{}) bool {
 					err = se.(*Session).Conn.WriteJSON(req)
+					if err != nil {
+						logx.Info(err)
+					}
 					return true
 				})
 				// if ok {
@@ -556,6 +561,7 @@ func (nodeInfo *NodeInfo) SendToUid(uid string, req interface{}) error {
 				// }
 
 			} else {
+				fmt.Printf("%#v\n", ip)
 				connect, ok := nodeInfo.transConns.Load(ip)
 				if ok {
 					err = connect.(*Connection).WriteJSON(req)
