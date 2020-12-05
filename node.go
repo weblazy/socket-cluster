@@ -57,7 +57,6 @@ func StartNode(cfg *NodeConf) *NodeInfo {
 			logx.Info(err)
 		}
 	})
-	// defer timer.Stop()
 	if err != nil {
 		logx.Info(err)
 	}
@@ -200,39 +199,45 @@ func (nodeInfo *NodeInfo) UpdateRedis() {
 
 //Connect to master
 func (nodeInfo *NodeInfo) ConnectToMaster(cfg *NodeConf) {
-	conn, _, err := websocket.DefaultDialer.Dial(cfg.MasterAddress, nil)
-	if err != nil {
-		logx.Info("dial:", err)
-	}
-	// defer conn.Close()
-
 	go func() {
-		defer conn.Close()
 		for {
-			_, message, err := conn.ReadMessage()
+			conn, _, err := websocket.DefaultDialer.Dial(cfg.MasterAddress, nil)
 			if err != nil {
-				log.Println("read:", err)
-
-				return
+				logx.Info("dial:", err)
 			}
-			logx.Infof("recv: %s", message)
-			nodeInfo.OnMasterMessage(message)
+			go func() {
+				nodeInfo.masterConn = &Connection{Conn: conn}
+				auth := &Auth{
+					Password:     nodeInfo.nodeConf.Password,
+					TransAddress: nodeInfo.transAddress,
+				}
+				data := Message{
+					MessageType: "auth",
+					Data:        auth,
+				}
+				err = nodeInfo.masterConn.WriteJSON(data)
+				if err != nil {
+					logx.Info(err)
+				}
+			}()
+			for {
+				_, message, err := conn.ReadMessage()
+				if err != nil {
+					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+						//尝试重连
+						logx.Info(err)
+						break
+					}
+					log.Println("read:", err)
+					continue
+				}
+				logx.Infof("recv: %s", message)
+				nodeInfo.OnMasterMessage(message)
+			}
+			conn.Close()
+			time.Sleep(30 * time.Second)
 		}
 	}()
-
-	nodeInfo.masterConn = &Connection{Conn: conn}
-	auth := &Auth{
-		Password:     nodeInfo.nodeConf.Password,
-		TransAddress: nodeInfo.transAddress,
-	}
-	data := Message{
-		MessageType: "auth",
-		Data:        auth,
-	}
-	err = nodeInfo.masterConn.WriteJSON(data)
-	if err != nil {
-		logx.Info(err)
-	}
 }
 
 //Determine if a uid is online
