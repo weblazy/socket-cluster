@@ -25,8 +25,8 @@ func (conn *Connection) WriteJSON(data interface{}) error {
 // @auth liuguoqiang 2020-09-07
 // @param
 // @return
-func (conn *Connection) WriteMessage(messageType int, data []byte) error {
+func (conn *Connection) WriteMsg(msgType int, data []byte) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
-	return conn.Conn.WriteMessage(messageType, data)
+	return conn.Conn.WriteMessage(msgType, data)
 }

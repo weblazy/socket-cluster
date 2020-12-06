@@ -17,23 +17,26 @@ import (
 )
 
 var (
-	port1         = flag.Int64("port1", 9528, "the  port")
-	host1         = flag.String("host1", "ws://localhost:9528", "the  host")
-	path1         = flag.String("path1", "/p1", "the  path")
-	masterAddress = flag.String("masterAddress", "ws://127.0.0.1:9527/master", "the  masterAddress")
+	port1 = flag.Int64("port1", 9528, "the  port")
+	host1 = flag.String("host1", "ws://localhost:9528", "the  host")
+	path1 = flag.String("path1", "/p1", "the  path")
 )
 
 func Node1() {
 	flag.Parse()
+	var err error
 	auth.InitAuth(auth.NewAuthConf([]*auth.RedisNode{
 		&auth.RedisNode{
 			RedisConf: redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"},
 			Position:  1,
 		}}))
-	common.NodeINfo1 = websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host1, *path1, *masterAddress, redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
-		RedisConf: redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"},
+	common.NodeINfo1, err = websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host1, *path1, websocket_cluster.RedisConf{Addr: "127.0.0.1:6379", DB: 0}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
+		RedisConf: websocket_cluster.RedisConf{Addr: "127.0.0.1:6379", DB: 0},
 		Position:  1,
 	}}, onMsg).WithPort(*port1).WithRouter(router.Router))
+	if err != nil {
+		logx.Info(err)
+	}
 }
 
 func getIndex(key string) int64 {

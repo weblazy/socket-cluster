@@ -5,8 +5,6 @@ import (
 	websocket_cluster "websocket-cluster"
 
 	"websocket-cluster/examples/router"
-
-	"github.com/weblazy/core/database/redis"
 )
 
 var (
@@ -17,8 +15,8 @@ var (
 
 func Node2() {
 	flag.Parse()
-	websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host2, *path2, *masterAddress, redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
-		RedisConf: redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"},
+	websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host2, *path2, websocket_cluster.RedisConf{Addr: "127.0.0.1:6379", DB: 0}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
+		RedisConf: websocket_cluster.RedisConf{Addr: "127.0.0.1:6379", DB: 0},
 		Position:  1,
 	}}, onMsg).WithPort(*port2).WithRouter(router.Router))
 }

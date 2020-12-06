@@ -1,9 +1,9 @@
 package websocket_cluster
 
 type (
-	Message struct {
-		Uid         string      `json:"uid"`
-		MessageType string      `json:"message_type"`
-		Data        interface{} `json:"data"`
+	Msg struct {
+		Uid     string      `json:"uid"`
+		MsgType string      `json:"msg_type"`
+		Data    interface{} `json:"data"`
 	}
 )

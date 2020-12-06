@@ -8,6 +8,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/go-playground/validator/v10 v10.2.0
+	github.com/go-redis/redis/v8 v8.4.0
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/jinzhu/gorm v1.9.16

@@ -1,7 +1,6 @@
 package main
 
 import (
-	websocket_cluster "websocket-cluster"
 	"websocket-cluster/examples/config"
 	"websocket-cluster/examples/master"
 	"websocket-cluster/examples/model"
@@ -16,7 +15,7 @@ func main() {
 	// 初始化数据库
 	gorm.NewDB("dbDefault")
 	model.CreateTable()
-	go websocket_cluster.StartMaster(websocket_cluster.NewMasterConf())
+	// go websocket_cluster.StartMaster(websocket_cluster.NewMasterConf())
 	master.Node1()
 	master.Node2()
 	select {}

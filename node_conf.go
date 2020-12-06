@@ -2,21 +2,24 @@ package websocket_cluster
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/weblazy/core/database/redis"
 )
 
 type (
+	RedisConf struct {
+		Addr     string
+		Password string
+		DB       int64
+	}
 	NodeConf struct {
 		Host          string
 		Path          string
 		RedisNodeList []*RedisNode
-		RedisConf     redis.RedisConf
+		RedisConf     RedisConf
 		RedisMaxCount uint32
 		Port          int64
-		MasterAddress string //Master address
 		Password      string //Password for auth when connect to master
 		PingInterval  int64  //Heartbeat interval
-		onMessage     func(nodeInfo *NodeInfo, context *Context)
+		onMsg         func(nodeInfo *NodeInfo, context *Context)
 		router        func(g *echo.Group)
 	}
 
@@ -28,17 +31,16 @@ type (
 )
 
 // NewPeer creates a new peer.
-func NewNodeConf(host, path, masterAddress string, redisConf redis.RedisConf, redisNodeList []*RedisNode, onMessage func(nodeInfo *NodeInfo, context *Context)) *NodeConf {
+func NewNodeConf(host, path string, redisConf RedisConf, redisNodeList []*RedisNode, onMsg func(nodeInfo *NodeInfo, context *Context)) *NodeConf {
 	return &NodeConf{
 		Host:          host,
 		Path:          path,
 		Port:          9528,
 		RedisConf:     redisConf,
-		MasterAddress: masterAddress,
 		Password:      defaultPassword,
 		PingInterval:  defaultPingInterval,
 		RedisNodeList: redisNodeList,
-		onMessage:     onMessage,
+		onMsg:         onMsg,
 		router:        func(g *echo.Group) {},
 	}
 
