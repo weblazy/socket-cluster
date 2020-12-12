@@ -352,7 +352,7 @@ func (this *Node) OnTransMsg(conn *Connection, msg []byte) {
 // Auth the node
 func (this *Node) AuthTrans(conn *Connection, args map[string]interface{}) error {
 	sid := args["trans_address"].(string)
-	this.timer.RemoveTimer(conn.Conn.RemoteAddr()) //Cancel timeingwheel task
+	this.timer.RemoveTimer(conn.Conn.RemoteAddr().String()) //Cancel timeingwheel task
 	if args["password"].(string) != this.nodeConf.Password {
 		logx.Infof("Connect:%s,Wrong password:%s", sid, args["password"].(string))
 		conn.Conn.Close()
@@ -375,6 +375,9 @@ func (this *Node) AuthClient(conn *Connection, clientId string) error {
 func (this *Node) UpdateNodeList(nodeMap map[string]string) error {
 	now := time.Now().Unix()
 	for key := range nodeMap {
+		if key == this.transAddress {
+			continue
+		}
 		nodeInfo := make(map[string]interface{})
 		err := json.Unmarshal([]byte(nodeMap[key]), &nodeInfo)
 		if err != nil {
