@@ -290,7 +290,7 @@ func AddFriends(uid, friendUid int64, msgContent string) (map[string]interface{}
 	if err == nil {
 		return nil, fmt.Errorf("您和对方已经是好友")
 	}
-	err = common.NodeINfo1.SendToUid(cast.ToString(uid), map[string]interface{}{
+	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
 		"msg_type": "add_friends",
 		"data": map[string]interface{}{
 			"friend_uid":  friendUid,
@@ -326,7 +326,7 @@ func AcceptAddFriends(uid, friendUid int64) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = common.NodeINfo1.SendToUid(cast.ToString(uid), map[string]interface{}{
+	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
 		"msg_type": "accept_friends",
 		"data": map[string]interface{}{
 			"uid":        uid,
@@ -336,7 +336,7 @@ func AcceptAddFriends(uid, friendUid int64) (map[string]interface{}, error) {
 	if err != nil {
 		logx.Info(err)
 	}
-	err = common.NodeINfo1.SendToUid(cast.ToString(friendUid), map[string]interface{}{
+	err = common.NodeINfo1.SendToClientId(cast.ToString(friendUid), map[string]interface{}{
 		"msg_type": "accept_friends",
 		"data": map[string]interface{}{
 			"uid":        friendUid,
@@ -365,7 +365,7 @@ func JoinGroup(uid, groupId int64, msgContent string) (map[string]interface{}, e
 	if err != nil {
 		return nil, err
 	}
-	err = common.NodeINfo1.SendToUid(cast.ToString(uid), map[string]interface{}{
+	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
 		"msg_type": "join_group",
 		"data": map[string]interface{}{
 			"group_id": groupId,
@@ -399,7 +399,7 @@ func CreateGroup(uid int64, groupName, avatar string) (map[string]interface{}, e
 		return nil, err
 	}
 
-	err = common.NodeINfo1.SendToUid(cast.ToString(uid), map[string]interface{}{
+	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
 		"msg_type": "create_group",
 		"data": map[string]interface{}{
 			"type":      "group",

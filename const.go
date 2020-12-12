@@ -1,10 +1,10 @@
 package websocket_cluster
 
 const (
-	userPrefix          = "user#"
-	groupPrefix         = "group#"
-	defaultPassword     = "password"
-	defaultPingInterval = 5
-	redisInterval       = 10
-	redisZsortKey       = "tpcluster_node"
+	clientPrefix              = "client#"
+	defaultPassword           = "password"
+	defaultClientPingInterval = 120
+	defaultNodePingInterval   = 10
+	NodeAddress               = "node_address"
+	TransAddress              = "trans_address"
 )

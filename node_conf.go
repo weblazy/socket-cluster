@@ -11,37 +11,42 @@ type (
 		DB       int64
 	}
 	NodeConf struct {
-		Host          string
-		Path          string
-		RedisNodeList []*RedisNode
-		RedisConf     RedisConf
-		RedisMaxCount uint32
-		Port          int64
-		Password      string //Password for auth when connect to master
-		PingInterval  int64  //Heartbeat interval
-		onMsg         func(nodeInfo *NodeInfo, context *Context)
-		router        func(g *echo.Group)
+		Host               string
+		ClientPath         string
+		TransPath          string
+		RedisNodeList      []*RedisNode
+		RedisConf          RedisConf
+		RedisMaxCount      uint32
+		Port               int64
+		Password           string //Password for auth when connect to master
+		ClientPingInterval int64
+		NodePingInterval   int64 //Heartbeat interval
+		onMsg              func(context *Context)
+		router             func(g *echo.Group)
+		echoObj            *echo.Echo
 	}
 
 	Context struct {
-		Conn *Connection
-		Uid  string
-		Msg  []byte
+		Conn     *Connection
+		ClientId string
+		Msg      []byte
 	}
 )
 
 // NewPeer creates a new peer.
-func NewNodeConf(host, path string, redisConf RedisConf, redisNodeList []*RedisNode, onMsg func(nodeInfo *NodeInfo, context *Context)) *NodeConf {
+func NewNodeConf(host, clientPath, transPath string, redisConf RedisConf, redisNodeList []*RedisNode, onMsg func(context *Context)) *NodeConf {
 	return &NodeConf{
-		Host:          host,
-		Path:          path,
-		Port:          9528,
-		RedisConf:     redisConf,
-		Password:      defaultPassword,
-		PingInterval:  defaultPingInterval,
-		RedisNodeList: redisNodeList,
-		onMsg:         onMsg,
-		router:        func(g *echo.Group) {},
+		Host:               host,
+		ClientPath:         clientPath,
+		TransPath:          transPath,
+		Port:               9528,
+		RedisConf:          redisConf,
+		Password:           defaultPassword,
+		ClientPingInterval: defaultClientPingInterval,
+		NodePingInterval:   defaultNodePingInterval,
+		RedisNodeList:      redisNodeList,
+		onMsg:              onMsg,
+		router:             func(g *echo.Group) {},
 	}
 
 }
@@ -56,12 +61,17 @@ func (conf *NodeConf) WithPort(port int64) *NodeConf {
 	return conf
 }
 
-func (conf *NodeConf) WithPing(pingInterval int64) *NodeConf {
-	conf.PingInterval = pingInterval
+func (conf *NodeConf) WithClientInterval(pingInterval int64) *NodeConf {
+	conf.ClientPingInterval = pingInterval
 	return conf
 }
 
 func (conf *NodeConf) WithRouter(router func(g *echo.Group)) *NodeConf {
 	conf.router = router
+	return conf
+}
+
+func (conf *NodeConf) WithEcho(echoObj *echo.Echo) *NodeConf {
+	conf.echoObj = echoObj
 	return conf
 }
