@@ -23,6 +23,7 @@ func Router(g *echo.Group) {
 	g.POST("/acceptAddFriend", api.AcceptAddFriend)
 	g.POST("/joinGroup", api.JoinGroup)
 	g.POST("/acceptJoinGroup", api.AcceptJoinGroup)
+	g.POST("/getSystemMsg", api.GetSystemMsg)
 
 	g.OPTIONS("/login", websocket_cluster.OptionHandler)
 	g.OPTIONS("/register", websocket_cluster.OptionHandler)
@@ -35,4 +36,5 @@ func Router(g *echo.Group) {
 	g.OPTIONS("/acceptAddFriend", websocket_cluster.OptionHandler)
 	g.OPTIONS("/joinGroup", websocket_cluster.OptionHandler)
 	g.OPTIONS("/acceptJoinGroup", websocket_cluster.OptionHandler)
+	g.OPTIONS("/getSystemMsg", websocket_cluster.OptionHandler)
 }

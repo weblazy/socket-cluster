@@ -459,3 +459,55 @@ func CreateGroup(uid int64, groupName, avatar string) (map[string]interface{}, e
 	}
 	return map[string]interface{}{}, nil
 }
+
+// @desc 获取系统消息
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func GetSystemMsg(uid int64, lastSystemMsgId int64, sort string) (map[string]interface{}, error) {
+	list := make([]map[string]interface{}, 0)
+	resp := map[string]interface{}{
+		"list":  list,
+		"pages": 1,
+	}
+
+	var msgList []*model.SystemMsg
+	var err error
+	where := "notify_uid = ?"
+	args := []interface{}{uid}
+	if sort == "desc" {
+		if lastSystemMsgId > 0 {
+			where += " and id < ?"
+			args = append(args, lastSystemMsgId)
+		}
+		msgList, err = model.SystemMsgModel().GetListPage(50, "id desc", where, args...)
+	} else {
+		//只拉取最新50条
+		msgList, err = model.SystemMsgModel().GetListPage(50, "id asc", "notify_uid = ? and id <= (select max(id) from "+model.SystemMsgModel().TableName()+" where notify_uid = ?) and id > ?", uid, uid, lastSystemMsgId)
+	}
+
+	if err != nil {
+		logx.Info(err)
+		return nil, err
+	}
+	if len(msgList) == 0 {
+		return resp, nil
+	}
+
+	for k1 := range msgList {
+		v1 := msgList[k1]
+		obj := map[string]interface{}{
+			"id":       v1.Id,
+			"username": v1.Username,
+			"avatar":   v1.Avatar,
+			"send_uid": v1.SendUid,
+			// "group_id":   groupId,
+			"msg_type":   v1.MsgType,
+			"content":    v1.Content,
+			"created_at": v1.CreatedAt.Unix(),
+		}
+		list = append(list, obj)
+	}
+	resp["list"] = list
+	return resp, nil
+}

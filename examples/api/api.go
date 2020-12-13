@@ -202,3 +202,21 @@ func CreateGroup(c echo.Context) error {
 	}
 	return response.RetCustomize(0, resp, "")
 }
+
+// @desc 获取系统消息
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func GetSystemMsg(c echo.Context) error {
+	uid, req, response, err := ParseParams(c)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	lastSystemMsgId := req.Get("last_system_msg_id").Int()
+	sort := req.Get("sort").String()
+	resp, err := domain.GetSystemMsg(uid, lastSystemMsgId, sort)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	return response.RetCustomize(0, resp, "")
+}

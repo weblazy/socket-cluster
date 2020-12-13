@@ -27,6 +27,7 @@ func CreateTable() {
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='分组表' AUTO_INCREMENT=1;").AutoMigrate(&Group{})
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='用户分组绑定表' AUTO_INCREMENT=1;").AutoMigrate(&UserGroup{})
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='验证码表' AUTO_INCREMENT=1;").AutoMigrate(&SmsCode{})
+	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='系统消息表' AUTO_INCREMENT=1;").AutoMigrate(&SystemMsg{})
 
 	for i := 0; i < int(TableNum); i++ {
 		index := strconv.FormatInt(int64(i), 10)
