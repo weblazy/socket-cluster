@@ -10,7 +10,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cast"
-	"github.com/sunmi-OS/gocore/log"
 	"github.com/weblazy/core/consistenthash/unsafehash"
 	"github.com/weblazy/core/mapreduce"
 	"github.com/weblazy/core/syncx"
@@ -192,7 +191,7 @@ func (this *Node) clientHandler(c echo.Context) error {
 		return err
 	}
 	this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
-	log.Sugar.Info(connect.RemoteAddr().String(), connect.LocalAddr().String(), "start")
+	// log.Sugar.Info(connect.RemoteAddr().String(), connect.LocalAddr().String(), "start")
 	for {
 		_, msg, err := connect.ReadMessage()
 		if err != nil {

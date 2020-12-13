@@ -64,6 +64,9 @@ func InitAuth(conf *AuthConf) error {
 }
 
 func (auth *Auth) Validate(token string) (string, error) {
+	if token == "" {
+		return "", TokenNotFound
+	}
 	tokenRaw, err := aes.NewAes([]byte("lgqgg56oi9a9tefl")).Decrypt(token)
 	arr := strings.Split(tokenRaw, ":")
 	if len(arr) < 2 {

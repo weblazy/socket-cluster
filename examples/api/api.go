@@ -115,6 +115,76 @@ func Search(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
+// @desc 添加好友
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func AddFriend(c echo.Context) error {
+	uid, req, response, err := ParseParams(c)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	friendUid := req.Get("friend_uid").Int()
+	remark := req.Get("remark").String()
+	resp, err := domain.AddFriend(uid, friendUid, remark)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	return response.RetCustomize(0, resp, "")
+}
+
+// @desc 回复添加好友
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func AcceptAddFriend(c echo.Context) error {
+	uid, req, response, err := ParseParams(c)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	friendUid := req.Get("friend_uid").Int()
+	resp, err := domain.AcceptAddFriend(uid, friendUid)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	return response.RetCustomize(0, resp, "")
+}
+
+// @desc 添加好友
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func JoinGroup(c echo.Context) error {
+	uid, req, response, err := ParseParams(c)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	groupId := req.Get("group_id").Int()
+	remark := req.Get("remark").String()
+	resp, err := domain.JoinGroup(uid, groupId, remark)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	return response.RetCustomize(0, resp, "")
+}
+
+// @desc 同意加群
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func AcceptJoinGroup(c echo.Context) error {
+	uid, req, response, err := ParseParams(c)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	friendUid := req.Get("friend_uid").Int()
+	resp, err := domain.AcceptJoinGroup(uid, friendUid)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	return response.RetCustomize(0, resp, "")
+}
+
 // @desc 建群
 // @auth liuguoqiang 2020-11-20
 // @param

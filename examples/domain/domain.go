@@ -285,16 +285,16 @@ func Search(keyword, searchType string) (map[string]interface{}, error) {
 // @auth liuguoqiang 2020-11-20
 // @param
 // @return
-func AddFriends(uid, friendUid int64, msgContent string) (map[string]interface{}, error) {
+func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, error) {
 	_, err := model.FriendHandler.GetOne("uid = ? and friend_uid = ?", uid, friendUid)
 	if err == nil {
 		return nil, fmt.Errorf("您和对方已经是好友")
 	}
 	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
-		"msg_type": "add_friends",
+		"msg_type": "add_friend",
 		"data": map[string]interface{}{
-			"friend_uid":  friendUid,
-			"msg_content": msgContent,
+			"friend_uid": friendUid,
+			"remark":     remark,
 		},
 	})
 	if err != nil {
@@ -307,7 +307,81 @@ func AddFriends(uid, friendUid int64, msgContent string) (map[string]interface{}
 // @auth liuguoqiang 2020-11-20
 // @param
 // @return
-func AcceptAddFriends(uid, friendUid int64) (map[string]interface{}, error) {
+func AcceptAddFriend(uid, friendUid int64) (map[string]interface{}, error) {
+	_, err := model.FriendHandler.GetOne("uid = ? and friend_uid = ?", uid, friendUid)
+	if err == nil {
+		return nil, fmt.Errorf("您和对方已经是好友")
+	}
+	err = model.FriendHandler.Insert(nil, &model.Friend{
+		Uid:       uid,
+		FriendUid: friendUid,
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = model.FriendHandler.Insert(nil, &model.Friend{
+		Uid:       friendUid,
+		FriendUid: uid,
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
+		"msg_type": "accept_friend",
+		"data": map[string]interface{}{
+			"uid":        uid,
+			"friend_uid": friendUid,
+		},
+	})
+	if err != nil {
+		logx.Info(err)
+	}
+	err = common.NodeINfo1.SendToClientId(cast.ToString(friendUid), map[string]interface{}{
+		"msg_type": "accept_friend",
+		"data": map[string]interface{}{
+			"uid":        friendUid,
+			"friend_uid": uid,
+		},
+	})
+	if err != nil {
+		logx.Info(err)
+	}
+	return nil, nil
+}
+
+// @desc 加入群聊
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func JoinGroup(uid, groupId int64, remark string) (map[string]interface{}, error) {
+	_, err := model.UserGroupHandler.GetOne("uid = ? and grouop_id = ?", uid, groupId)
+	if err == nil {
+		return nil, fmt.Errorf("已加入群里")
+	}
+	err = model.UserGroupHandler.Insert(nil, &model.UserGroup{
+		Uid:     uid,
+		GroupId: groupId,
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
+		"msg_type": "join_group",
+		"data": map[string]interface{}{
+			"group_id": groupId,
+		},
+	})
+	if err != nil {
+		logx.Info(err)
+	}
+	return nil, nil
+}
+
+// @desc 接受加群
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func AcceptJoinGroup(uid, friendUid int64) (map[string]interface{}, error) {
 	_, err := model.FriendHandler.GetOne("uid = ? and friend_uid = ?", uid, friendUid)
 	if err == nil {
 		return nil, fmt.Errorf("您和对方已经是好友")
@@ -341,34 +415,6 @@ func AcceptAddFriends(uid, friendUid int64) (map[string]interface{}, error) {
 		"data": map[string]interface{}{
 			"uid":        friendUid,
 			"friend_uid": uid,
-		},
-	})
-	if err != nil {
-		logx.Info(err)
-	}
-	return nil, nil
-}
-
-// @desc 加入群聊
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
-func JoinGroup(uid, groupId int64, msgContent string) (map[string]interface{}, error) {
-	_, err := model.UserGroupHandler.GetOne("uid = ? and grouop_id = ?", uid, groupId)
-	if err == nil {
-		return nil, fmt.Errorf("已加入群里")
-	}
-	err = model.UserGroupHandler.Insert(nil, &model.UserGroup{
-		Uid:     uid,
-		GroupId: groupId,
-	})
-	if err != nil {
-		return nil, err
-	}
-	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
-		"msg_type": "join_group",
-		"data": map[string]interface{}{
-			"group_id": groupId,
 		},
 	})
 	if err != nil {
