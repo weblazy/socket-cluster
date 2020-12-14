@@ -137,13 +137,14 @@ func AddFriend(c echo.Context) error {
 // @auth liuguoqiang 2020-11-20
 // @param
 // @return
-func AcceptAddFriend(c echo.Context) error {
+func ManageAddFriend(c echo.Context) error {
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
 	}
-	friendUid := req.Get("friend_uid").Int()
-	resp, err := domain.AcceptAddFriend(uid, friendUid)
+	id := req.Get("id").Int()
+	status := req.Get("status").Int()
+	resp, err := domain.ManageAddFriend(uid, id, status)
 	if err != nil {
 		return response.RetError(err, -1)
 	}
@@ -168,17 +169,17 @@ func JoinGroup(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 同意加群
+// @desc 管理加群
 // @auth liuguoqiang 2020-11-20
 // @param
 // @return
-func AcceptJoinGroup(c echo.Context) error {
+func ManageJoinGroup(c echo.Context) error {
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
 	}
 	friendUid := req.Get("friend_uid").Int()
-	resp, err := domain.AcceptJoinGroup(uid, friendUid)
+	resp, err := domain.ManageJoinGroup(uid, friendUid)
 	if err != nil {
 		return response.RetError(err, -1)
 	}

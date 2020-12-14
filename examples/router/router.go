@@ -20,9 +20,9 @@ func Router(g *echo.Group) {
 	g.POST("/search", api.Search)
 	g.POST("/createGroup", api.CreateGroup)
 	g.POST("/addFriend", api.AddFriend)
-	g.POST("/acceptAddFriend", api.AcceptAddFriend)
+	g.POST("/manageAddFriend", api.ManageAddFriend)
 	g.POST("/joinGroup", api.JoinGroup)
-	g.POST("/acceptJoinGroup", api.AcceptJoinGroup)
+	g.POST("/manageJoinGroup", api.ManageJoinGroup)
 	g.POST("/getSystemMsg", api.GetSystemMsg)
 
 	g.OPTIONS("/login", websocket_cluster.OptionHandler)
@@ -33,8 +33,8 @@ func Router(g *echo.Group) {
 	g.OPTIONS("/search", websocket_cluster.OptionHandler)
 	g.OPTIONS("/createGroup", websocket_cluster.OptionHandler)
 	g.OPTIONS("/addFriend", websocket_cluster.OptionHandler)
-	g.OPTIONS("/acceptAddFriend", websocket_cluster.OptionHandler)
+	g.OPTIONS("/manageAddFriend", websocket_cluster.OptionHandler)
 	g.OPTIONS("/joinGroup", websocket_cluster.OptionHandler)
-	g.OPTIONS("/acceptJoinGroup", websocket_cluster.OptionHandler)
+	g.OPTIONS("/manageJoinGroup", websocket_cluster.OptionHandler)
 	g.OPTIONS("/getSystemMsg", websocket_cluster.OptionHandler)
 }
