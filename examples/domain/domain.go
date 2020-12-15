@@ -356,7 +356,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("请求不存在")
 	}
-	_, err = model.FriendModel().GetOne("uid = ? and friend_uid = ?", uid, systemMsg.SendUid)
+	_, err = model.FriendModel().GetOne("uid = ? and friend_uid = ?", systemMsg.ReceiveUid, systemMsg.SendUid)
 	if err == nil {
 		return nil, fmt.Errorf("您和对方已经是好友")
 	}
@@ -590,6 +590,7 @@ func GetSystemMsg(uid int64, lastSystemMsgId int64, sort string) (map[string]int
 			"msg_type":   v1.MsgType,
 			"content":    v1.Content,
 			"created_at": v1.CreatedAt.Unix(),
+			"status":     v1.Status,
 		}
 		list = append(list, obj)
 	}
