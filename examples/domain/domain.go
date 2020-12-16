@@ -419,7 +419,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 // @param
 // @return
 func JoinGroup(uid, groupId int64, remark string) (map[string]interface{}, error) {
-	_, err := model.UserGroupHandler.GetOne("uid = ? and grouop_id = ?", uid, groupId)
+	_, err := model.UserGroupHandler.GetOne("uid = ? and group_id = ?", uid, groupId)
 	if err == nil {
 		return nil, fmt.Errorf("已加入群里")
 	}
@@ -427,7 +427,7 @@ func JoinGroup(uid, groupId int64, remark string) (map[string]interface{}, error
 	if err != nil {
 		return nil, fmt.Errorf("用户不存在")
 	}
-	group, err := model.GroupHandler.GetOne("group_id = ?", groupId)
+	group, err := model.GroupHandler.GetOne("id = ?", groupId)
 	if err != nil {
 		return nil, fmt.Errorf("群不存在")
 	}
