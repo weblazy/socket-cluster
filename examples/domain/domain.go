@@ -324,21 +324,10 @@ func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, err
 	if err != nil {
 		return nil, err
 	}
-	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
-		"msg_type": "add_friend",
-		"data": map[string]interface{}{
-			"friend_uid": friendUid,
-			"remark":     remark,
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
 	err = common.NodeINfo1.SendToClientId(cast.ToString(friendUid), map[string]interface{}{
 		"msg_type": "add_friend",
 		"data": map[string]interface{}{
 			"friend_uid": uid,
-			"remark":     remark,
 		},
 	})
 	if err != nil {
@@ -352,7 +341,7 @@ func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, err
 // @param
 // @return
 func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
-	systemMsg, err := model.SystemMsgModel().GetOne("id = ? and notify_uid = ?", id, uid)
+	systemMsg, err := model.SystemMsgModel().GetOne("id = ? and notify_uid = ? and receive_uid = ?", id, uid, uid)
 	if err != nil {
 		return nil, fmt.Errorf("请求不存在")
 	}
@@ -362,7 +351,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 	}
 	if status == 1 {
 		err = model.FriendHandler.Insert(nil, &model.Friend{
-			Uid:       uid,
+			Uid:       cast.ToInt64(systemMsg.ReceiveUid),
 			FriendUid: cast.ToInt64(systemMsg.SendUid),
 		})
 		if err != nil {
@@ -370,7 +359,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 		}
 		err = model.FriendHandler.Insert(nil, &model.Friend{
 			Uid:       cast.ToInt64(systemMsg.SendUid),
-			FriendUid: uid,
+			FriendUid: cast.ToInt64(systemMsg.ReceiveUid),
 		})
 		if err != nil {
 			return nil, err
@@ -384,7 +373,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 		}
 	}
 	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
-		"msg_type": "accept_friend",
+		"msg_type": "manage_add_friend",
 		"data": map[string]interface{}{
 			"uid":        uid,
 			"friend_uid": systemMsg.SendUid,
@@ -394,7 +383,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 		logx.Info(err)
 	}
 	err = common.NodeINfo1.SendToClientId(cast.ToString(systemMsg.SendUid), map[string]interface{}{
-		"msg_type": "accept_friend",
+		"msg_type": "manage_add_friend",
 		"data": map[string]interface{}{
 			"uid":        uid,
 			"friend_uid": uid,
