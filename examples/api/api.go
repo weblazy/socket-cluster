@@ -178,8 +178,9 @@ func ManageJoinGroup(c echo.Context) error {
 	if err != nil {
 		return response.RetError(err, -1)
 	}
-	friendUid := req.Get("friend_uid").Int()
-	resp, err := domain.ManageJoinGroup(uid, friendUid)
+	id := req.Get("id").Int()
+	status := req.Get("status").Int()
+	resp, err := domain.ManageJoinGroup(uid, id, status)
 	if err != nil {
 		return response.RetError(err, -1)
 	}

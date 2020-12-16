@@ -166,11 +166,11 @@ func ChatInit(uid int64) (map[string]interface{}, error) {
 	friend["groupname"] = "默认分组"
 	friend["id"] = 1
 	friendList := make([]map[string]interface{}, 0)
-	friends, err := model.FriendHandler.GetList("uid = ? or friend_uid = ?", uid, uid)
+	friends, err := model.FriendHandler.GetList("uid = ?", uid)
 	uids := make([]int64, 0)
 	for k1 := range friends {
 		v1 := friends[k1]
-		uids = append(uids, v1.Uid)
+		uids = append(uids, v1.FriendUid)
 	}
 	if len(uids) > 0 {
 		userList, err := model.AuthHandler.GetList("id in(?)", uids)
@@ -298,11 +298,11 @@ func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, err
 	if err != nil {
 		return nil, fmt.Errorf("用户不存在")
 	}
-	_, err = model.SystemMsgModel().GetOne("receive_uid = ? and send_uid = ? and status = 0", friendUid, uid)
+	_, err = model.SystemMsgModel().GetOne("receive_uid = ? and send_uid = ? and status = 0 and msg_type = 1", friendUid, uid)
 	if err == nil {
 		err = model.SystemMsgModel().Update(nil, map[string]interface{}{
 			"content": remark,
-		}, "receive_uid = ? and send_uid = ? and status = 0", friendUid, uid)
+		}, "receive_uid = ? and send_uid = ? and status = 0  and msg_type = 1", friendUid, uid)
 		if err != nil {
 			return nil, fmt.Errorf("操作失败")
 		}
@@ -354,7 +354,7 @@ func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, err
 // @param
 // @return
 func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
-	systemMsg, err := model.SystemMsgModel().GetOne("id = ? and notify_uid = ? and receive_uid = ?", id, uid, uid)
+	systemMsg, err := model.SystemMsgModel().GetOne("id = ? and notify_uid = ? and receive_uid = ? and msg_type = 1", id, uid, uid)
 	if err != nil {
 		return nil, fmt.Errorf("请求不存在")
 	}
@@ -431,33 +431,47 @@ func JoinGroup(uid, groupId int64, remark string) (map[string]interface{}, error
 	if err != nil {
 		return nil, fmt.Errorf("群不存在")
 	}
+	_, err = model.SystemMsgModel().GetOne("group_id = ? and send_uid = ? and status = 0 and msg_type = 2", groupId, uid)
+	if err == nil {
+		err = model.SystemMsgModel().Update(nil, map[string]interface{}{
+			"content": remark,
+		}, "group_id = ? and send_uid = ? and status = 0  and msg_type = 2", groupId, uid)
+		if err != nil {
+			return nil, fmt.Errorf("操作失败")
+		}
+		return nil, nil
+	}
+	systemMsg := model.SystemMsg{
+		NotifyUid: cast.ToString(uid),
+		Username:  group.GroupName,
+		Avatar:    group.Avatar,
+		GroupId:   cast.ToString(groupId),
+		MsgType:   "2",
+		SendUid:   cast.ToString(uid),
+		Content:   remark,
+		Status:    0,
+	}
+	err = model.SystemMsgModel().Insert(nil, &systemMsg)
+	if err != nil {
+		return nil, err
+	}
+
 	err = model.SystemMsgModel().Insert(nil, &model.SystemMsg{
-		NotifyUid:  cast.ToString(group.Uid),
-		Username:   user.Username,
-		Avatar:     user.Avatar,
-		ReceiveUid: cast.ToString(uid),
-		MsgType:    "1",
-		SendUid:    cast.ToString(uid),
-		Content:    remark,
-		Status:     0,
+		NotifyUid: cast.ToString(group.Uid),
+		SendMsgId: systemMsg.Id,
+		Username:  user.Username,
+		Avatar:    user.Avatar,
+		GroupId:   cast.ToString(groupId),
+		MsgType:   "2",
+		SendUid:   cast.ToString(uid),
+		Content:   remark,
+		Status:    0,
 	})
 	if err != nil {
 		return nil, err
 	}
-	err = model.SystemMsgModel().Insert(nil, &model.SystemMsg{
-		NotifyUid:  cast.ToString(uid),
-		Username:   group.GroupName,
-		Avatar:     group.Avatar,
-		ReceiveUid: cast.ToString(uid),
-		MsgType:    "1",
-		SendUid:    cast.ToString(uid),
-		Content:    remark,
-		Status:     0,
-	})
-	if err != nil {
-		return nil, err
-	}
-	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
+
+	err = common.NodeINfo1.SendToClientId(cast.ToString(group.Uid), map[string]interface{}{
 		"msg_type": "join_group",
 		"data": map[string]interface{}{
 			"group_id": groupId,
@@ -473,45 +487,57 @@ func JoinGroup(uid, groupId int64, remark string) (map[string]interface{}, error
 // @auth liuguoqiang 2020-11-20
 // @param
 // @return
-func ManageJoinGroup(uid, friendUid int64) (map[string]interface{}, error) {
-	_, err := model.FriendHandler.GetOne("uid = ? and friend_uid = ?", uid, friendUid)
-	if err == nil {
-		return nil, fmt.Errorf("您和对方已经是好友")
+func ManageJoinGroup(uid, id, status int64) (map[string]interface{}, error) {
+	systemMsg, err := model.SystemMsgModel().GetOne("id = ? and notify_uid = ? and msg_type = 2", id, uid)
+	if err != nil {
+		return nil, fmt.Errorf("请求不存在")
 	}
-	err = model.FriendHandler.Insert(nil, &model.Friend{
-		Uid:       uid,
-		FriendUid: friendUid,
-	})
+	_, err = model.UserGroupHandler.GetOne("uid = ? and group_id = ?", cast.ToInt64(systemMsg.SendUid), cast.ToInt64(systemMsg.GroupId))
+	if err == nil {
+		return nil, fmt.Errorf("您已经加入该群")
+	}
+	if status == 1 {
+		err = model.UserGroupHandler.Insert(nil, &model.UserGroup{
+			Uid:     cast.ToInt64(systemMsg.SendUid),
+			GroupId: cast.ToInt64(systemMsg.GroupId),
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	err = model.SystemMsgModel().Update(nil, map[string]interface{}{
+		"status": status,
+	}, "id = ? and notify_uid = ?", id, uid)
 	if err != nil {
 		return nil, err
 	}
-	err = model.FriendHandler.Insert(nil, &model.Friend{
-		Uid:       friendUid,
-		FriendUid: uid,
-	})
+	err = model.SystemMsgModel().Update(nil, map[string]interface{}{
+		"status": status,
+	}, "id = ?", systemMsg.SendMsgId)
 	if err != nil {
 		return nil, err
 	}
 	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
-		"msg_type": "accept_friends",
+		"msg_type": "manage_add_group",
 		"data": map[string]interface{}{
 			"uid":        uid,
-			"friend_uid": friendUid,
+			"friend_uid": systemMsg.SendUid,
 		},
 	})
 	if err != nil {
 		logx.Info(err)
 	}
-	err = common.NodeINfo1.SendToClientId(cast.ToString(friendUid), map[string]interface{}{
-		"msg_type": "accept_friends",
+	err = common.NodeINfo1.SendToClientId(cast.ToString(systemMsg.SendUid), map[string]interface{}{
+		"msg_type": "manage_add_group",
 		"data": map[string]interface{}{
-			"uid":        friendUid,
+			"uid":        uid,
 			"friend_uid": uid,
 		},
 	})
 	if err != nil {
 		logx.Info(err)
 	}
+
 	return nil, nil
 }
 
