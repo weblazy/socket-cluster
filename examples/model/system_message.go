@@ -10,6 +10,7 @@ var SystemMsgHandler = SystemMsg{}
 
 type SystemMsg struct {
 	Id         int64      `json:"id" gorm:"primary_key;type:INT AUTO_INCREMENT"`
+	SendMsgId  int64      `json:"send_msg_id" gorm:"column:send_msg_id;NOT NULL;default:0;comment:'发送者消息id';type:INT"`
 	NotifyUid  string     `json:"notify_uid" gorm:"column:notify_uid;NOT NULL;default:'';comment:'通知者id';type:VARCHAR(255)"`
 	Username   string     `json:"username" gorm:"column:username;NOT NULL;default:'';comment:'用户名';type:VARCHAR(255)"`
 	Avatar     string     `json:"avatar" gorm:"column:avatar;NOT NULL;default:'';comment:'头像';type:VARCHAR(255)"`

@@ -298,8 +298,33 @@ func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, err
 	if err != nil {
 		return nil, fmt.Errorf("用户不存在")
 	}
+	_, err = model.SystemMsgModel().GetOne("receive_uid = ? and send_uid = ? and status = 0", friendUid, uid)
+	if err == nil {
+		err = model.SystemMsgModel().Update(nil, map[string]interface{}{
+			"content": remark,
+		}, "receive_uid = ? and send_uid = ? and status = 0", friendUid, uid)
+		if err != nil {
+			return nil, fmt.Errorf("操作失败")
+		}
+		return nil, nil
+	}
+	sendMsg := model.SystemMsg{
+		NotifyUid:  cast.ToString(uid),
+		Username:   friend.Username,
+		Avatar:     friend.Avatar,
+		ReceiveUid: cast.ToString(friendUid),
+		MsgType:    "1",
+		SendUid:    cast.ToString(uid),
+		Content:    remark,
+		Status:     0,
+	}
+	err = model.SystemMsgModel().Insert(nil, &sendMsg)
+	if err != nil {
+		return nil, err
+	}
 	err = model.SystemMsgModel().Insert(nil, &model.SystemMsg{
 		NotifyUid:  cast.ToString(friendUid),
+		SendMsgId:  sendMsg.Id,
 		Username:   user.Username,
 		Avatar:     user.Avatar,
 		ReceiveUid: cast.ToString(friendUid),
@@ -311,19 +336,7 @@ func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, err
 	if err != nil {
 		return nil, err
 	}
-	err = model.SystemMsgModel().Insert(nil, &model.SystemMsg{
-		NotifyUid:  cast.ToString(uid),
-		Username:   friend.Username,
-		Avatar:     friend.Avatar,
-		ReceiveUid: cast.ToString(friendUid),
-		MsgType:    "1",
-		SendUid:    cast.ToString(uid),
-		Content:    remark,
-		Status:     0,
-	})
-	if err != nil {
-		return nil, err
-	}
+
 	err = common.NodeINfo1.SendToClientId(cast.ToString(friendUid), map[string]interface{}{
 		"msg_type": "add_friend",
 		"data": map[string]interface{}{
@@ -364,13 +377,18 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if status == 2 {
-		err = model.SystemMsgModel().Update(nil, map[string]interface{}{
-			"status": status,
-		}, "id = ? and notify_uid = ?", id, uid)
-		if err != nil {
-			return nil, err
-		}
+	}
+	err = model.SystemMsgModel().Update(nil, map[string]interface{}{
+		"status": status,
+	}, "id = ? and notify_uid = ?", id, uid)
+	if err != nil {
+		return nil, err
+	}
+	err = model.SystemMsgModel().Update(nil, map[string]interface{}{
+		"status": status,
+	}, "id = ?", systemMsg.SendMsgId)
+	if err != nil {
+		return nil, err
 	}
 	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
 		"msg_type": "manage_add_friend",
