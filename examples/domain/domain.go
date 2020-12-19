@@ -349,6 +349,21 @@ func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, err
 	return nil, nil
 }
 
+// @desc 管理系统消息
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func ManageSystemMsg(uid, id, status int64) (map[string]interface{}, error) {
+	systemMsg, err := model.SystemMsgModel().GetOne("id = ? and notify_uid = ?", id, uid)
+	if err != nil {
+		return nil, fmt.Errorf("请求不存在")
+	}
+	if cast.ToInt64(systemMsg.GroupId) > 0 {
+		return ManageJoinGroup(uid, id, status)
+	}
+	return ManageAddFriend(uid, id, status)
+}
+
 // @desc 管理加好友申请
 // @auth liuguoqiang 2020-11-20
 // @param
@@ -380,7 +395,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 	}
 	err = model.SystemMsgModel().Update(nil, map[string]interface{}{
 		"status": status,
-	}, "id = ? and notify_uid = ?", id, uid)
+	}, "send_msg_id = ?", systemMsg.SendMsgId)
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +522,7 @@ func ManageJoinGroup(uid, id, status int64) (map[string]interface{}, error) {
 	}
 	err = model.SystemMsgModel().Update(nil, map[string]interface{}{
 		"status": status,
-	}, "id = ? and notify_uid = ?", id, uid)
+	}, "send_msg_id = ?", systemMsg.SendMsgId)
 	if err != nil {
 		return nil, err
 	}

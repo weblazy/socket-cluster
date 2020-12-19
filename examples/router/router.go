@@ -20,6 +20,7 @@ func Router(g *echo.Group) {
 	g.POST("/search", api.Search)
 	g.POST("/createGroup", api.CreateGroup)
 	g.POST("/addFriend", api.AddFriend)
+	g.POST("/manageSystemMsg", api.ManageSystemMsg)
 	g.POST("/manageAddFriend", api.ManageAddFriend)
 	g.POST("/joinGroup", api.JoinGroup)
 	g.POST("/manageJoinGroup", api.ManageJoinGroup)
