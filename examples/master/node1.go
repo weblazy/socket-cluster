@@ -28,11 +28,15 @@ func Node1() {
 	var err error
 	redisHost := os.Getenv("REDIS_HOST")
 	redisPassword := os.Getenv("REDIS_PASSWORD")
-	auth.InitAuth(auth.NewAuthConf([]*auth.RedisNode{
+
+	err = auth.InitAuth(auth.NewAuthConf([]*auth.RedisNode{
 		&auth.RedisNode{
-			RedisConf: redis.RedisConf{Host: redisHost, Pass: redisPassword},
+			RedisConf: redis.RedisConf{Host: redisHost, Pass: redisPassword, Type: "node"},
 			Position:  1,
 		}}))
+	if err != nil {
+		panic(err)
+	}
 	common.NodeINfo1, err = websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host1, *path1, *path1, websocket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
 		RedisConf: websocket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,
