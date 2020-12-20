@@ -3,6 +3,7 @@ package master
 import (
 	"encoding/json"
 	"flag"
+	"os"
 	"strconv"
 	websocket_cluster "websocket-cluster"
 
@@ -23,8 +24,10 @@ var (
 
 func Node2() {
 	flag.Parse()
-	common.NodeINfo2, _ = websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host2, *path2, *path2, websocket_cluster.RedisConf{Addr: "127.0.0.1:6379", DB: 0}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
-		RedisConf: websocket_cluster.RedisConf{Addr: "127.0.0.1:6379", DB: 0},
+	redisHost := os.Getenv("REDIS_HOST")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+	common.NodeINfo2, _ = websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host2, *path2, *path2, websocket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
+		RedisConf: websocket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,
 	}}, onMsgNode2).WithPort(*port2).WithRouter(router.Router))
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"hash/fnv"
+	"os"
 	"strconv"
 	websocket_cluster "websocket-cluster"
 	"websocket-cluster/examples/auth"
@@ -25,13 +26,15 @@ var (
 func Node1() {
 	flag.Parse()
 	var err error
+	redisHost := os.Getenv("REDIS_HOST")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
 	auth.InitAuth(auth.NewAuthConf([]*auth.RedisNode{
 		&auth.RedisNode{
-			RedisConf: redis.RedisConf{Host: "127.0.0.1:6379", Type: "node"},
+			RedisConf: redis.RedisConf{Host: redisHost, Pass: redisPassword},
 			Position:  1,
 		}}))
-	common.NodeINfo1, err = websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host1, *path1, *path1, websocket_cluster.RedisConf{Addr: "127.0.0.1:6379", DB: 0}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
-		RedisConf: websocket_cluster.RedisConf{Addr: "127.0.0.1:6379", DB: 0},
+	common.NodeINfo1, err = websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host1, *path1, *path1, websocket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
+		RedisConf: websocket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,
 	}}, onMsg).WithPort(*port1).WithRouter(router.Router))
 	if err != nil {
