@@ -34,6 +34,7 @@ func Router(g *echo.Group) {
 	g.OPTIONS("/search", websocket_cluster.OptionHandler)
 	g.OPTIONS("/createGroup", websocket_cluster.OptionHandler)
 	g.OPTIONS("/addFriend", websocket_cluster.OptionHandler)
+	g.OPTIONS("/manageSystemMsg", websocket_cluster.OptionHandler)
 	g.OPTIONS("/manageAddFriend", websocket_cluster.OptionHandler)
 	g.OPTIONS("/joinGroup", websocket_cluster.OptionHandler)
 	g.OPTIONS("/manageJoinGroup", websocket_cluster.OptionHandler)
