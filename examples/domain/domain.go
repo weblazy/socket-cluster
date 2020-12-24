@@ -306,47 +306,69 @@ func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, err
 		if err != nil {
 			return nil, fmt.Errorf("操作失败")
 		}
-		return nil, nil
-	}
-	sendMsg := model.SystemMsg{
-		NotifyUid:  cast.ToString(uid),
-		Username:   friend.Username,
-		Avatar:     friend.Avatar,
-		ReceiveUid: cast.ToString(friendUid),
-		MsgType:    "1",
-		SendUid:    cast.ToString(uid),
-		Content:    remark,
-		Status:     0,
-	}
-	err = model.SystemMsgModel().Insert(nil, &sendMsg)
-	if err != nil {
-		return nil, err
-	}
-	err = model.SystemMsgModel().Insert(nil, &model.SystemMsg{
-		NotifyUid:  cast.ToString(friendUid),
-		SendMsgId:  sendMsg.Id,
-		Username:   user.Username,
-		Avatar:     user.Avatar,
-		ReceiveUid: cast.ToString(friendUid),
-		MsgType:    "1",
-		SendUid:    cast.ToString(uid),
-		Content:    remark,
-		Status:     0,
-	})
-	if err != nil {
-		return nil, err
+	} else {
+		systemMsg := model.SystemMsg{
+			NotifyUid:  cast.ToString(uid),
+			Username:   friend.Username,
+			Avatar:     friend.Avatar,
+			ReceiveUid: cast.ToString(friendUid),
+			MsgType:    "1",
+			SendUid:    cast.ToString(uid),
+			Content:    remark,
+			Status:     0,
+		}
+		err = model.SystemMsgModel().Insert(nil, &systemMsg)
+		if err != nil {
+			return nil, err
+		}
+		err = model.SystemMsgModel().Insert(nil, &model.SystemMsg{
+			NotifyUid:  cast.ToString(friendUid),
+			SendMsgId:  systemMsg.Id,
+			Username:   user.Username,
+			Avatar:     user.Avatar,
+			ReceiveUid: cast.ToString(friendUid),
+			MsgType:    "1",
+			SendUid:    cast.ToString(uid),
+			Content:    remark,
+			Status:     0,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
+	count, err := model.SystemMsgModel().Count("notify_uid = ? and id > ? and send_uid <> ?", friend.Id, friend.MaxReadSystemMsgId, friend.Id)
+	if err != nil {
+		return nil, err
+	}
+	if count == 0 {
+		return nil, nil
+	}
 	err = common.NodeINfo1.SendToClientId(cast.ToString(friendUid), map[string]interface{}{
 		"msg_type": "add_friend",
 		"data": map[string]interface{}{
-			"friend_uid": uid,
+			"count": count,
 		},
 	})
 	if err != nil {
 		return nil, err
 	}
 	return nil, nil
+}
+
+// @desc 管理系统消息
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func ManageSystemMsg(uid, id, status int64) (map[string]interface{}, error) {
+	systemMsg, err := model.SystemMsgModel().GetOne("id = ? and notify_uid = ?", id, uid)
+	if err != nil {
+		return nil, fmt.Errorf("请求不存在")
+	}
+	if cast.ToInt64(systemMsg.GroupId) > 0 {
+		return ManageJoinGroup(uid, id, status)
+	}
+	return ManageAddFriend(uid, id, status)
 }
 
 // @desc 管理加好友申请
@@ -380,7 +402,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 	}
 	err = model.SystemMsgModel().Update(nil, map[string]interface{}{
 		"status": status,
-	}, "id = ? and notify_uid = ?", id, uid)
+	}, "send_msg_id = ?", systemMsg.SendMsgId)
 	if err != nil {
 		return nil, err
 	}
@@ -390,21 +412,38 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	if status == 2 {
+		return nil, nil
+	}
+	sendUser, err := model.AuthModel().GetOne("id = ?", systemMsg.SendUid)
+	if err != nil {
+		return nil, err
+	}
 	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
 		"msg_type": "manage_add_friend",
 		"data": map[string]interface{}{
-			"uid":        uid,
-			"friend_uid": systemMsg.SendUid,
+			"id":       sendUser.Id,
+			"group_id": 1,
+			"avatar":   sendUser.Avatar,
+			"username": sendUser.Username,
+			"sign":     sendUser.Username + "的个性签名",
 		},
 	})
 	if err != nil {
 		logx.Info(err)
 	}
+	receiveUser, err := model.AuthModel().GetOne("id = ?", uid)
+	if err != nil {
+		return nil, err
+	}
 	err = common.NodeINfo1.SendToClientId(cast.ToString(systemMsg.SendUid), map[string]interface{}{
 		"msg_type": "manage_add_friend",
 		"data": map[string]interface{}{
-			"uid":        uid,
-			"friend_uid": uid,
+			"id":       receiveUser.Id,
+			"group_id": 1,
+			"avatar":   receiveUser.Avatar,
+			"username": receiveUser.Username,
+			"sign":     receiveUser.Username + "的个性签名",
 		},
 	})
 	if err != nil {
@@ -439,42 +478,55 @@ func JoinGroup(uid, groupId int64, remark string) (map[string]interface{}, error
 		if err != nil {
 			return nil, fmt.Errorf("操作失败")
 		}
+
+	} else {
+		systemMsg := model.SystemMsg{
+			NotifyUid: cast.ToString(uid),
+			Username:  group.GroupName,
+			Avatar:    group.Avatar,
+			GroupId:   cast.ToString(groupId),
+			GroupName: group.GroupName,
+			MsgType:   "2",
+			SendUid:   cast.ToString(uid),
+			Content:   remark,
+			Status:    0,
+		}
+		err = model.SystemMsgModel().Insert(nil, &systemMsg)
+		if err != nil {
+			return nil, err
+		}
+		err = model.SystemMsgModel().Insert(nil, &model.SystemMsg{
+			NotifyUid: cast.ToString(group.Uid),
+			SendMsgId: systemMsg.Id,
+			Username:  user.Username,
+			Avatar:    user.Avatar,
+			GroupId:   cast.ToString(groupId),
+			GroupName: group.GroupName,
+			MsgType:   "2",
+			SendUid:   cast.ToString(uid),
+			Content:   remark,
+			Status:    0,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	notifyUser, err := model.AuthModel().GetOne("id = ?", group.Uid)
+	if err != nil {
+		return nil, err
+	}
+	count, err := model.SystemMsgModel().Count("notify_uid = ? and id > ? and send_uid <> ?", group.Uid, notifyUser.MaxReadSystemMsgId, group.Uid)
+	if err != nil {
+		return nil, err
+	}
+	if count == 0 {
 		return nil, nil
 	}
-	systemMsg := model.SystemMsg{
-		NotifyUid: cast.ToString(uid),
-		Username:  group.GroupName,
-		Avatar:    group.Avatar,
-		GroupId:   cast.ToString(groupId),
-		MsgType:   "2",
-		SendUid:   cast.ToString(uid),
-		Content:   remark,
-		Status:    0,
-	}
-	err = model.SystemMsgModel().Insert(nil, &systemMsg)
-	if err != nil {
-		return nil, err
-	}
-
-	err = model.SystemMsgModel().Insert(nil, &model.SystemMsg{
-		NotifyUid: cast.ToString(group.Uid),
-		SendMsgId: systemMsg.Id,
-		Username:  user.Username,
-		Avatar:    user.Avatar,
-		GroupId:   cast.ToString(groupId),
-		MsgType:   "2",
-		SendUid:   cast.ToString(uid),
-		Content:   remark,
-		Status:    0,
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	err = common.NodeINfo1.SendToClientId(cast.ToString(group.Uid), map[string]interface{}{
 		"msg_type": "join_group",
 		"data": map[string]interface{}{
-			"group_id": groupId,
+			"count": count,
 		},
 	})
 	if err != nil {
@@ -507,7 +559,7 @@ func ManageJoinGroup(uid, id, status int64) (map[string]interface{}, error) {
 	}
 	err = model.SystemMsgModel().Update(nil, map[string]interface{}{
 		"status": status,
-	}, "id = ? and notify_uid = ?", id, uid)
+	}, "send_msg_id = ?", systemMsg.SendMsgId)
 	if err != nil {
 		return nil, err
 	}
@@ -517,21 +569,19 @@ func ManageJoinGroup(uid, id, status int64) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
-		"msg_type": "manage_add_group",
-		"data": map[string]interface{}{
-			"uid":        uid,
-			"friend_uid": systemMsg.SendUid,
-		},
-	})
+	if status == 2 {
+		return nil, nil
+	}
+	group, err := model.GroupModel().GetOne("id = ?", systemMsg.GroupId)
 	if err != nil {
-		logx.Info(err)
+		return nil, err
 	}
 	err = common.NodeINfo1.SendToClientId(cast.ToString(systemMsg.SendUid), map[string]interface{}{
-		"msg_type": "manage_add_group",
+		"msg_type": "manage_join_group",
 		"data": map[string]interface{}{
-			"uid":        uid,
-			"friend_uid": uid,
+			"id":         group.Id,
+			"group_name": group.GroupName + fmt.Sprintf("(ID:%d)", group.Id+9527),
+			"avatar":     group.Avatar,
 		},
 	})
 	if err != nil {
@@ -568,7 +618,7 @@ func CreateGroup(uid int64, groupName, avatar string) (map[string]interface{}, e
 		"data": map[string]interface{}{
 			"type":      "group",
 			"avatar":    group.Avatar,
-			"groupname": group.GroupName,
+			"groupname": group.GroupName + fmt.Sprintf("(ID:%d)", group.Id+9527),
 			"id":        group.Id,
 		},
 	})
@@ -611,21 +661,44 @@ func GetSystemMsg(uid int64, lastSystemMsgId int64, sort string) (map[string]int
 	if len(msgList) == 0 {
 		return resp, nil
 	}
-
+	var maxMsgId int64
 	for k1 := range msgList {
 		v1 := msgList[k1]
 		obj := map[string]interface{}{
-			"id":       v1.Id,
-			"username": v1.Username,
-			"avatar":   v1.Avatar,
-			"send_uid": v1.SendUid,
-			// "group_id":   groupId,
+			"id":         v1.Id,
+			"username":   v1.Username,
+			"avatar":     v1.Avatar,
+			"send_uid":   v1.SendUid,
+			"group_id":   v1.GroupId,
+			"group_name": v1.GroupName + fmt.Sprintf("(ID:%d)", v1.Id+9527),
 			"msg_type":   v1.MsgType,
 			"content":    v1.Content,
 			"created_at": v1.CreatedAt.Unix(),
 			"status":     v1.Status,
 		}
+		if maxMsgId < v1.Id && cast.ToInt64(v1.SendUid) != uid {
+			maxMsgId = v1.Id
+		}
 		list = append(list, obj)
+	}
+	num, err := model.AuthModel().Update(nil, map[string]interface{}{
+		"max_read_system_msg_id": maxMsgId,
+	}, "id = ? and max_read_system_msg_id < ?", uid, maxMsgId)
+	if err != nil {
+		logx.Info(err)
+		return nil, err
+	}
+	if num > 0 {
+		err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
+			"msg_type": "read_system_msg",
+			"data": map[string]interface{}{
+				"system_msg_id": maxMsgId,
+				"count":         0,
+			},
+		})
+		if err != nil {
+			logx.Info(err)
+		}
 	}
 	resp["list"] = list
 	return resp, nil

@@ -133,6 +133,24 @@ func AddFriend(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
+// @desc 管理系统消息
+// @auth liuguoqiang 2020-11-20
+// @param
+// @return
+func ManageSystemMsg(c echo.Context) error {
+	uid, req, response, err := ParseParams(c)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	id := req.Get("id").Int()
+	status := req.Get("status").Int()
+	resp, err := domain.ManageSystemMsg(uid, id, status)
+	if err != nil {
+		return response.RetError(err, -1)
+	}
+	return response.RetCustomize(0, resp, "")
+}
+
 // @desc 回复添加好友
 // @auth liuguoqiang 2020-11-20
 // @param
