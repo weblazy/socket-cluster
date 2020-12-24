@@ -178,7 +178,15 @@ func (this *Node) transHandler(c echo.Context) error {
 func (this *Node) clientHandler(c echo.Context) error {
 	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	defer func() {
-		this.clientConns.Delete(connect.RemoteAddr().String())
+		key := connect.RemoteAddr().String()
+		v1, ok := this.clientConns.Load(key)
+		if ok {
+			clientId := v1.(*Session).ClientId
+			if clientId != "" {
+				this.clientIdSessions.Delete(clientId, key)
+			}
+		}
+		this.clientConns.Delete(key)
 		if connect != nil {
 			connect.Close()
 		}
