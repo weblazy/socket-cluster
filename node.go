@@ -459,13 +459,95 @@ func (this *Node) UpdateNodeList(nodeMap map[string]string) error {
 	return nil
 }
 
-func (this *Node) SendToClientIds(clientIdList []string, req map[string]interface{}) error {
+func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}) error {
 	if req == nil {
 		return fmt.Errorf("message is nil")
 	}
-	clientIds := this.ClientIdsOnline(clientIdList)
+	localClientIds := make([]string, 0)
+	nodes := make(map[string]*NodeMap)
+	for k1 := range clientIds {
+		redisNode := this.userHashRing.Get(clientIds[k1])
+		if _, ok := nodes[redisNode.Id]; ok {
+			nodes[redisNode.Id].clientIds = append(nodes[redisNode.Id].clientIds, clientIds[k1])
+		} else {
+			nodes[redisNode.Id] = &NodeMap{
+				node:      redisNode,
+				clientIds: []string{clientIds[k1]},
+			}
+		}
+	}
+	otherMap := make(map[string][]string)
+	for k1 := range nodes {
+		nodeMap := nodes[k1]
+		pipe := nodeMap.node.Extra.(*redis.Client).Pipeline()
+		for k2 := range nodeMap.clientIds {
+			pipe.HGetAll(context.Background(), nodeMap.clientIds[k2])
+		}
+		cmders, err := pipe.Exec(context.Background())
+		if err != nil {
+			logx.Info(err)
+		}
+
+		for k3, cmder := range cmders {
+			cmd := cmder.(*redis.StringStringMapCmd)
+			strMap, err := cmd.Result()
+			if err != nil {
+				logx.Info(err)
+			} else {
+				for k4 := range strMap {
+					if k4 == this.transAddress {
+						localClientIds = append(localClientIds, nodeMap.clientIds[k3])
+					} else {
+						if _, ok := otherMap[k4]; ok {
+							otherMap[k4] = append(otherMap[k4], nodeMap.clientIds[k3])
+						} else {
+							otherMap[k4] = []string{nodeMap.clientIds[k3]}
+						}
+					}
+				}
+
+			}
+		}
+	}
 	mapreduce.MapVoid(func(source chan<- interface{}) {
-		for k1 := range clientIds {
+		for k1 := range otherMap {
+			source <- &BatchData{ip: k1, clientIds: otherMap[k1]}
+		}
+	}, func(item interface{}) {
+		batchData := item.(*BatchData)
+		newMap := make(map[string]interface{})
+		for k, v := range req {
+			newMap[k] = v
+		}
+		newMap["receive_client_ids"] = batchData.clientIds
+		reqByte, err := json.Marshal(newMap)
+		if err != nil {
+			logx.Info(err)
+		}
+		if this.nodeConf.Host == "" {
+			err = this.bizRedis.Publish(context.Background(), batchData.ip, string(reqByte)).Err()
+			if err != nil {
+				logx.Info(err)
+			}
+		} else {
+			connect, ok := this.transConns.Load(batchData.ip)
+			if ok {
+				conn, ok := connect.(*Connection)
+				if !ok {
+					return
+				}
+				err = conn.WriteJSON(newMap)
+				if err != nil {
+					logx.Info(err)
+				}
+			} else {
+				logx.Info(fmt.Printf("trans:%#v不在线", batchData.ip))
+				return
+			}
+		}
+	})
+	mapreduce.MapVoid(func(source chan<- interface{}) {
+		for k1 := range localClientIds {
 			this.clientIdSessions.RangeNextMap(clientIds[k1], func(key1 string, key2 string, value interface{}) bool {
 				source <- value
 				return true
@@ -474,12 +556,12 @@ func (this *Node) SendToClientIds(clientIdList []string, req map[string]interfac
 	}, func(item interface{}) {
 		fmt.Printf("%#v\n", item)
 		se := item.(*Session)
-		newMap := make(map[string]interface{})
-		for k, v := range req {
-			newMap[k] = v
-		}
-		newMap["receive_client_id"] = se.ClientId
-		err := se.Conn.WriteJSON(newMap)
+		// newMap := make(map[string]interface{})
+		// for k, v := range req {
+		// 	newMap[k] = v
+		// }
+		// newMap["receive_client_id"] = se.ClientId
+		err := se.Conn.WriteJSON(req)
 		if err != nil {
 			logx.Info(err)
 		}
@@ -489,6 +571,11 @@ func (this *Node) SendToClientIds(clientIdList []string, req map[string]interfac
 
 type NodeMap struct {
 	node      *unsafehash.Node
+	clientIds []string
+}
+
+type BatchData struct {
+	ip        string
 	clientIds []string
 }
 
