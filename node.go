@@ -344,15 +344,28 @@ func (this *Node) OnTransMsg(conn *Connection, msg []byte) {
 			logx.Info(err)
 		}
 	default:
-		receiveClientId := data["receive_client_id"].(string)
-		delete(data, "receive_client_id")
-		this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
-			err = se.(*Session).Conn.WriteJSON(data)
-			if err != nil {
-				logx.Info(err)
+		if receiveClientId, ok := data["receive_client_id"].(string); ok {
+			delete(data, "receive_client_id")
+			this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
+				err = se.(*Session).Conn.WriteJSON(data)
+				if err != nil {
+					logx.Info(err)
+				}
+				return true
+			})
+		} else if receiveClientIds, ok := data["receive_client_ids"].([]string); ok {
+			delete(data, "receive_client_ids")
+			for k1 := range receiveClientIds {
+				receiveClientId := receiveClientIds[k1]
+				this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
+					err = se.(*Session).Conn.WriteJSON(data)
+					if err != nil {
+						logx.Info(err)
+					}
+					return true
+				})
 			}
-			return true
-		})
+		}
 	}
 }
 
@@ -482,6 +495,7 @@ type NodeMap struct {
 // Get online users in the group
 func (this *Node) ClientIdsOnline(clientIds []string) []string {
 	// now := time.Now().Unix()
+	onlineClientIds := make([]string, 0)
 	nodes := make(map[string]*NodeMap)
 	for k1 := range clientIds {
 		redisNode := this.userHashRing.Get(clientIds[k1])
@@ -494,19 +508,27 @@ func (this *Node) ClientIdsOnline(clientIds []string) []string {
 			}
 		}
 	}
-	// for k1 := range nodes {
-	// 	nodeMap := nodes[k1]
-	// 	arr, err := nodeMap.node.Extra.(*redis.Redis).Mget(nodeMap.clientIds...)
-
-	// }
-
-	// for key, value := range arr {
-	// 	old, _ := strconv.ParseInt(value, 10, 64)
-	// 	if now < old {
-	// 		clientIds = append(clientIds, key)
-	// 	}
-	// }
-	return clientIds
+	for k1 := range nodes {
+		nodeMap := nodes[k1]
+		pipe := nodeMap.node.Extra.(*redis.Client).Pipeline()
+		for k2 := range nodeMap.clientIds {
+			pipe.HGetAll(context.Background(), nodeMap.clientIds[k2])
+		}
+		cmders, err := pipe.Exec(context.Background())
+		if err != nil {
+			logx.Info(err)
+		}
+		for k3, cmder := range cmders {
+			cmd := cmder.(*redis.StringStringMapCmd)
+			err := cmd.Err()
+			if err != nil {
+				logx.Info(err)
+			} else {
+				onlineClientIds = append(onlineClientIds, nodeMap.clientIds[k3])
+			}
+		}
+	}
+	return onlineClientIds
 }
 
 //Get online users in the group
@@ -672,16 +694,28 @@ func (this *Node) Consumer() {
 				logx.Info(err)
 				return
 			}
-			receiveClientId := data["receive_client_id"].(string)
-			delete(data, "receive_client_id")
-			this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
-				err = se.(*Session).Conn.WriteJSON(data)
-				if err != nil {
-					logx.Info(err)
+			if receiveClientId, ok := data["receive_client_id"].(string); ok {
+				delete(data, "receive_client_id")
+				this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
+					err = se.(*Session).Conn.WriteJSON(data)
+					if err != nil {
+						logx.Info(err)
+					}
+					return true
+				})
+			} else if receiveClientIds, ok := data["receive_client_ids"].([]string); ok {
+				delete(data, "receive_client_ids")
+				for k1 := range receiveClientIds {
+					receiveClientId := receiveClientIds[k1]
+					this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
+						err = se.(*Session).Conn.WriteJSON(data)
+						if err != nil {
+							logx.Info(err)
+						}
+						return true
+					})
 				}
-				return true
-			})
+			}
 		}
-
 	}()
 }
