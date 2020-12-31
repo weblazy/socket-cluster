@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/cast"
 	"github.com/weblazy/core/consistenthash/unsafehash"
 	"github.com/weblazy/core/mapreduce"
-	"github.com/weblazy/core/syncx"
-	"github.com/weblazy/core/timingwheel"
 	"github.com/weblazy/easy/utils/logx"
+	"github.com/weblazy/easy/utils/syncx"
+	"github.com/weblazy/easy/utils/timingwheel"
 	"github.com/weblazy/goutil"
 
 	"time"
@@ -622,7 +622,7 @@ func (this *Node) ClientIdsOnline(clientIds []string) []string {
 func (this *Node) GetSessionsByClientIds(clientIds []string) []*Session {
 	sessions := make([]*Session, 0)
 	for k1 := range clientIds {
-		this.clientIdSessions.RangeShard(clientIds[k1], func(key2 string, value interface{}) bool {
+		this.clientIdSessions.RangeNextMap(clientIds[k1], func(key1, key2 string, value interface{}) bool {
 			sessions = append(sessions, value.(*Session))
 			return true
 		})
