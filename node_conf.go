@@ -51,26 +51,31 @@ func NewNodeConf(host, clientPath, transPath string, redisConf RedisConf, redisN
 
 }
 
+// set the password for transport node
 func (conf *NodeConf) WithPassword(password string) *NodeConf {
 	conf.Password = password
 	return conf
 }
 
+// set the port for websocket
 func (conf *NodeConf) WithPort(port int64) *NodeConf {
 	conf.Port = port
 	return conf
 }
 
+// set the heartbeat interval
 func (conf *NodeConf) WithClientInterval(pingInterval int64) *NodeConf {
 	conf.ClientPingInterval = pingInterval
 	return conf
 }
 
+// set the router
 func (conf *NodeConf) WithRouter(router func(g *echo.Group)) *NodeConf {
 	conf.router = router
 	return conf
 }
 
+//set the echo
 func (conf *NodeConf) WithEcho(echoObj *echo.Echo) *NodeConf {
 	conf.echoObj = echoObj
 	return conf

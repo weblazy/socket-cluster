@@ -26,6 +26,7 @@ func Router(g *echo.Group) {
 	g.POST("/manageJoinGroup", api.ManageJoinGroup)
 	g.POST("/getSystemMsg", api.GetSystemMsg)
 
+	//解决跨域问题
 	g.OPTIONS("/login", websocket_cluster.OptionHandler)
 	g.OPTIONS("/register", websocket_cluster.OptionHandler)
 	g.OPTIONS("/sendSmsCode", websocket_cluster.OptionHandler)

@@ -18,6 +18,33 @@ import (
 
 type ()
 
+var avatarArr = []string{
+	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BN1Nj6vbYCqZz6kc31w%5Bnmt%5BT9zNEJxNUFyOz9zOkh4OUB5PW9yNUR1NEV2OEhxNECgNj6rdHd%3E.jpg?t=?w=300&h=551&webp=1",
+	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BN%7BPT6vbYCqZz6kc31w%5Bnmt%5BT9zNEJxNUFxOz9%7BNkF5NUl2O29zNkF3NkByPUFxPESgNj6rdHd%3E.jpg?t=?w=300&h=551&webp=1",
+	"https://ss0.bdstatic.com/70cFvHSh_Q1YnxGkpoWK1HF6hhy/it/u=152637735,3689600067&fm=26&gp=0.jpg",
+	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BN%7BPT6vbYCqZz6kc31w%5Bnmt%5BT9zNEJxNUFxOz9%7BNkF5NUl2O29xNEFxOUNyPEVxPEmgNj6rdHd%3E.jpg?t=?w=300&h=551&webp=1",
+	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BN1Nz6vbYCqZz6kc31w%5Bnmt%5BT9zNEJxNUFyPD9zOUhxO%7BZ5Nm9yOUJ3OUlxNkVxN%7BmgNj6rdHd%3E.jpg?t=?w=300&h=551&webp=1",
+	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BNyOT6vbYCqZz6kc31w%5Bnmt%5BT9zNEJxNEhyND9zNUR4NUB%7BN29xPEF3N%7BN2OUJxPEOgNj6rdHd%3E.jpg?t=?w=300&h=551&webp=1",
+	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BF1OT6vbYCqZz6kc31w%5Bnmt%5BT9zNEF4NUFxNj9zNEV5OUJxNm9zNEB3NUhzNUF5N%7BSgNj6rdHd%3E.jpg?t=?w=300&h=551&webp=1",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOERweYCtc3GlM%7BJxNUhxOEJyM%7BZ6Z%7BKz%5BHV1fXN2eEOlNkixez6rdHd%3E.jpg?t=?w=300&h=551&webp=1",
+	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BN1OD6vbYCqZz6kc31wdHmkM%7BJxNkByNUJzM%7BNyOkJyOEJzY%7BBxNUdyO%7BV1OUBxNG91Mnqx%5Bx%3E%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BN1OD6vbYCqZz6kc31wdHmkM%7BJxNkByNUJzM%7BNyOkJyOEJzY%7BBxNUNzOUF3O%7BBxNG91Mnqx%5Bx%3E%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BN1OD6vbYCqZz6kc31wdHmkM%7BJxNkByNUJzM%7BNyOkJyOEJzY%7BBxNEh2PEV6OEBxNG91Mnqx%5Bx%3E%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BN1ND6vbYCqZz6kc31wdHmkM%7BJxNkByNUFyM%7BJ3PEd2NEh6Y%7BF4OEVzO%7BBxNUBxNG91Mnqx%5Bx%3E%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkBzNEF3M%7BSpcU%5BpOnKzb%7BejeH%5Bsd%7Be4PD6rdHd%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkBzNEF3M36scXOi%5Bol4%5Bkh%7BdEO1N311bT6rdHd%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkBzNEF3M4isdH12fIq%7BdEirfU%5B6fUK7cj6rdHd%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkBzNEF3M3ixcXKifkOrfoikfYB5d4evZz6rdHd%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkBzNEF3M4N%7BOH54bXJ4eIR1N4ek%5BUW7fD6rdHd%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkBzNEF3M3J2bISuO4pzOop1Z4epeIq4bT6rdHd%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkBzNEF3M4SjeHV2fnG4bol5NnGr%5BHK7fj6rdHd%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkBzNEF3M4qz%5BnK%7BfH67OoixbESjO4m7fD6rdHd%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkBzNEF3M%7B%5BrbYd%7BOYq5OUisbkR%7BN3mxNz6rdHd%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkByPUFzNklw%5BE%5Bme3KnZn12Nkiscn2xO4OpMnqx%5Bx%3E%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkByPUFzNkRwfYN2bYOlb3mmNnu6dn2sbXt5Mnqx%5Bx%3E%3E.jpg?w=300&h=",
+	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkBzNEF3M3%5BvOYe4N4B%7BbIin%5BIOiZUK%7BNz6rdHd%3E.jpg?w=300&h=",
+}
+
 // @desc 登录
 // @auth liuguoqiang 2020-11-20
 // @param
@@ -60,10 +87,14 @@ func Register(username, password, confirmPassword, email, code string) (map[stri
 	if smsCode.Status != 1 || smsCode.CreatedAt.Unix()+3600 < time.Now().Unix() {
 		return nil, fmt.Errorf("该验证码已失效")
 	}
+
+	rand.Seed(time.Now().UnixNano())
+	index := rand.Intn(len(avatarArr))
+
 	user := model.Auth{
 		Username: username,
 		Email:    email,
-		Avatar:   "http://images.cookmami.com/data_upload_activity_bg_5a30a152a163a.png",
+		Avatar:   avatarArr[index],
 		Password: password,
 	}
 

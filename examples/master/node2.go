@@ -65,13 +65,10 @@ func onMsgNode2(context *websocket_cluster.Context) {
 			logx.Info(err)
 			return
 		}
+		logx.Info("err")
 		list, err := model.UserGroupModel().GetList("uid = ?", obj.Id)
 		if err != nil {
 			logx.Info(err)
-			return
-		}
-
-		if len(list) == 0 {
 			return
 		}
 		userGroupList := make([]map[string]interface{}, 0)

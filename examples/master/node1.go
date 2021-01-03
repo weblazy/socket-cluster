@@ -90,10 +90,6 @@ func onMsg(context *websocket_cluster.Context) {
 			logx.Info(err)
 			return
 		}
-
-		if len(list) == 0 {
-			return
-		}
 		userGroupList := make([]map[string]interface{}, 0)
 		for k1 := range list {
 			v1 := list[k1]
