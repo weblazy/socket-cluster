@@ -465,6 +465,7 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 	}
 	localClientIds := make([]string, 0)
 	nodes := make(map[string]*NodeMap)
+	rangeTime := cast.ToString(time.Now().Unix() - this.clientTimeout)
 	for k1 := range clientIds {
 		redisNode := this.userHashRing.Get(clientIds[k1])
 		if _, ok := nodes[redisNode.Id]; ok {
@@ -477,31 +478,31 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 		}
 	}
 	otherMap := make(map[string][]string)
+
 	for k1 := range nodes {
 		nodeMap := nodes[k1]
 		pipe := nodeMap.node.Extra.(*redis.Client).Pipeline()
 		for k2 := range nodeMap.clientIds {
-			pipe.HGetAll(context.Background(), nodeMap.clientIds[k2])
+			pipe.ZRangeByScore(context.Background(), clientPrefix+nodeMap.clientIds[k2], &redis.ZRangeBy{Min: rangeTime, Max: "+inf"}).Result()
 		}
 		cmders, err := pipe.Exec(context.Background())
 		if err != nil {
-			logx.Info(err)
+			logx.Info(cmders, err)
 		}
-
 		for k3, cmder := range cmders {
-			cmd := cmder.(*redis.StringStringMapCmd)
+			cmd := cmder.(*redis.StringSliceCmd)
 			strMap, err := cmd.Result()
 			if err != nil {
 				logx.Info(err)
 			} else {
 				for k4 := range strMap {
-					if k4 == this.transAddress {
+					if strMap[k4] == this.transAddress {
 						localClientIds = append(localClientIds, nodeMap.clientIds[k3])
 					} else {
-						if _, ok := otherMap[k4]; ok {
-							otherMap[k4] = append(otherMap[k4], nodeMap.clientIds[k3])
+						if _, ok := otherMap[strMap[k4]]; ok {
+							otherMap[strMap[k4]] = append(otherMap[strMap[k4]], nodeMap.clientIds[k3])
 						} else {
-							otherMap[k4] = []string{nodeMap.clientIds[k3]}
+							otherMap[strMap[k4]] = []string{nodeMap.clientIds[k3]}
 						}
 					}
 				}
@@ -595,18 +596,19 @@ func (this *Node) ClientIdsOnline(clientIds []string) []string {
 			}
 		}
 	}
+	rangeTime := cast.ToString(time.Now().Unix() - this.clientTimeout)
 	for k1 := range nodes {
 		nodeMap := nodes[k1]
 		pipe := nodeMap.node.Extra.(*redis.Client).Pipeline()
 		for k2 := range nodeMap.clientIds {
-			pipe.HGetAll(context.Background(), nodeMap.clientIds[k2])
+			pipe.ZRangeByScore(context.Background(), clientPrefix+nodeMap.clientIds[k2], &redis.ZRangeBy{Min: rangeTime, Max: "+inf"}).Result()
 		}
 		cmders, err := pipe.Exec(context.Background())
 		if err != nil {
 			logx.Info(err)
 		}
 		for k3, cmder := range cmders {
-			cmd := cmder.(*redis.StringStringMapCmd)
+			cmd := cmder.(*redis.StringSliceCmd)
 			err := cmd.Err()
 			if err != nil {
 				logx.Info(err)
