@@ -12,7 +12,7 @@ import (
 const TableNum int64 = 10
 
 func Orm() *gorm.DB {
-	db := g.GetORM("dbDefault")
+	db := g.GetORM("DbLocal")
 	if utils.GetRunTime() == "local" {
 		db = db.Debug()
 	}
