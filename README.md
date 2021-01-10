@@ -50,7 +50,7 @@ func onMsg(context *websocket_cluster.Context) {
 ```
 
 # 架构框图
-![方案1](pic/websocket.png)
+![scheme 1](pic/websocket.png)
 
 # 联系我们
 - 技术支持/合作/咨询请联系作者QQ: 2276282419
