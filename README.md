@@ -19,6 +19,7 @@ export DBDEFAULT_DBHOST="127.0.0.1"
 export DBDEFAULT_DBNAME="websocket_cluster"
 export DBDEFAULT_DBUSER="root"
 export DBDEFAULT_DBPASSWD=""
+
 #redis
 export REDIS_HOST="127.0.0.1:6379"
 export REDIS_PASSWORD=""
@@ -32,6 +33,22 @@ export EMAIL_PASSWORD=""
 cd websocket-cluster/examples/main/
 ./main
 ```
+# 框架使用方式
+```
+	common.NodeINfo1, err = websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host1, *path1, *path1, websocket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
+		RedisConf: websocket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
+		Position:  1,
+	}}, onMsg).WithPort(*port1).WithRouter(router.Router))
+	if err != nil {
+		logx.Info(err)
+	}
+```
+```
+func onMsg(context *websocket_cluster.Context) {
+	logx.Info("msg:", string(context.Msg))
+}
+```
+
 # 联系我们
 - 技术支持/合作/咨询请联系作者QQ: 2276282419
 - 作者邮箱: 2276282419@qq.com

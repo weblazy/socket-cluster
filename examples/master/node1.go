@@ -28,7 +28,6 @@ func Node1() {
 	var err error
 	redisHost := os.Getenv("REDIS_HOST")
 	redisPassword := os.Getenv("REDIS_PASSWORD")
-
 	err = auth.InitAuth(auth.NewAuthConf([]*auth.RedisNode{
 		&auth.RedisNode{
 			RedisConf: redis.RedisConf{Host: redisHost, Pass: redisPassword, Type: "node"},
