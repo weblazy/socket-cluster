@@ -1,10 +1,10 @@
 # websocket-cluster
 即时通讯框架
 > 欢迎感兴趣的小伙伴一同开发,解决日常消息推送,长连接需求。
-- 后端: websocket-cluster(golang)
-- 前端: websocket-cluster-web
+- 后端(golang): https://github.com/weblazy/websocket-cluster
+- 前端: https://github.com/weblazy/websocket-cluster-web
 - 文档: websocket-cluster-doc
-- 后端好用的工具库: https://github.com/weblazy/easy(golang)
+- 后端好用的工具库(golang): https://github.com/weblazy/easy
 # 框架库依赖
 - redis
 
