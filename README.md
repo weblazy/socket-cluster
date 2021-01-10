@@ -1,5 +1,5 @@
 # websocket-cluster
-即时通讯框架
+即时通讯框架,如果大家觉得好用,右上角帮忙点个star吧。(^_^)
 > 欢迎感兴趣的小伙伴一同开发,解决日常消息推送,长连接需求。
 - 后端(golang): https://github.com/weblazy/websocket-cluster
 - 前端: https://github.com/weblazy/websocket-cluster-web
