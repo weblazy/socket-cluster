@@ -1,6 +1,6 @@
 package websocket_cluster
 
-//按照接口中的某个字段排序
+//sort
 type Sort struct {
 	Obj  interface{} `json:"obj"`
 	Sort int64       `json:"sort"`

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
@@ -16,30 +17,29 @@ import (
 	"github.com/weblazy/easy/utils/syncx"
 	"github.com/weblazy/easy/utils/timingwheel"
 	"github.com/weblazy/goutil"
-
-	"time"
 )
 
 type (
-	RedisNode struct {
-		RedisConf RedisConf
-		Position  uint32
-	}
 
+	// Node communication node
 	Node struct {
+		// bizRedis redis client store node info
 		bizRedis         *redis.Client
 		nodeConf         *NodeConf
 		clientIdSessions *syncx.ConcurrentDoubleMap
-		clientConns      goutil.Map               //External communication value is *session
-		clientAddress    string                   //External communication address
-		transAddress     string                   //Internal communication address
-		timer            *timingwheel.TimingWheel //Timingwheel
-		startTime        time.Time
-		userHashRing     *unsafehash.Consistent //UsHash ring storage userId
-		groupHashRing    *unsafehash.Consistent //UsHash ring storage groupId
-		transConns       goutil.Map
-		nodeTimeout      int64
-		clientTimeout    int64
+		// key: socket address
+		// value: *session
+		clientConns   goutil.Map
+		clientAddress string                   // External communication address
+		transAddress  string                   // Internal communication address
+		timer         *timingwheel.TimingWheel // Timingwheel
+		startTime     time.Time                // start time
+		userHashRing  *unsafehash.Consistent   // userHashRing ring storage userId
+		// key: node transAddress
+		// value: *session
+		transConns    goutil.Map //
+		nodeTimeout   int64      // node heartbeat timeout time
+		clientTimeout int64      // client heartbeat timeout time
 	}
 )
 
@@ -76,15 +76,7 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 		})
 		userHashRing.Add(unsafehash.NewNode(value.RedisConf.Addr, value.Position, rdsObj))
 	}
-	groupHashRing := unsafehash.NewConsistent(cfg.RedisMaxCount)
-	for _, value := range cfg.RedisNodeList {
-		rdsObj := redis.NewClient(&redis.Options{
-			Addr:     value.RedisConf.Addr,
-			Password: value.RedisConf.Password,
-			DB:       int(value.RedisConf.DB),
-		})
-		groupHashRing.Add(unsafehash.NewNode(value.RedisConf.Addr, value.Position, rdsObj))
-	}
+
 	this := &Node{
 		nodeConf:         cfg,
 		bizRedis:         rds,
@@ -92,7 +84,6 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 		startTime:        time.Now(),
 		timer:            timer,
 		userHashRing:     userHashRing,
-		groupHashRing:    groupHashRing,
 		clientConns:      goutil.AtomicMap(),
 		transConns:       goutil.AtomicMap(),
 		nodeTimeout:      cfg.NodePingInterval * 3,
@@ -145,6 +136,7 @@ func originMiddlewareFunc(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+// transHandler deal node connection
 func (this *Node) transHandler(c echo.Context) error {
 	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	defer func() {
@@ -175,6 +167,7 @@ func (this *Node) transHandler(c echo.Context) error {
 	return nil
 }
 
+// clientHandler deal client connection
 func (this *Node) clientHandler(c echo.Context) error {
 	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	defer func() {
@@ -215,7 +208,7 @@ func (this *Node) clientHandler(c echo.Context) error {
 	return nil
 }
 
-//Heartbeat
+// SendPing send node Heartbeat
 func (this *Node) SendPing() {
 	go func() {
 		for {
@@ -289,7 +282,7 @@ func (this *Node) SendPing() {
 // 	}()
 // }
 
-//Determine if a clientId is online
+// IsOnline determine if a clientId is online
 func (this *Node) IsOnline(clientId string) bool {
 	now := time.Now().Unix()
 	redisNode := this.userHashRing.Get(clientId)
@@ -304,6 +297,7 @@ func (this *Node) IsOnline(clientId string) bool {
 	return false
 }
 
+// OnClientMsg deal client message
 func (this *Node) OnClientMsg(conn *Connection, msg []byte) {
 	sid := conn.Conn.RemoteAddr().String()
 	session, ok := this.clientConns.Load(sid)
@@ -314,6 +308,7 @@ func (this *Node) OnClientMsg(conn *Connection, msg []byte) {
 	this.nodeConf.onMsg(&Context{Conn: conn, Msg: msg, ClientId: clientId})
 }
 
+// OnClientPing receive client heartbeat
 func (this *Node) OnClientPing(clientId string) error {
 	redisNode := this.userHashRing.Get(clientId)
 	now := time.Now().Unix()
@@ -325,6 +320,7 @@ func (this *Node) OnClientPing(clientId string) error {
 	return err
 }
 
+// OnTransMsg handle internal communication node messages
 func (this *Node) OnTransMsg(conn *Connection, msg []byte) {
 	data := make(map[string]interface{})
 	err := json.Unmarshal(msg, &data)
@@ -369,7 +365,7 @@ func (this *Node) OnTransMsg(conn *Connection, msg []byte) {
 	}
 }
 
-// Auth the node
+// AuthTrans Auth the node
 func (this *Node) AuthTrans(conn *Connection, args map[string]interface{}) error {
 	sid := args["trans_address"].(string)
 	this.timer.RemoveTimer(conn.Conn.RemoteAddr().String()) //Cancel timeingwheel task
@@ -382,7 +378,7 @@ func (this *Node) AuthTrans(conn *Connection, args map[string]interface{}) error
 	return nil
 }
 
-// Auth the node
+// AuthClient Auth the node
 func (this *Node) AuthClient(conn *Connection, clientId string) error {
 	sid := conn.Conn.RemoteAddr().String()
 	this.timer.RemoveTimer(sid) //Cancel timeingwheel task
@@ -391,7 +387,7 @@ func (this *Node) AuthClient(conn *Connection, clientId string) error {
 	return this.BindClientId(clientId, session)
 }
 
-// Add handles addition request
+// UpdateNodeList Add handles addition request
 func (this *Node) UpdateNodeList(nodeMap map[string]string) error {
 	now := time.Now().Unix()
 	for key := range nodeMap {
@@ -406,8 +402,9 @@ func (this *Node) UpdateNodeList(nodeMap map[string]string) error {
 		if cast.ToInt64(nodeInfo["timestamp"])+this.nodeTimeout < now {
 			continue
 		}
-		//数字小的连接数字大的
+
 		transAddress := key
+		// 数字小的连接数字大的
 		// if strings.Compare(this.transAddress, transAddress) >= 0 {
 		// 	continue
 		// }
@@ -459,6 +456,7 @@ func (this *Node) UpdateNodeList(nodeMap map[string]string) error {
 	return nil
 }
 
+// SendToClientIds Sending messages to multiple clients
 func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}) error {
 	if req == nil {
 		return fmt.Errorf("message is nil")
@@ -580,7 +578,7 @@ type BatchData struct {
 	clientIds []string
 }
 
-// Get online users in the group
+// ClientIdsOnline Get online users in the group
 func (this *Node) ClientIdsOnline(clientIds []string) []string {
 	// now := time.Now().Unix()
 	onlineClientIds := make([]string, 0)
@@ -620,7 +618,7 @@ func (this *Node) ClientIdsOnline(clientIds []string) []string {
 	return onlineClientIds
 }
 
-//Get online users in the group
+//GetSessionsByClientIds Get online users in the group
 func (this *Node) GetSessionsByClientIds(clientIds []string) []*Session {
 	sessions := make([]*Session, 0)
 	for k1 := range clientIds {
@@ -632,7 +630,7 @@ func (this *Node) GetSessionsByClientIds(clientIds []string) []*Session {
 	return sessions
 }
 
-//Get bind clientId with session
+//BindClientId bind clientId with session
 func (this *Node) BindClientId(clientId string, se *Session) error {
 	sid := se.Conn.Conn.RemoteAddr().String()
 	this.clientIdSessions.StoreWithPlugin(clientId, sid, se, func() {
@@ -658,7 +656,7 @@ func (this *Node) BindClientId(clientId string, se *Session) error {
 	return nil
 }
 
-//Send message to a clientId
+//SendToClientId Send message to a clientId
 func (this *Node) SendToClientId(clientId string, req map[string]interface{}) error {
 	if req == nil {
 		return fmt.Errorf("message is nil")
@@ -720,7 +718,7 @@ func (this *Node) SendToClientId(clientId string, req map[string]interface{}) er
 	return nil
 }
 
-//Send message to a clientId
+//SendToTrans Send message to a clientId
 func (this *Node) SendToTrans(clientId string, path string, req interface{}) error {
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		this.transConns.Range(func(key, value interface{}) bool {
@@ -743,6 +741,7 @@ func (this *Node) SendToTrans(clientId string, path string, req interface{}) err
 	return nil
 }
 
+// GetHosts get node address
 func (this *Node) GetHosts() ([]string, error) {
 	list := make([]string, 0)
 	now := time.Now().Unix()
@@ -772,11 +771,11 @@ func (this *Node) GetHosts() ([]string, error) {
 	return list, nil
 }
 
+// Consumer pull message from other node
 func (this *Node) Consumer() {
 	go func() {
 		pb := this.bizRedis.Subscribe(context.Background(), this.transAddress)
 		for mg := range pb.Channel() {
-			fmt.Printf("收到订阅消息:%#v\n", mg.Payload)
 			data := make(map[string]interface{})
 			err := json.Unmarshal([]byte(mg.Payload), &data)
 			if err != nil {

@@ -11,20 +11,14 @@ type Connection struct {
 	Mutex sync.Mutex
 }
 
-// @desc 发送消息
-// @auth liuguoqiang 2020-09-07
-// @param
-// @return
+// WriteJSON send json message
 func (conn *Connection) WriteJSON(data interface{}) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
 	return conn.Conn.WriteJSON(data)
 }
 
-// @desc 发送消息
-// @auth liuguoqiang 2020-09-07
-// @param
-// @return
+// WriteMsg send byte array message
 func (conn *Connection) WriteMsg(msgType int, data []byte) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
