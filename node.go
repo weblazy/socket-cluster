@@ -508,6 +508,7 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 			}
 		}
 	}
+	// Concurrent sends to other nodes
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		for k1 := range otherMap {
 			source <- &BatchData{ip: k1, clientIds: otherMap[k1]}
@@ -545,6 +546,7 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 			}
 		}
 	})
+	// Concurrent sends to clients
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		for k1 := range localClientIds {
 			this.clientIdSessions.RangeNextMap(clientIds[k1], func(key1 string, key2 string, value interface{}) bool {
@@ -553,7 +555,6 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 			})
 		}
 	}, func(item interface{}) {
-		fmt.Printf("%#v\n", item)
 		se := item.(*Session)
 		// newMap := make(map[string]interface{})
 		// for k, v := range req {
