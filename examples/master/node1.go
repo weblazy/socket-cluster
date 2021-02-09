@@ -5,8 +5,9 @@ import (
 	"flag"
 	"hash/fnv"
 	"os"
-	socket_cluster "socket-cluster"
 	"strconv"
+
+	socket_cluster "github.com/weblazy/socket-cluster"
 
 	"github.com/weblazy/socket-cluster/examples/auth"
 	"github.com/weblazy/socket-cluster/examples/common"

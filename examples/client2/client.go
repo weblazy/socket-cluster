@@ -2,8 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	socket_cluster "socket-cluster"
 	"time"
+
+	socket_cluster "github.com/weblazy/socket-cluster"
 
 	"github.com/gorilla/websocket"
 	"github.com/weblazy/core/logx"

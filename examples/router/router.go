@@ -1,7 +1,7 @@
 package router
 
 import (
-	socket_cluster "socket-cluster"
+	socket_cluster "github.com/weblazy/socket-cluster"
 
 	"github.com/weblazy/socket-cluster/examples/api"
 

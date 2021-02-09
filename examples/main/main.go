@@ -1,9 +1,9 @@
 package main
 
 import (
-	"socket-cluster/examples/config"
-	"socket-cluster/examples/master"
-	"socket-cluster/examples/model"
+	"github.com/weblazy/socket-cluster/examples/config"
+	"github.com/weblazy/socket-cluster/examples/master"
+	"github.com/weblazy/socket-cluster/examples/model"
 
 	"github.com/sunmi-OS/gocore/gorm"
 	"github.com/sunmi-OS/gocore/utils"
