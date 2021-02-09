@@ -1,7 +1,7 @@
 package api
 
 import (
-	"websocket-cluster/examples/domain"
+	"socket-cluster/examples/domain"
 
 	"github.com/labstack/echo/v4"
 )

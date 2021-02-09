@@ -3,7 +3,7 @@ package config
 var localConfig = `
 [dbDefault]
 dbHost = "127.0.0.1"        #数据库连接地址
-dbName = "websocket_cluster"                  #数据库名称
+dbName = "socket_cluster"                  #数据库名称
 dbUser = "root"           #数据库用户名
 dbPasswd = "123456"   #数据库密码
 

@@ -1,9 +1,9 @@
-# websocket-cluster
+# socket-cluster
 即时通讯框架,如果大家觉得好用,右上角帮忙点个star吧。(^_^)
 > 欢迎感兴趣的小伙伴一同开发,解决日常消息推送,长连接需求。
-- 后端(golang): https://github.com/weblazy/websocket-cluster
-- 前端: https://github.com/weblazy/websocket-cluster-web
-- 文档: websocket-cluster-doc
+- 后端(golang): https://github.com/weblazy/socket-cluster
+- 前端: https://github.com/weblazy/socket-cluster-web
+- 文档: socket-cluster-doc
 - 后端好用的工具库(golang): https://github.com/weblazy/easy
 # 框架库依赖
 - redis
@@ -16,7 +16,7 @@
 ```
 #mysql
 export DBDEFAULT_DBHOST="127.0.0.1"
-export DBDEFAULT_DBNAME="websocket_cluster"
+export DBDEFAULT_DBNAME="socket_cluster"
 export DBDEFAULT_DBUSER="root"
 export DBDEFAULT_DBPASSWD=""
 
@@ -30,13 +30,13 @@ export EMAIL_PASSWORD=""
 ```
 - 启动命令
 ```
-cd websocket-cluster/examples/main/
+cd socket-cluster/examples/main/
 ./main
 ```
 # 框架使用方式
 ```
-	common.NodeINfo1, err = websocket_cluster.StartNode(websocket_cluster.NewNodeConf(*host1, *path1, *path1, websocket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*websocket_cluster.RedisNode{&websocket_cluster.RedisNode{
-		RedisConf: websocket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
+	common.NodeINfo1, err = socket_cluster.StartNode(socket_cluster.NewNodeConf(*host1, *path1, *path1, socket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*socket_cluster.RedisNode{&socket_cluster.RedisNode{
+		RedisConf: socket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,
 	}}, onMsg).WithPort(*port1).WithRouter(router.Router))
 	if err != nil {
@@ -44,7 +44,7 @@ cd websocket-cluster/examples/main/
 	}
 ```
 ```
-func onMsg(context *websocket_cluster.Context) {
+func onMsg(context *socket_cluster.Context) {
 	logx.Info("msg:", string(context.Msg))
 }
 ```

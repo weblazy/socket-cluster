@@ -1,8 +1,8 @@
 package common
 
 import (
-	websocket_cluster "websocket-cluster"
+	socket_cluster "socket-cluster"
 )
 
-var NodeINfo1 *websocket_cluster.Node
-var NodeINfo2 *websocket_cluster.Node
+var NodeINfo1 *socket_cluster.Node
+var NodeINfo2 *socket_cluster.Node

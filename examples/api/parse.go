@@ -3,8 +3,8 @@ package api
 import (
 	"fmt"
 	"io/ioutil"
+	"socket-cluster/examples/auth"
 	"strconv"
-	"websocket-cluster/examples/auth"
 
 	"github.com/labstack/echo/v4"
 	"github.com/sunmi-OS/gocore/api"

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"websocket-cluster/examples/config"
-	"websocket-cluster/examples/master"
-	"websocket-cluster/examples/model"
+	"socket-cluster/examples/config"
+	"socket-cluster/examples/master"
+	"socket-cluster/examples/model"
 
 	"github.com/sunmi-OS/gocore/gorm"
 	"github.com/sunmi-OS/gocore/utils"

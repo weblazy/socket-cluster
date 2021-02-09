@@ -1,4 +1,4 @@
-package websocket_cluster
+package socket_cluster
 
 //sort
 type Sort struct {

@@ -1,4 +1,4 @@
-# websocket-cluster
+# socket-cluster
 即时通讯框架
 # Contact Us
 

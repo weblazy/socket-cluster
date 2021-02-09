@@ -1,4 +1,4 @@
-module websocket-cluster
+module socket-cluster
 
 go 1.14
 

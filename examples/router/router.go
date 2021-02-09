@@ -1,8 +1,8 @@
 package router
 
 import (
-	websocket_cluster "websocket-cluster"
-	"websocket-cluster/examples/api"
+	socket_cluster "socket-cluster"
+	"socket-cluster/examples/api"
 
 	"github.com/labstack/echo/v4"
 )
@@ -27,17 +27,17 @@ func Router(g *echo.Group) {
 	g.POST("/getSystemMsg", api.GetSystemMsg)
 
 	//解决跨域问题
-	g.OPTIONS("/login", websocket_cluster.OptionHandler)
-	g.OPTIONS("/register", websocket_cluster.OptionHandler)
-	g.OPTIONS("/sendSmsCode", websocket_cluster.OptionHandler)
-	g.OPTIONS("/chatInit", websocket_cluster.OptionHandler)
-	g.OPTIONS("/getGroupMembers", websocket_cluster.OptionHandler)
-	g.OPTIONS("/search", websocket_cluster.OptionHandler)
-	g.OPTIONS("/createGroup", websocket_cluster.OptionHandler)
-	g.OPTIONS("/addFriend", websocket_cluster.OptionHandler)
-	g.OPTIONS("/manageSystemMsg", websocket_cluster.OptionHandler)
-	g.OPTIONS("/manageAddFriend", websocket_cluster.OptionHandler)
-	g.OPTIONS("/joinGroup", websocket_cluster.OptionHandler)
-	g.OPTIONS("/manageJoinGroup", websocket_cluster.OptionHandler)
-	g.OPTIONS("/getSystemMsg", websocket_cluster.OptionHandler)
+	g.OPTIONS("/login", socket_cluster.OptionHandler)
+	g.OPTIONS("/register", socket_cluster.OptionHandler)
+	g.OPTIONS("/sendSmsCode", socket_cluster.OptionHandler)
+	g.OPTIONS("/chatInit", socket_cluster.OptionHandler)
+	g.OPTIONS("/getGroupMembers", socket_cluster.OptionHandler)
+	g.OPTIONS("/search", socket_cluster.OptionHandler)
+	g.OPTIONS("/createGroup", socket_cluster.OptionHandler)
+	g.OPTIONS("/addFriend", socket_cluster.OptionHandler)
+	g.OPTIONS("/manageSystemMsg", socket_cluster.OptionHandler)
+	g.OPTIONS("/manageAddFriend", socket_cluster.OptionHandler)
+	g.OPTIONS("/joinGroup", socket_cluster.OptionHandler)
+	g.OPTIONS("/manageJoinGroup", socket_cluster.OptionHandler)
+	g.OPTIONS("/getSystemMsg", socket_cluster.OptionHandler)
 }
