@@ -1,7 +1,7 @@
 package api
 
 import (
-	"socket-cluster/examples/domain"
+	"github.com/weblazy/socket-cluster/examples/domain"
 
 	"github.com/labstack/echo/v4"
 )

@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"socket-cluster/examples/auth"
-	"socket-cluster/examples/common"
-	"socket-cluster/examples/model"
 	"strconv"
 	"time"
+
+	"github.com/weblazy/socket-cluster/examples/auth"
+	"github.com/weblazy/socket-cluster/examples/common"
+	"github.com/weblazy/socket-cluster/examples/model"
 
 	"github.com/jinzhu/gorm"
 	"github.com/spf13/cast"

@@ -7,10 +7,10 @@ import (
 	socket_cluster "socket-cluster"
 	"strconv"
 
-	"socket-cluster/examples/auth"
-	"socket-cluster/examples/common"
-	"socket-cluster/examples/model"
-	"socket-cluster/examples/router"
+	"github.com/weblazy/socket-cluster/examples/auth"
+	"github.com/weblazy/socket-cluster/examples/common"
+	"github.com/weblazy/socket-cluster/examples/model"
+	"github.com/weblazy/socket-cluster/examples/router"
 
 	"github.com/spf13/cast"
 	"github.com/weblazy/easy/utils/logx"

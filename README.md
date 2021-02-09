@@ -30,7 +30,7 @@ export EMAIL_PASSWORD=""
 ```
 - 启动命令
 ```
-cd socket-cluster/examples/main/
+cd github.com/weblazy/socket-cluster/examples/main/
 ./main
 ```
 # 框架使用方式

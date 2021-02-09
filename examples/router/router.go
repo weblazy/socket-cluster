@@ -2,7 +2,8 @@ package router
 
 import (
 	socket_cluster "socket-cluster"
-	"socket-cluster/examples/api"
+
+	"github.com/weblazy/socket-cluster/examples/api"
 
 	"github.com/labstack/echo/v4"
 )
