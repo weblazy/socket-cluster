@@ -7,12 +7,11 @@ import (
 	"os"
 	"strconv"
 
-	socket_cluster "github.com/weblazy/socket-cluster"
-
 	"github.com/weblazy/socket-cluster/examples/auth"
 	"github.com/weblazy/socket-cluster/examples/common"
 	"github.com/weblazy/socket-cluster/examples/model"
 	"github.com/weblazy/socket-cluster/examples/router"
+	"github.com/weblazy/socket-cluster/node"
 
 	"github.com/spf13/cast"
 	"github.com/weblazy/core/database/redis"
@@ -38,8 +37,8 @@ func Node1() {
 	if err != nil {
 		panic(err)
 	}
-	common.NodeINfo1, err = socket_cluster.StartNode(socket_cluster.NewNodeConf(*host1, *path1, *path1, socket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*socket_cluster.RedisNode{&socket_cluster.RedisNode{
-		RedisConf: socket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
+	common.NodeINfo1, err = node.StartNode(node.NewNodeConf(*host1, *path1, *path1, node.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*node.RedisNode{&node.RedisNode{
+		RedisConf: node.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,
 	}}, onMsg).WithPort(*port1).WithRouter(router.Router))
 	if err != nil {
@@ -53,7 +52,7 @@ func getIndex(key string) int64 {
 	return int64(h.Sum32()) % model.TableNum
 }
 
-func onMsg(context *socket_cluster.Context) {
+func onMsg(context *node.Context) {
 	logx.Info("msg:", string(context.Msg))
 	msgMap := make(map[string]interface{})
 	err := json.Unmarshal(context.Msg, &msgMap)

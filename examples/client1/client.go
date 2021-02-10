@@ -3,10 +3,9 @@ package main
 import (
 	"encoding/json"
 
-	socket_cluster "github.com/weblazy/socket-cluster"
-
 	"github.com/gorilla/websocket"
 	"github.com/weblazy/core/logx"
+	"github.com/weblazy/socket-cluster/node"
 )
 
 func main() {
@@ -38,11 +37,11 @@ func client() {
 			break
 		}
 		logx.Info(string(msg))
-		OnClientMsg(&socket_cluster.Connection{Conn: conn}, msg)
+		OnClientMsg(&node.Connection{Conn: conn}, msg)
 	}
 }
 
-func OnClientMsg(conn *socket_cluster.Connection, msg []byte) {
+func OnClientMsg(conn *node.Connection, msg []byte) {
 	data := make(map[string]interface{})
 	err := json.Unmarshal(msg, &data)
 	if err != nil {

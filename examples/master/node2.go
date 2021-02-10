@@ -6,12 +6,11 @@ import (
 	"os"
 	"strconv"
 
-	socket_cluster "github.com/weblazy/socket-cluster"
-
 	"github.com/weblazy/socket-cluster/examples/auth"
 	"github.com/weblazy/socket-cluster/examples/common"
 	"github.com/weblazy/socket-cluster/examples/model"
 	"github.com/weblazy/socket-cluster/examples/router"
+	"github.com/weblazy/socket-cluster/node"
 
 	"github.com/spf13/cast"
 	"github.com/weblazy/easy/utils/logx"
@@ -27,13 +26,13 @@ func Node2() {
 	flag.Parse()
 	redisHost := os.Getenv("REDIS_HOST")
 	redisPassword := os.Getenv("REDIS_PASSWORD")
-	common.NodeINfo2, _ = socket_cluster.StartNode(socket_cluster.NewNodeConf(*host2, *path2, *path2, socket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*socket_cluster.RedisNode{&socket_cluster.RedisNode{
-		RedisConf: socket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
+	common.NodeINfo2, _ = node.StartNode(node.NewNodeConf(*host2, *path2, *path2, node.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*node.RedisNode{&node.RedisNode{
+		RedisConf: node.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,
 	}}, onMsgNode2).WithPort(*port2).WithRouter(router.Router))
 }
 
-func onMsgNode2(context *socket_cluster.Context) {
+func onMsgNode2(context *node.Context) {
 	logx.Info("msg:", string(context.Msg))
 	msgMap := make(map[string]interface{})
 	err := json.Unmarshal(context.Msg, &msgMap)

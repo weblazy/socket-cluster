@@ -1,8 +1,6 @@
 package common
 
-import (
-	socket_cluster "github.com/weblazy/socket-cluster"
-)
+import "github.com/weblazy/socket-cluster/node"
 
-var NodeINfo1 *socket_cluster.Node
-var NodeINfo2 *socket_cluster.Node
+var NodeINfo1 *node.Node
+var NodeINfo2 *node.Node

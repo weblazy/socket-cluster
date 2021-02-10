@@ -1,4 +1,4 @@
-package socket_cluster
+package node
 
 import (
 	"sync/atomic"

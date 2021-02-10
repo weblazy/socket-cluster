@@ -35,8 +35,8 @@ cd github.com/weblazy/socket-cluster/examples/main/
 ```
 # 框架使用方式
 ```
-	common.NodeINfo1, err = socket_cluster.StartNode(socket_cluster.NewNodeConf(*host1, *path1, *path1, socket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*socket_cluster.RedisNode{&socket_cluster.RedisNode{
-		RedisConf: socket_cluster.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
+	common.NodeINfo1, err = node.StartNode(node.NewNodeConf(*host1, *path1, *path1, node.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*node.RedisNode{&node.RedisNode{
+		RedisConf: node.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,
 	}}, onMsg).WithPort(*port1).WithRouter(router.Router))
 	if err != nil {
@@ -44,7 +44,7 @@ cd github.com/weblazy/socket-cluster/examples/main/
 	}
 ```
 ```
-func onMsg(context *socket_cluster.Context) {
+func onMsg(context *node.Context) {
 	logx.Info("msg:", string(context.Msg))
 }
 ```

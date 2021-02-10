@@ -1,4 +1,4 @@
-package socket_cluster
+package node
 
 import (
 	"github.com/labstack/echo/v4"
