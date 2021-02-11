@@ -45,7 +45,7 @@ func NewNodeConf(host, clientPath, transPath string, redisConf RedisConf, redisN
 	return &NodeConf{
 		Host:               host,
 		ClientPath:         clientPath,
-		TransPath:          transPath,
+		TransPath:          GetUUID(),
 		Port:               defaultPort,
 		RedisConf:          redisConf,
 		Password:           defaultPassword,

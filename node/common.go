@@ -2,9 +2,11 @@ package node
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
+	uuid "github.com/satori/go.uuid"
 )
 
 type (
@@ -31,3 +33,13 @@ var (
 	}
 	defaultMasterPort int64 = 9527
 )
+
+// @desc 生成唯一UUD 用去除-后的系统UUID 32位
+// @auth liuguoqiang 2020-11-23
+// @param
+// @return
+func GetUUID() string {
+	uuId := uuid.NewV4().String()
+	uuIdStr := strings.Replace(uuId, "-", "", -1)
+	return uuIdStr
+}

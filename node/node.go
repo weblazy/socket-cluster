@@ -17,6 +17,8 @@ import (
 	"github.com/weblazy/easy/utils/syncx"
 	"github.com/weblazy/easy/utils/timingwheel"
 	"github.com/weblazy/goutil"
+	"github.com/weblazy/socket-cluster/discover"
+	"github.com/weblazy/socket-cluster/dns"
 )
 
 type (
@@ -24,6 +26,7 @@ type (
 	// Node communication node
 	Node struct {
 		// bizRedis redis client store node info
+		discoverHandler  discover.ServiceDiscovery
 		bizRedis         *redis.Client
 		nodeConf         *NodeConf
 		clientIdSessions *syncx.ConcurrentDoubleMap
@@ -38,6 +41,8 @@ type (
 		// key: node transAddress
 		// value: *session
 		transConns    goutil.Map //
+		transClients  goutil.Map //
+		transServices goutil.Map //
 		nodeTimeout   int64      // node heartbeat timeout time
 		clientTimeout int64      // client heartbeat timeout time
 	}
@@ -111,6 +116,8 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 	}
 
 	this.SendPing()
+	this.Ping()
+	this.Register()
 	if this.nodeConf.Host == "" {
 		this.Consumer()
 	}
@@ -231,10 +238,10 @@ func (this *Node) SendPing() {
 				logx.Info(err)
 			}
 			if this.nodeConf.Host != "" {
-				err = this.UpdateNodeList(nodeMap)
-				if err != nil {
-					logx.Info(err)
-				}
+				// err = this.UpdateNodeList(nodeMap)
+				// if err != nil {
+				// 	logx.Info(err)
+				// }
 				this.transConns.Range(func(k, v interface{}) bool {
 					conn, ok := v.(*Connection)
 					if !ok {
@@ -267,6 +274,64 @@ func (this *Node) SendPing() {
 	}()
 }
 
+// SendPing send node Heartbeat
+func (this *Node) Ping() {
+	go func() {
+		for {
+			time.Sleep(time.Duration(this.nodeConf.NodePingInterval) * time.Second)
+			// nodeInfo := NodeInfo{
+			// 	ClientAddress: this.clientAddress,
+			// 	ClientCount:   int64(this.clientConns.Len()),
+			// 	Timestamp:     time.Now().Unix(),
+			// }
+			// nodeInfoByte, err := proto.Marshal(nodeInfo)
+			// if err != nil {
+			// 	logx.Info(err)
+			// }
+			// discoverHandler.Ping(nodeInfoByte)
+			// nodeMap, err := discoverHandler.GetServices()
+
+			// if err != nil {
+			// 	logx.Info(err)
+			// }
+
+			// err = this.UpdateNodeList(nodeMap)
+			// if err != nil {
+			// 	logx.Info(err)
+			// }
+			this.transConns.Range(func(k, v interface{}) bool {
+				conn, ok := v.(*Connection)
+				if !ok {
+					return true
+				}
+				err := conn.WriteMsg(websocket.PingMessage, []byte{})
+				if err != nil {
+					logx.Info(err)
+				}
+				return true
+			})
+
+		}
+	}()
+}
+
+// Register
+func (this *Node) Register() {
+	this.discoverHandler.Register()
+	go this.discoverHandler.WatchService()
+	// nodeMap, err := discoverHandler.GetService()
+	nodeMap, err := dns.DnsParse("dns:///:443")
+	if err != nil {
+		logx.Info(err)
+	}
+
+	err = this.UpdateNodeList(nodeMap)
+	if err != nil {
+		logx.Info(err)
+	}
+
+}
+
 //Update clients num
 // func (this *Node) UpdateRedis() {
 // 	go func() {
@@ -276,7 +341,7 @@ func (this *Node) SendPing() {
 // 				Score:  float64(this.clientConns.Len()),
 // 				Member: this.clientAddress}).Err()
 // 			if err != nil {
-// 				logx.Info(err)
+// 				logx.Info(err) f
 // 			}
 // 		}
 // 	}()
@@ -388,10 +453,11 @@ func (this *Node) AuthClient(conn *Connection, clientId string) error {
 }
 
 // UpdateNodeList Add handles addition request
-func (this *Node) UpdateNodeList(nodeMap map[string]string) error {
+func (this *Node) UpdateNodeList(nodeMap []string) error {
 	now := time.Now().Unix()
 	for key := range nodeMap {
-		if key == this.transAddress {
+		transAddress := nodeMap[key]
+		if transAddress == this.transAddress {
 			continue
 		}
 		nodeInfo := make(map[string]interface{})
@@ -403,7 +469,6 @@ func (this *Node) UpdateNodeList(nodeMap map[string]string) error {
 			continue
 		}
 
-		transAddress := key
 		// 数字小的连接数字大的
 		// if strings.Compare(this.transAddress, transAddress) >= 0 {
 		// 	continue

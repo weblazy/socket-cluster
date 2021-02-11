@@ -8,12 +8,13 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/go-redis/redis/v8 v8.5.0
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/golang/protobuf v1.4.3
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/jinzhu/gorm v1.9.16
 	github.com/labstack/echo/v4 v4.1.16
 	github.com/nacos-group/nacos-sdk-go v1.0.6
+	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/cast v1.3.1
 	github.com/sunmi-OS/gocore v1.5.10
 	github.com/tidwall/gjson v1.6.0
