@@ -1,13 +1,14 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/weblazy/core/consistenthash/unsafehash"
-	"github.com/weblazy/core/database/redis"
 	"github.com/weblazy/crypto/aes"
 )
 
@@ -20,7 +21,7 @@ type (
 		MaxCount      uint32
 	}
 	RedisNode struct {
-		RedisConf redis.RedisConf
+		RedisConf *redis.Options
 		Position  uint32
 	}
 	Auth struct {
@@ -53,11 +54,8 @@ func (conf *AuthConf) WithMaxCount(count uint32) *AuthConf {
 func InitAuth(conf *AuthConf) error {
 	cHashRing := unsafehash.NewConsistent(conf.MaxCount)
 	for _, value := range conf.RedisNodeList {
-		if err := value.RedisConf.Validate(); err != nil {
-			return err
-		}
-		redis := redis.NewRedis(value.RedisConf.Host, value.RedisConf.Type, value.RedisConf.Pass)
-		cHashRing.Add(unsafehash.NewNode(value.RedisConf.Host, value.Position, redis))
+		redis := redis.NewClient(value.RedisConf)
+		cHashRing.Add(unsafehash.NewNode(value.RedisConf.Addr, value.Position, redis))
 	}
 	AuthManager.cHashRing = cHashRing
 	return nil
@@ -76,7 +74,7 @@ func (auth *Auth) Validate(token string) (string, error) {
 		return "", TokenNotFound
 	}
 	node := auth.cHashRing.Get(arr[0])
-	value, err := node.Extra.(*redis.Redis).Get(prefix + arr[0])
+	value, err := node.Extra.(*redis.Client).Get(context.Background(), prefix+arr[0]).Result()
 	if value != token {
 		return "", TokenInValid
 	}
@@ -96,7 +94,7 @@ func (auth *Auth) Add(id string) (string, error) {
 		return "", err
 	}
 	node := auth.cHashRing.Get(id)
-	err = node.Extra.(*redis.Redis).Set(prefix+id, token)
+	err = node.Extra.(*redis.Client).Set(context.Background(), prefix+id, token, 0).Err()
 	if err != nil {
 		return "", err
 	}

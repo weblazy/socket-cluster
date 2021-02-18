@@ -1,4 +1,4 @@
-package discover
+package discovery
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 )
+
+const defaultDialTimeout = 5 * time.Second
 
 //EtcdDiscovery 服务发现
 type EtcdDiscovery struct {
@@ -25,15 +27,11 @@ type EtcdDiscovery struct {
 }
 
 //NewEtcdDiscovery  新建发现服务
-func NewEtcdDiscovery(endpoints []string) *EtcdDiscovery {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: 5 * time.Second,
-	})
+func NewEtcdDiscovery(conf clientv3.Config) *EtcdDiscovery {
+	cli, err := clientv3.New(conf)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	return &EtcdDiscovery{
 		cli:        cli,
 		serverList: make(map[string]string),
@@ -55,7 +53,7 @@ func (s *EtcdDiscovery) GetServices(key string) error {
 }
 
 //watcher 监听前缀
-func (s *EtcdDiscovery) WatchService() {
+func (s *EtcdDiscovery) WatchService(watchChan WatchChan) {
 	prefix := s.key
 	rch := s.cli.Watch(context.Background(), prefix, clientv3.WithPrefix())
 	log.Printf("watching prefix:%s now...", prefix)
@@ -63,6 +61,7 @@ func (s *EtcdDiscovery) WatchService() {
 		for _, ev := range wresp.Events {
 			switch ev.Type {
 			case mvccpb.PUT: //修改或者新增
+				watchChan <- PUT
 				s.SetServiceList(string(ev.Kv.Key), string(ev.Kv.Value))
 			case mvccpb.DELETE: //删除
 				s.DelServiceList(string(ev.Kv.Key))

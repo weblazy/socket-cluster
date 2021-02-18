@@ -3,36 +3,58 @@ package master
 import (
 	"encoding/json"
 	"flag"
+	"hash/fnv"
 	"os"
 	"strconv"
 
+	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/examples/auth"
 	"github.com/weblazy/socket-cluster/examples/common"
 	"github.com/weblazy/socket-cluster/examples/model"
 	"github.com/weblazy/socket-cluster/examples/router"
 	"github.com/weblazy/socket-cluster/node"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/spf13/cast"
 	"github.com/weblazy/easy/utils/logx"
 )
 
 var (
-	port2 = flag.Int64("port2", 9529, "the  port")
-	host2 = flag.String("host2", "ws://localhost:9529", "the  host")
-	path2 = flag.String("path2", "/p2", "the  path")
+	port = flag.Int64("port1", 9528, "the  port")
+	host = flag.String("host1", "ws://localhost:9528", "the  host")
+	path = flag.String("path1", "/p1", "the  path")
 )
 
-func Node2() {
+func Node() {
 	flag.Parse()
+	var err error
 	redisHost := os.Getenv("REDIS_HOST")
 	redisPassword := os.Getenv("REDIS_PASSWORD")
-	common.NodeINfo2, _ = node.StartNode(node.NewNodeConf(*host2, *path2, *path2, node.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0}, []*node.RedisNode{&node.RedisNode{
-		RedisConf: node.RedisConf{Addr: redisHost, Password: redisPassword, DB: 0},
+	err = auth.InitAuth(auth.NewAuthConf([]*auth.RedisNode{
+		&auth.RedisNode{
+			RedisConf: &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0},
+			Position:  1,
+		}}))
+	if err != nil {
+		panic(err)
+	}
+	discoveryHandler := discovery.NewRedisDiscovery(&redis.Options{Addr: redisHost, Password: redisPassword, DB: 0})
+	common.NodeINfo1, err = node.StartNode(node.NewNodeConf(*host, *path, *path, &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0}, []*node.RedisNode{&node.RedisNode{
+		RedisConf: &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,
-	}}, onMsgNode2).WithPort(*port2).WithRouter(router.Router))
+	}}, discoveryHandler, onMsg).WithPort(*port).WithRouter(router.Router))
+	if err != nil {
+		logx.Info(err)
+	}
 }
 
-func onMsgNode2(context *node.Context) {
+func getIndex(key string) int64 {
+	h := fnv.New32a()
+	h.Write([]byte(key))
+	return int64(h.Sum32()) % model.TableNum
+}
+
+func onMsg(context *node.Context) {
 	logx.Info("msg:", string(context.Msg))
 	msgMap := make(map[string]interface{})
 	err := json.Unmarshal(context.Msg, &msgMap)
@@ -65,7 +87,6 @@ func onMsgNode2(context *node.Context) {
 			logx.Info(err)
 			return
 		}
-		logx.Info("err")
 		list, err := model.UserGroupModel().GetList("uid = ?", obj.Id)
 		if err != nil {
 			logx.Info(err)

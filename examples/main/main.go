@@ -16,7 +16,6 @@ func main() {
 	gorm.NewDB("dbDefault")
 	model.CreateTable()
 	// go websocket_cluster.StartMaster(websocket_cluster.NewMasterConf())
-	master.Node1()
-	master.Node2()
+	master.Node()
 	select {}
 }

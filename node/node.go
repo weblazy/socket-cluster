@@ -17,7 +17,7 @@ import (
 	"github.com/weblazy/easy/utils/syncx"
 	"github.com/weblazy/easy/utils/timingwheel"
 	"github.com/weblazy/goutil"
-	"github.com/weblazy/socket-cluster/discover"
+	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/dns"
 )
 
@@ -25,9 +25,9 @@ type (
 
 	// Node communication node
 	Node struct {
-		// bizRedis redis client store node info
-		discoverHandler  discover.ServiceDiscovery
-		bizRedis         *redis.Client
+
+		// adminRedis redis client store node info
+		adminRedis       *redis.Client
 		nodeConf         *NodeConf
 		clientIdSessions *syncx.ConcurrentDoubleMap
 		// key: socket address
@@ -52,11 +52,7 @@ var ()
 
 // NewPeer creates a new peer.
 func StartNode(cfg *NodeConf) (*Node, error) {
-	rds := redis.NewClient(&redis.Options{
-		Addr:     cfg.RedisConf.Addr,
-		Password: cfg.RedisConf.Password,
-		DB:       int(cfg.RedisConf.DB),
-	})
+	rds := redis.NewClient(cfg.RedisConf)
 
 	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
 		logx.Infof("%s auth timeout", k)
@@ -74,17 +70,13 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 	}
 	userHashRing := unsafehash.NewConsistent(cfg.RedisMaxCount)
 	for _, value := range cfg.RedisNodeList {
-		rdsObj := redis.NewClient(&redis.Options{
-			Addr:     value.RedisConf.Addr,
-			Password: value.RedisConf.Password,
-			DB:       int(value.RedisConf.DB),
-		})
+		rdsObj := redis.NewClient(value.RedisConf)
 		userHashRing.Add(unsafehash.NewNode(value.RedisConf.Addr, value.Position, rdsObj))
 	}
 
 	this := &Node{
 		nodeConf:         cfg,
-		bizRedis:         rds,
+		adminRedis:       rds,
 		clientIdSessions: syncx.NewConcurrentDoubleMap(32),
 		startTime:        time.Now(),
 		timer:            timer,
@@ -229,11 +221,11 @@ func (this *Node) SendPing() {
 			if err != nil {
 				logx.Info(err)
 			}
-			err = this.bizRedis.HSet(context.Background(), NodeAddress, this.transAddress, string(nodeInfoByte)).Err()
+			err = this.adminRedis.HSet(context.Background(), NodeAddress, this.transAddress, string(nodeInfoByte)).Err()
 			if err != nil {
 				logx.Info(err)
 			}
-			nodeMap, err := this.bizRedis.HGetAll(context.Background(), NodeAddress).Result()
+			nodeMap, err := this.adminRedis.HGetAll(context.Background(), NodeAddress).Result()
 			if err != nil {
 				logx.Info(err)
 			}
@@ -262,7 +254,7 @@ func (this *Node) SendPing() {
 						logx.Info(err)
 					}
 					if cast.ToInt64(nodeInfo["timestamp"])+this.nodeTimeout < now {
-						err := this.bizRedis.HDel(context.Background(), NodeAddress, k1).Err()
+						err := this.adminRedis.HDel(context.Background(), NodeAddress, k1).Err()
 						if err != nil {
 							logx.Info(err)
 						}
@@ -288,8 +280,8 @@ func (this *Node) Ping() {
 			// if err != nil {
 			// 	logx.Info(err)
 			// }
-			// discoverHandler.Ping(nodeInfoByte)
-			// nodeMap, err := discoverHandler.GetServices()
+			// discoveryHandler.Ping(nodeInfoByte)
+			// nodeMap, err := discoveryHandler.GetServices()
 
 			// if err != nil {
 			// 	logx.Info(err)
@@ -317,18 +309,34 @@ func (this *Node) Ping() {
 
 // Register
 func (this *Node) Register() {
-	this.discoverHandler.Register()
-	go this.discoverHandler.WatchService()
-	// nodeMap, err := discoverHandler.GetService()
-	nodeMap, err := dns.DnsParse("dns:///:443")
-	if err != nil {
-		logx.Info(err)
-	}
+	this.nodeConf.discoveryHandler.Register()
+	watchChan := make(chan discovery.EventType, 1)
+	go this.nodeConf.discoveryHandler.WatchService(watchChan)
+	// nodeMap, err := discoveryHandler.GetService()
+	go func() {
+		for {
+			select {
+			case value, ok := <-watchChan:
+				fmt.Printf("%#v\n", value)
+				fmt.Printf("%#v\n", ok)
+				if !ok {
+					fmt.Printf("监听失败退出\n")
+					return
+				}
+				nodeMap, err := dns.DnsParse("dns:///:443")
+				if err != nil {
+					logx.Info(err)
+				}
 
-	err = this.UpdateNodeList(nodeMap)
-	if err != nil {
-		logx.Info(err)
-	}
+				err = this.UpdateNodeList(nodeMap)
+				if err != nil {
+					logx.Info(err)
+				}
+
+			}
+
+		}
+	}()
 
 }
 
@@ -337,7 +345,7 @@ func (this *Node) Register() {
 // 	go func() {
 // 		for {
 // 			time.Sleep(redisInterval * time.Second)
-// 			err := this.bizRedis.ZAdd(context.Background(), NodeAddress, &redis.Z{
+// 			err := this.adminRedis.ZAdd(context.Background(), NodeAddress, &redis.Z{
 // 				Score:  float64(this.clientConns.Len()),
 // 				Member: this.clientAddress}).Err()
 // 			if err != nil {
@@ -590,7 +598,7 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 			logx.Info(err)
 		}
 		if this.nodeConf.Host == "" {
-			err = this.bizRedis.Publish(context.Background(), batchData.ip, string(reqByte)).Err()
+			err = this.adminRedis.Publish(context.Background(), batchData.ip, string(reqByte)).Err()
 			if err != nil {
 				logx.Info(err)
 			}
@@ -756,7 +764,7 @@ func (this *Node) SendToClientId(clientId string, req map[string]interface{}) er
 					if err != nil {
 						logx.Info(err)
 					}
-					err = this.bizRedis.Publish(context.Background(), ip, string(reqByte)).Err()
+					err = this.adminRedis.Publish(context.Background(), ip, string(reqByte)).Err()
 					if err != nil {
 						logx.Info(err)
 					}
@@ -811,7 +819,7 @@ func (this *Node) SendToTrans(clientId string, path string, req interface{}) err
 func (this *Node) GetHosts() ([]string, error) {
 	list := make([]string, 0)
 	now := time.Now().Unix()
-	addrMap, err := this.bizRedis.HGetAll(context.Background(), NodeAddress).Result()
+	addrMap, err := this.adminRedis.HGetAll(context.Background(), NodeAddress).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -840,7 +848,7 @@ func (this *Node) GetHosts() ([]string, error) {
 // Consumer pull message from other node
 func (this *Node) Consumer() {
 	go func() {
-		pb := this.bizRedis.Subscribe(context.Background(), this.transAddress)
+		pb := this.adminRedis.Subscribe(context.Background(), this.transAddress)
 		for mg := range pb.Channel() {
 			data := make(map[string]interface{})
 			err := json.Unmarshal([]byte(mg.Payload), &data)
