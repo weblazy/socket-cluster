@@ -83,6 +83,7 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 		userHashRing:     userHashRing,
 		clientConns:      goutil.AtomicMap(),
 		transConns:       goutil.AtomicMap(),
+		transServices:    goutil.AtomicMap(),
 		nodeTimeout:      cfg.NodePingInterval * 3,
 		clientTimeout:    cfg.ClientPingInterval * 3,
 	}
@@ -110,9 +111,7 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 	this.SendPing()
 	this.Ping()
 	this.Register()
-	if this.nodeConf.Host == "" {
-		this.Consumer()
-	}
+
 	return this, nil
 }
 
@@ -323,12 +322,7 @@ func (this *Node) Register() {
 					fmt.Printf("监听失败退出\n")
 					return
 				}
-				nodeMap, err := dns.DnsParse("dns:///:443")
-				if err != nil {
-					logx.Info(err)
-				}
-
-				err = this.UpdateNodeList(nodeMap)
+				err := this.UpdateNodeList()
 				if err != nil {
 					logx.Info(err)
 				}
@@ -337,7 +331,11 @@ func (this *Node) Register() {
 
 		}
 	}()
-
+	// init
+	err := this.UpdateNodeList()
+	if err != nil {
+		logx.Info(err)
+	}
 }
 
 //Update clients num
@@ -461,36 +459,41 @@ func (this *Node) AuthClient(conn *Connection, clientId string) error {
 }
 
 // UpdateNodeList Add handles addition request
-func (this *Node) UpdateNodeList(nodeMap []string) error {
-	now := time.Now().Unix()
+func (this *Node) UpdateNodeList() error {
+	nodeMap, err := dns.DnsParse(this.nodeConf.Host)
+	if err != nil {
+		logx.Info(err)
+		return err
+	}
+	// now := time.Now().Unix()
 	for key := range nodeMap {
-		transAddress := nodeMap[key]
-		if transAddress == this.transAddress {
+		ipAddress := nodeMap[key]
+		if ipAddress == this.transAddress {
 			continue
 		}
-		nodeInfo := make(map[string]interface{})
-		err := json.Unmarshal([]byte(nodeMap[key]), &nodeInfo)
-		if err != nil {
-			logx.Info(err)
-		}
-		if cast.ToInt64(nodeInfo["timestamp"])+this.nodeTimeout < now {
-			continue
-		}
+		// nodeInfo := make(map[string]interface{})
+		// err := json.Unmarshal([]byte(nodeMap[key]), &nodeInfo)
+		// if err != nil {
+		// 	logx.Info(err)
+		// }
+		// if cast.ToInt64(nodeInfo["timestamp"])+this.nodeTimeout < now {
+		// 	continue
+		// }
 
 		// 数字小的连接数字大的
 		// if strings.Compare(this.transAddress, transAddress) >= 0 {
 		// 	continue
 		// }
 		//已经建立连接
-		_, ok := this.transConns.LoadOrStore(transAddress, "")
+		_, ok := this.transServices.LoadOrStore(ipAddress, "")
 		if ok {
 			continue
 		}
 
-		connect, _, err := websocket.DefaultDialer.Dial(transAddress, nil)
+		connect, _, err := websocket.DefaultDialer.Dial(ipAddress, nil)
 		if err != nil {
 			logx.Info("dial:", err)
-			this.transConns.Delete(transAddress)
+			this.transServices.Delete(ipAddress)
 			continue
 		}
 
@@ -507,12 +510,12 @@ func (this *Node) UpdateNodeList(nodeMap []string) error {
 		if err != nil {
 			logx.Info(err)
 		}
-		this.transConns.Store(transAddress, conn)
-		go func(transAddress string, conn *Connection) {
-			defer func(transAddress string, conn *Connection) {
-				this.transConns.Delete(transAddress)
+		this.transServices.Store(ipAddress, conn)
+		go func(ipAddress string, conn *Connection) {
+			defer func(ipAddress string, conn *Connection) {
+				this.transServices.Delete(ipAddress)
 				conn.Conn.Close()
-			}(transAddress, conn)
+			}(ipAddress, conn)
 			for {
 				_, msg, err := conn.Conn.ReadMessage()
 				if err != nil {
@@ -524,7 +527,7 @@ func (this *Node) UpdateNodeList(nodeMap []string) error {
 				logx.Info(string(msg))
 				this.OnTransMsg(conn, msg)
 			}
-		}(transAddress, conn)
+		}(ipAddress, conn)
 	}
 	return nil
 }

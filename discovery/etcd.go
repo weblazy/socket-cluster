@@ -41,14 +41,14 @@ func NewEtcdDiscovery(conf clientv3.Config) *EtcdDiscovery {
 //WatchService 初始化服务列表和监视
 func (s *EtcdDiscovery) GetServices(key string) error {
 	//根据前缀获取现有的key
-	resp, err := s.cli.Get(context.Background(), key, clientv3.WithPrefix())
-	if err != nil {
-		return err
-	}
+	// resp, err := s.cli.Get(context.Background(), key, clientv3.WithPrefix())
+	// if err != nil {
+	// 	return err
+	// }
 
-	for _, ev := range resp.Kvs {
-		s.SetServiceList(string(ev.Key), string(ev.Value))
-	}
+	// for _, ev := range resp.Kvs {
+	// 	s.SetServiceList(string(ev.Key), string(ev.Value))
+	// }
 	return nil
 }
 
@@ -62,48 +62,17 @@ func (s *EtcdDiscovery) WatchService(watchChan WatchChan) {
 			switch ev.Type {
 			case mvccpb.PUT: //修改或者新增
 				watchChan <- PUT
-				s.SetServiceList(string(ev.Kv.Key), string(ev.Kv.Value))
 			case mvccpb.DELETE: //删除
-				s.DelServiceList(string(ev.Kv.Key))
+
 			}
 		}
 	}
-}
-
-//SetServiceList 新增服务地址
-func (s *EtcdDiscovery) SetServiceList(key, val string) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	s.serverList[key] = string(val)
-	log.Println("put key :", key, "val:", val)
-}
-
-//DelServiceList 删除服务地址
-func (s *EtcdDiscovery) DelServiceList(key string) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	delete(s.serverList, key)
-	log.Println("del key:", key)
 }
 
 //Close 关闭服务
 func (s *EtcdDiscovery) Close() error {
 	return s.cli.Close()
 }
-
-// func main() {
-// 	var endpoints = []string{"42.192.166.82:2379"}
-// 	ser := NewEtcdDiscovery(endpoints)
-// 	defer ser.Close()
-// 	ser.WatchService("/web/")
-// 	ser.WatchService("/gRPC/")
-// 	for {
-// 		select {
-// 		case <-time.Tick(10 * time.Second):
-// 			log.Println(ser.GetServices())
-// 		}
-// 	}
-// }
 
 //设置租约
 func (s *EtcdDiscovery) Register() error {

@@ -36,18 +36,8 @@ func (this *RedisDiscovery) WatchService(watchChan WatchChan) {
 				return
 			}
 			watchChan <- PUT
-
-			if _, ok := data["receive_client_id"].(string); ok {
-				delete(data, "receive_client_id")
-			}
 		}
 	}()
-}
-
-//GetServices 获取服务地址
-func (s *RedisDiscovery) GetServices() ([]string, error) {
-	return []string{}, nil
-
 }
 
 //Close 关闭服务
@@ -55,23 +45,9 @@ func (s *RedisDiscovery) Close() error {
 	return s.adminRedis.Close()
 }
 
-// func main() {
-// 	var endpoints = []string{"42.192.166.82:2379"}
-// 	ser := NewRedisDiscovery(endpoints)
-// 	defer ser.Close()
-// 	ser.WatchService("/web/")
-// 	ser.WatchService("/gRPC/")
-// 	for {
-// 		select {
-// 		case <-time.Tick(10 * time.Second):
-// 			log.Println(ser.GetServices())
-// 		}
-// 	}
-// }
-
 //设置租约
 func (this *RedisDiscovery) Register() error {
-	err := this.adminRedis.HSet(context.Background(), this.key, this.transAddress, "value").Err()
+	err := this.adminRedis.Publish(context.Background(), this.key, this.transAddress).Err()
 	if err != nil {
 		logx.Info(err)
 	}
