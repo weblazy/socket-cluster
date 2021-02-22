@@ -35,7 +35,7 @@ func InitNacos(runtime string) {
 		}
 	}
 	//dataIds:为config包含其他业务如[appstore][sunmipay]等
-	nacos.ViperTomlHarder.SetDataIds("file-core", "system", "mysql", "oss", "contentmoderation","config")
+	nacos.ViperTomlHarder.SetDataIds("file-core", "system", "mysql", "oss", "contentmoderation", "config")
 
 	//配置变动回调
 	nacos.ViperTomlHarder.SetCallBackFunc("file-core", "mysql", func(namespace, group, dataId, data string) {

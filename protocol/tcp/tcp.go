@@ -54,7 +54,7 @@ func Listen(port string) {
 	fmt.Println("tcp run on localhost:7123")
 	listener, err := net.Listen("tcp", ":7123")
 	if err != nil {
-			log.Fatal(err)
+		log.Fatal(err)
 	}
 
 	go func() {

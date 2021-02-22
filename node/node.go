@@ -87,26 +87,7 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 		nodeTimeout:      cfg.NodePingInterval * 3,
 		clientTimeout:    cfg.ClientPingInterval * 3,
 	}
-	this.transAddress = fmt.Sprintf("%s%s/trans", cfg.Host, cfg.TransPath)
-	this.clientAddress = fmt.Sprintf("%s%s/client", cfg.Host, cfg.ClientPath)
-	if cfg.echoObj != nil {
-		cfg.echoObj.GET(fmt.Sprintf("%s/trans", cfg.TransPath), this.transHandler)
-		cfg.echoObj.GET(fmt.Sprintf("%s/client", cfg.ClientPath), this.clientHandler)
-		webGroup := cfg.echoObj.Group(fmt.Sprintf("%s/web", cfg.ClientPath), originMiddlewareFunc)
-		cfg.router(webGroup)
-	} else {
-		e := echo.New()
-		e.GET(fmt.Sprintf("%s/trans", cfg.TransPath), this.transHandler)
-		e.GET(fmt.Sprintf("%s/client", cfg.ClientPath), this.clientHandler)
-		webGroup := e.Group(fmt.Sprintf("%s/web", cfg.ClientPath), originMiddlewareFunc)
-		cfg.router(webGroup)
-		go func() {
-			err = e.Start(fmt.Sprintf(":%d", cfg.Port))
-			if err != nil {
-				panic(err)
-			}
-		}()
-	}
+	cfg.protocolHandler.ListenAndServe(cfg.Port, this.transHandler, this.clientHandler)
 
 	this.SendPing()
 	this.Ping()

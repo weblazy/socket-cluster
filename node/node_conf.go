@@ -4,6 +4,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/labstack/echo/v4"
 	"github.com/weblazy/socket-cluster/discovery"
+	"github.com/weblazy/socket-cluster/protocol"
 )
 
 type (
@@ -28,6 +29,7 @@ type (
 		router             func(g *echo.Group)    // http router of echo
 		echoObj            *echo.Echo             //Echo object
 		discoveryHandler   discovery.ServiceDiscovery
+		protocolHandler    protocol.Protocol
 	}
 	// Params of onMsg
 	Context struct {
