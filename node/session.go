@@ -3,10 +3,12 @@ package node
 import (
 	"sync/atomic"
 	"unsafe"
+
+	"github.com/weblazy/socket-cluster/protocol"
 )
 
 type Session struct {
-	Conn     *Connection
+	Conn     *protocol.Connection
 	ClientId string
 }
 

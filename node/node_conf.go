@@ -33,7 +33,7 @@ type (
 	}
 	// Params of onMsg
 	Context struct {
-		Conn     *Connection
+		Conn     *protocol.Connection
 		ClientId string
 		Msg      []byte
 	}

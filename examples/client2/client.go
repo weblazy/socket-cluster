@@ -6,7 +6,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/weblazy/core/logx"
-	"github.com/weblazy/socket-cluster/node"
+	"github.com/weblazy/socket-cluster/protocol"
 )
 
 func main() {
@@ -49,11 +49,11 @@ func client() {
 			break
 		}
 		logx.Info(string(msg))
-		OnClientMsg(&node.Connection{Conn: conn}, msg)
+		OnClientMsg(&protocol.Connection{Conn: conn}, msg)
 	}
 }
 
-func OnClientMsg(conn *node.Connection, msg []byte) {
+func OnClientMsg(conn *protocol.Connection, msg []byte) {
 	msgMap := make(map[string]interface{})
 	err := json.Unmarshal(msg, &msgMap)
 	if err != nil {

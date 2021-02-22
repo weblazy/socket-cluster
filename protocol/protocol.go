@@ -44,7 +44,7 @@ type (
 
 type Protocol interface {
 	// ListenAndServe turns on the listening service.
-	ListenAndServe(port int64, transHandler, clientHandler func(c echo.Context) error, protoFunc ...ProtoFunc) error
+	ListenAndServe(port int64, OnTransMsg func(conn *Connection, msg []byte), clientHandler func(c echo.Context) error, protoFunc ...ProtoFunc) error
 	// Dial connects with the peer of the destination address.
 	Dial(addr string, protoFunc ...ProtoFunc) (Session, error)
 	// ServeConn serves the connection and returns a session.

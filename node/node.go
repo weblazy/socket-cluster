@@ -19,6 +19,7 @@ import (
 	"github.com/weblazy/goutil"
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/dns"
+	"github.com/weblazy/socket-cluster/protocol"
 )
 
 type (
@@ -56,8 +57,8 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 
 	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
 		logx.Infof("%s auth timeout", k)
-		if v.(*Connection).Conn != nil {
-			err := v.(*Connection).Conn.Close()
+		if v.(*protocol.Connection).Conn != nil {
+			err := v.(*protocol.Connection).Conn.Close()
 			if err != nil {
 				logx.Info(err)
 			}
@@ -87,7 +88,7 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 		nodeTimeout:      cfg.NodePingInterval * 3,
 		clientTimeout:    cfg.ClientPingInterval * 3,
 	}
-	cfg.protocolHandler.ListenAndServe(cfg.Port, this.transHandler, this.clientHandler)
+	cfg.protocolHandler.ListenAndServe(cfg.Port, this.OnTransMsg, this.clientHandler)
 
 	this.SendPing()
 	this.Ping()
@@ -115,37 +116,6 @@ func originMiddlewareFunc(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-// transHandler deal node connection
-func (this *Node) transHandler(c echo.Context) error {
-	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	defer func() {
-		if connect != nil {
-			connect.Close()
-		}
-	}()
-
-	if err != nil {
-		if _, ok := err.(websocket.HandshakeError); !ok {
-			logx.Info(err)
-		}
-		return err
-	}
-	conn := &Connection{Conn: connect}
-	this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
-	for {
-		_, msg, err := connect.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logx.Info(err)
-			}
-			break
-		}
-		logx.Info(string(msg))
-		this.OnTransMsg(conn, msg)
-	}
-	return nil
-}
-
 // clientHandler deal client connection
 func (this *Node) clientHandler(c echo.Context) error {
 	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
@@ -163,7 +133,7 @@ func (this *Node) clientHandler(c echo.Context) error {
 			connect.Close()
 		}
 	}()
-	conn := &Connection{Conn: connect}
+	conn := &protocol.Connection{Conn: connect}
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
 			logx.Info(err)
@@ -215,7 +185,7 @@ func (this *Node) SendPing() {
 				// 	logx.Info(err)
 				// }
 				this.transConns.Range(func(k, v interface{}) bool {
-					conn, ok := v.(*Connection)
+					conn, ok := v.(*protocol.Connection)
 					if !ok {
 						return true
 					}
@@ -272,7 +242,7 @@ func (this *Node) Ping() {
 			// 	logx.Info(err)
 			// }
 			this.transConns.Range(func(k, v interface{}) bool {
-				conn, ok := v.(*Connection)
+				conn, ok := v.(*protocol.Connection)
 				if !ok {
 					return true
 				}
@@ -350,7 +320,7 @@ func (this *Node) IsOnline(clientId string) bool {
 }
 
 // OnClientMsg deal client message
-func (this *Node) OnClientMsg(conn *Connection, msg []byte) {
+func (this *Node) OnClientMsg(conn *protocol.Connection, msg []byte) {
 	sid := conn.Conn.RemoteAddr().String()
 	session, ok := this.clientConns.Load(sid)
 	clientId := ""
@@ -373,7 +343,7 @@ func (this *Node) OnClientPing(clientId string) error {
 }
 
 // OnTransMsg handle internal communication node messages
-func (this *Node) OnTransMsg(conn *Connection, msg []byte) {
+func (this *Node) OnTransMsg(conn *protocol.Connection, msg []byte) {
 	data := make(map[string]interface{})
 	err := json.Unmarshal(msg, &data)
 	if err != nil {
@@ -418,7 +388,7 @@ func (this *Node) OnTransMsg(conn *Connection, msg []byte) {
 }
 
 // AuthTrans Auth the node
-func (this *Node) AuthTrans(conn *Connection, args map[string]interface{}) error {
+func (this *Node) AuthTrans(conn *protocol.Connection, args map[string]interface{}) error {
 	sid := args["trans_address"].(string)
 	this.timer.RemoveTimer(conn.Conn.RemoteAddr().String()) //Cancel timeingwheel task
 	if args["password"].(string) != this.nodeConf.Password {
@@ -431,7 +401,7 @@ func (this *Node) AuthTrans(conn *Connection, args map[string]interface{}) error
 }
 
 // AuthClient Auth the node
-func (this *Node) AuthClient(conn *Connection, clientId string) error {
+func (this *Node) AuthClient(conn *protocol.Connection, clientId string) error {
 	sid := conn.Conn.RemoteAddr().String()
 	this.timer.RemoveTimer(sid) //Cancel timeingwheel task
 	session := &Session{Conn: conn, ClientId: clientId}
@@ -486,14 +456,14 @@ func (this *Node) UpdateNodeList() error {
 			MsgType: "auth",
 			Data:    auth,
 		}
-		conn := &Connection{Conn: connect}
+		conn := &protocol.Connection{Conn: connect}
 		err = conn.WriteJSON(data)
 		if err != nil {
 			logx.Info(err)
 		}
 		this.transServices.Store(ipAddress, conn)
-		go func(ipAddress string, conn *Connection) {
-			defer func(ipAddress string, conn *Connection) {
+		go func(ipAddress string, conn *protocol.Connection) {
+			defer func(ipAddress string, conn *protocol.Connection) {
 				this.transServices.Delete(ipAddress)
 				conn.Conn.Close()
 			}(ipAddress, conn)
@@ -589,7 +559,7 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 		} else {
 			connect, ok := this.transConns.Load(batchData.ip)
 			if ok {
-				conn, ok := connect.(*Connection)
+				conn, ok := connect.(*protocol.Connection)
 				if !ok {
 					return
 				}
@@ -755,7 +725,7 @@ func (this *Node) SendToClientId(clientId string, req map[string]interface{}) er
 				} else {
 					connect, ok := this.transConns.Load(ip)
 					if ok {
-						conn, ok := connect.(*Connection)
+						conn, ok := connect.(*protocol.Connection)
 						if !ok {
 							return
 						}
@@ -787,7 +757,7 @@ func (this *Node) SendToTrans(clientId string, path string, req interface{}) err
 			return true
 		})
 	}, func(item interface{}) {
-		conn, ok := item.(*Connection)
+		conn, ok := item.(*protocol.Connection)
 		if !ok {
 			return
 		}
