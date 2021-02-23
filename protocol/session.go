@@ -8,6 +8,7 @@ import (
 type Connection interface {
 	WriteJSON(data interface{}) error
 	WriteMsg(msgType int, data []byte) error
+	ReadMessage() (p []byte, err error)
 	Close() error
 	Addr() string
 }

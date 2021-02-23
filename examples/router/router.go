@@ -2,7 +2,7 @@ package router
 
 import (
 	"github.com/weblazy/socket-cluster/examples/api"
-	"github.com/weblazy/socket-cluster/node"
+	"github.com/weblazy/socket-cluster/protocol/websocket"
 
 	"github.com/labstack/echo/v4"
 )
@@ -27,17 +27,17 @@ func Router(g *echo.Group) {
 	g.POST("/getSystemMsg", api.GetSystemMsg)
 
 	//解决跨域问题
-	g.OPTIONS("/login", node.OptionHandler)
-	g.OPTIONS("/register", node.OptionHandler)
-	g.OPTIONS("/sendSmsCode", node.OptionHandler)
-	g.OPTIONS("/chatInit", node.OptionHandler)
-	g.OPTIONS("/getGroupMembers", node.OptionHandler)
-	g.OPTIONS("/search", node.OptionHandler)
-	g.OPTIONS("/createGroup", node.OptionHandler)
-	g.OPTIONS("/addFriend", node.OptionHandler)
-	g.OPTIONS("/manageSystemMsg", node.OptionHandler)
-	g.OPTIONS("/manageAddFriend", node.OptionHandler)
-	g.OPTIONS("/joinGroup", node.OptionHandler)
-	g.OPTIONS("/manageJoinGroup", node.OptionHandler)
-	g.OPTIONS("/getSystemMsg", node.OptionHandler)
+	g.OPTIONS("/login", websocket.OptionHandler)
+	g.OPTIONS("/register", websocket.OptionHandler)
+	g.OPTIONS("/sendSmsCode", websocket.OptionHandler)
+	g.OPTIONS("/chatInit", websocket.OptionHandler)
+	g.OPTIONS("/getGroupMembers", websocket.OptionHandler)
+	g.OPTIONS("/search", websocket.OptionHandler)
+	g.OPTIONS("/createGroup", websocket.OptionHandler)
+	g.OPTIONS("/addFriend", websocket.OptionHandler)
+	g.OPTIONS("/manageSystemMsg", websocket.OptionHandler)
+	g.OPTIONS("/manageAddFriend", websocket.OptionHandler)
+	g.OPTIONS("/joinGroup", websocket.OptionHandler)
+	g.OPTIONS("/manageJoinGroup", websocket.OptionHandler)
+	g.OPTIONS("/getSystemMsg", websocket.OptionHandler)
 }

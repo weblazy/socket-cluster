@@ -423,7 +423,7 @@ func (this *Node) UpdateNodeList() error {
 				conn.Close()
 			}(ipAddress, conn)
 			for {
-				_, msg, err := conn.Conn.ReadMessage()
+				msg, err := conn.ReadMessage()
 				if err != nil {
 					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 						logx.Info(err)
