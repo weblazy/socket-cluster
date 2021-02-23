@@ -17,6 +17,13 @@ type Connection struct {
 	OnClose     func(conn *Connection)
 }
 
+type Connect interface {
+	OnTransMsg(conn *Connection, msg []byte)
+	OnClientMsg(conn *Connection, msg []byte)
+	OnConnect(conn *Connection)
+	OnClose(conn *Connection)
+}
+
 // WriteJSON send json message
 func (conn *Connection) WriteJSON(data interface{}) error {
 	conn.Mutex.Lock()

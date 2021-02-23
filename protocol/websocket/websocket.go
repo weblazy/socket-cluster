@@ -26,21 +26,18 @@ var (
 )
 
 type Connection struct {
-	Conn        *websocket.Conn
-	Mutex       sync.Mutex
-	OnTransMsg  func(conn *protocol.Connection, msg []byte)
-	OnClientMsg func(conn *protocol.Connection, msg []byte)
-	OnConnect   func(conn *protocol.Connection)
-	OnClose     func(conn *protocol.Connection)
+	Conn           *websocket.Conn
+	Mutex          sync.Mutex
+	ConnectHandler protocol.Connect
 }
 
-func (this *Connection) ListenAndServe(port int64, OnTransMsg func(conn *protocol.Connection, msg []byte), clientHandler func(c echo.Context) error, protoFunc ...protocol.ProtoFunc) error {
+func (this *Connection) ListenAndServe(port int64, connectHandler protocol.Connect, protoFunc ...protocol.ProtoFunc) error {
 	// this.transAddress = fmt.Sprintf("%s%s/trans", cfg.Host, cfg.TransPath)
 	// this.clientAddress = fmt.Sprintf("%s%s/client", cfg.Host, cfg.ClientPath)
-	this.OnTransMsg = OnTransMsg
+	this.ConnectHandler = connectHandler
 	e := echo.New()
 	e.GET("/trans", this.transHandler)
-	e.GET("/client", clientHandler)
+	e.GET("/client", this.clientHandler)
 	// webGroup := e.Group(fmt.Sprintf("%s/web", cfg.ClientPath))
 	// cfg.router(webGroup)
 	go func() {
@@ -79,7 +76,7 @@ func (this *Connection) transHandler(c echo.Context) error {
 			break
 		}
 		logx.Info(string(msg))
-		this.OnTransMsg(conn, msg)
+		this.ConnectHandler.OnTransMsg(conn, msg)
 	}
 	return nil
 }
@@ -95,13 +92,13 @@ func (this *Connection) clientHandler(c echo.Context) error {
 	}
 	conn := &protocol.Connection{Conn: connect}
 	defer func() {
-		this.OnClose(conn)
+		this.ConnectHandler.OnClose(conn)
 		if connect != nil {
 			connect.Close()
 		}
 	}()
 
-	this.OnConnect(conn)
+	this.ConnectHandler.OnConnect(conn)
 	// log.Sugar.Info(connect.RemoteAddr().String(), connect.LocalAddr().String(), "start")
 	for {
 		_, msg, err := connect.ReadMessage()
@@ -112,7 +109,7 @@ func (this *Connection) clientHandler(c echo.Context) error {
 			break
 		}
 		logx.Info(string(msg))
-		this.OnClientMsg(conn, msg)
+		this.ConnectHandler.OnClientMsg(conn, msg)
 	}
 
 	return nil

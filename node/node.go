@@ -88,7 +88,7 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 		nodeTimeout:      cfg.NodePingInterval * 3,
 		clientTimeout:    cfg.ClientPingInterval * 3,
 	}
-	cfg.protocolHandler.ListenAndServe(cfg.Port, this.OnTransMsg, this.clientHandler)
+	cfg.protocolHandler.ListenAndServe(cfg.Port, this)
 
 	this.SendPing()
 	this.Ping()
@@ -116,49 +116,8 @@ func originMiddlewareFunc(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-// clientHandler deal client connection
-func (this *Node) clientHandler(c echo.Context) error {
-	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	defer func() {
-		key := connect.RemoteAddr().String()
-		v1, ok := this.clientConns.Load(key)
-		if ok {
-			clientId := v1.(*Session).ClientId
-			if clientId != "" {
-				this.clientIdSessions.Delete(clientId, key)
-			}
-		}
-		this.clientConns.Delete(key)
-		if connect != nil {
-			connect.Close()
-		}
-	}()
-	conn := &protocol.Connection{Conn: connect}
-	if err != nil {
-		if _, ok := err.(websocket.HandshakeError); !ok {
-			logx.Info(err)
-		}
-		return err
-	}
-	this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
-	// log.Sugar.Info(connect.RemoteAddr().String(), connect.LocalAddr().String(), "start")
-	for {
-		_, msg, err := connect.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logx.Info(err)
-			}
-			break
-		}
-		logx.Info(string(msg))
-		this.OnClientMsg(conn, msg)
-	}
-
-	return nil
-}
-
-func (this *Node) OnConnect(connect *websocket.Conn) {
-	key := connect.RemoteAddr().String()
+func (this *Node) OnConnect(connect *protocol.Connection) {
+	key := connect.Conn.RemoteAddr().String()
 	v1, ok := this.clientConns.Load(key)
 	if ok {
 		clientId := v1.(*Session).ClientId
@@ -169,8 +128,8 @@ func (this *Node) OnConnect(connect *websocket.Conn) {
 	this.clientConns.Delete(key)
 }
 
-func (this *Node) OnClose(connect *websocket.Conn) {
-	this.timer.SetTimer(connect.RemoteAddr().String(), connect, authTime)
+func (this *Node) OnClose(connect *protocol.Connection) {
+	this.timer.SetTimer(connect.Conn.RemoteAddr().String(), connect, authTime)
 }
 
 // SendPing send node Heartbeat
