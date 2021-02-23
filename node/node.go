@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
-	"github.com/labstack/echo/v4"
 	"github.com/spf13/cast"
 	"github.com/weblazy/core/consistenthash/unsafehash"
 	"github.com/weblazy/core/mapreduce"
@@ -26,7 +25,7 @@ type (
 
 	// Node communication node
 	Node struct {
-
+		protocol.Connect
 		// adminRedis redis client store node info
 		adminRedis       *redis.Client
 		nodeConf         *NodeConf
@@ -57,8 +56,8 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 
 	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
 		logx.Infof("%s auth timeout", k)
-		if v.(*protocol.Connection).Conn != nil {
-			err := v.(*protocol.Connection).Conn.Close()
+		if v.(protocol.Connection) != nil {
+			err := v.(protocol.Connection).Close()
 			if err != nil {
 				logx.Info(err)
 			}
@@ -97,27 +96,8 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 	return this, nil
 }
 
-func OptionHandler(c echo.Context) error {
-	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
-	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
-	return c.String(200, "")
-}
-func WebHandler(c echo.Context) error {
-	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
-	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
-	return c.JSON(200, "pong")
-}
-
-func originMiddlewareFunc(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		c.Response().Header().Set("Access-Control-Allow-Origin", "*")
-		c.Response().Header().Set("Access-Control-Allow-Headers", "*")
-		return next(c)
-	}
-}
-
-func (this *Node) OnConnect(connect *protocol.Connection) {
-	key := connect.Conn.RemoteAddr().String()
+func (this *Node) OnConnect(connect protocol.Connection) {
+	key := connect.Addr()
 	v1, ok := this.clientConns.Load(key)
 	if ok {
 		clientId := v1.(*Session).ClientId
@@ -128,8 +108,8 @@ func (this *Node) OnConnect(connect *protocol.Connection) {
 	this.clientConns.Delete(key)
 }
 
-func (this *Node) OnClose(connect *protocol.Connection) {
-	this.timer.SetTimer(connect.Conn.RemoteAddr().String(), connect, authTime)
+func (this *Node) OnClose(connect protocol.Connection) {
+	this.timer.SetTimer(connect.Addr(), connect, authTime)
 }
 
 // SendPing send node Heartbeat
@@ -160,7 +140,7 @@ func (this *Node) SendPing() {
 				// 	logx.Info(err)
 				// }
 				this.transConns.Range(func(k, v interface{}) bool {
-					conn, ok := v.(*protocol.Connection)
+					conn, ok := v.(protocol.Connection)
 					if !ok {
 						return true
 					}
@@ -217,7 +197,7 @@ func (this *Node) Ping() {
 			// 	logx.Info(err)
 			// }
 			this.transConns.Range(func(k, v interface{}) bool {
-				conn, ok := v.(*protocol.Connection)
+				conn, ok := v.(protocol.Connection)
 				if !ok {
 					return true
 				}
@@ -295,8 +275,8 @@ func (this *Node) IsOnline(clientId string) bool {
 }
 
 // OnClientMsg deal client message
-func (this *Node) OnClientMsg(conn *protocol.Connection, msg []byte) {
-	sid := conn.Conn.RemoteAddr().String()
+func (this *Node) OnClientMsg(conn protocol.Connection, msg []byte) {
+	sid := conn.Addr()
 	session, ok := this.clientConns.Load(sid)
 	clientId := ""
 	if ok {
@@ -318,7 +298,7 @@ func (this *Node) OnClientPing(clientId string) error {
 }
 
 // OnTransMsg handle internal communication node messages
-func (this *Node) OnTransMsg(conn *protocol.Connection, msg []byte) {
+func (this *Node) OnTransMsg(conn protocol.Connection, msg []byte) {
 	data := make(map[string]interface{})
 	err := json.Unmarshal(msg, &data)
 	if err != nil {
@@ -363,12 +343,12 @@ func (this *Node) OnTransMsg(conn *protocol.Connection, msg []byte) {
 }
 
 // AuthTrans Auth the node
-func (this *Node) AuthTrans(conn *protocol.Connection, args map[string]interface{}) error {
+func (this *Node) AuthTrans(conn protocol.Connection, args map[string]interface{}) error {
 	sid := args["trans_address"].(string)
-	this.timer.RemoveTimer(conn.Conn.RemoteAddr().String()) //Cancel timeingwheel task
+	this.timer.RemoveTimer(conn.Addr()) //Cancel timeingwheel task
 	if args["password"].(string) != this.nodeConf.Password {
 		logx.Infof("Connect:%s,Wrong password:%s", sid, args["password"].(string))
-		conn.Conn.Close()
+		conn.Close()
 		return fmt.Errorf("auth faild")
 	}
 	this.transConns.Store(sid, conn)
@@ -376,8 +356,8 @@ func (this *Node) AuthTrans(conn *protocol.Connection, args map[string]interface
 }
 
 // AuthClient Auth the node
-func (this *Node) AuthClient(conn *protocol.Connection, clientId string) error {
-	sid := conn.Conn.RemoteAddr().String()
+func (this *Node) AuthClient(conn protocol.Connection, clientId string) error {
+	sid := conn.Addr()
 	this.timer.RemoveTimer(sid) //Cancel timeingwheel task
 	session := &Session{Conn: conn, ClientId: clientId}
 	this.clientConns.Store(sid, session)
@@ -534,7 +514,7 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 		} else {
 			connect, ok := this.transConns.Load(batchData.ip)
 			if ok {
-				conn, ok := connect.(*protocol.Connection)
+				conn, ok := connect.(protocol.Connection)
 				if !ok {
 					return
 				}
@@ -635,7 +615,7 @@ func (this *Node) GetSessionsByClientIds(clientIds []string) []*Session {
 
 //BindClientId bind clientId with session
 func (this *Node) BindClientId(clientId string, se *Session) error {
-	sid := se.Conn.Conn.RemoteAddr().String()
+	sid := se.Conn.Addr()
 	this.clientIdSessions.StoreWithPlugin(clientId, sid, se, func() {
 		oldClientId := se.CasClientId(clientId)
 		if oldClientId != "" && oldClientId != clientId {
@@ -700,7 +680,7 @@ func (this *Node) SendToClientId(clientId string, req map[string]interface{}) er
 				} else {
 					connect, ok := this.transConns.Load(ip)
 					if ok {
-						conn, ok := connect.(*protocol.Connection)
+						conn, ok := connect.(protocol.Connection)
 						if !ok {
 							return
 						}
@@ -732,7 +712,7 @@ func (this *Node) SendToTrans(clientId string, path string, req interface{}) err
 			return true
 		})
 	}, func(item interface{}) {
-		conn, ok := item.(*protocol.Connection)
+		conn, ok := item.(protocol.Connection)
 		if !ok {
 			return
 		}

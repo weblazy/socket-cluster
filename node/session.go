@@ -8,7 +8,7 @@ import (
 )
 
 type Session struct {
-	Conn     *protocol.Connection
+	Conn     protocol.Connection
 	ClientId string
 }
 

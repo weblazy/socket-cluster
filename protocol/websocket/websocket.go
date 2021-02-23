@@ -25,13 +25,17 @@ var (
 	defaultMasterPort int64 = 9527
 )
 
-type Connection struct {
-	Conn           *websocket.Conn
-	Mutex          sync.Mutex
+type Ws struct {
 	ConnectHandler protocol.Connect
 }
 
-func (this *Connection) ListenAndServe(port int64, connectHandler protocol.Connect, protoFunc ...protocol.ProtoFunc) error {
+type WsConnection struct {
+	Conn  *websocket.Conn
+	Mutex sync.Mutex
+	protocol.Connection
+}
+
+func (this *Ws) ListenAndServe(port int64, connectHandler protocol.Connect, protoFunc ...protocol.ProtoFunc) error {
 	// this.transAddress = fmt.Sprintf("%s%s/trans", cfg.Host, cfg.TransPath)
 	// this.clientAddress = fmt.Sprintf("%s%s/client", cfg.Host, cfg.ClientPath)
 	this.ConnectHandler = connectHandler
@@ -51,7 +55,7 @@ func (this *Connection) ListenAndServe(port int64, connectHandler protocol.Conne
 }
 
 // transHandler deal node connection
-func (this *Connection) transHandler(c echo.Context) error {
+func (this *Ws) transHandler(c echo.Context) error {
 	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	defer func() {
 		if connect != nil {
@@ -65,7 +69,7 @@ func (this *Connection) transHandler(c echo.Context) error {
 		}
 		return err
 	}
-	conn := &protocol.Connection{Conn: connect}
+	conn := &WsConnection{Conn: connect}
 	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
 	for {
 		_, msg, err := connect.ReadMessage()
@@ -82,7 +86,7 @@ func (this *Connection) transHandler(c echo.Context) error {
 }
 
 // clientHandler deal client connection
-func (this *Connection) clientHandler(c echo.Context) error {
+func (this *Ws) clientHandler(c echo.Context) error {
 	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
@@ -90,7 +94,7 @@ func (this *Connection) clientHandler(c echo.Context) error {
 		}
 		return err
 	}
-	conn := &protocol.Connection{Conn: connect}
+	conn := &WsConnection{Conn: connect}
 	defer func() {
 		this.ConnectHandler.OnClose(conn)
 		if connect != nil {
@@ -116,15 +120,38 @@ func (this *Connection) clientHandler(c echo.Context) error {
 }
 
 // WriteJSON send json message
-func (conn *Connection) WriteJSON(data interface{}) error {
+func (conn *WsConnection) WriteJSON(data interface{}) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
 	return conn.Conn.WriteJSON(data)
 }
 
 // WriteMsg send byte array message
-func (conn *Connection) WriteMsg(msgType int, data []byte) error {
+func (conn *WsConnection) WriteMsg(msgType int, data []byte) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
 	return conn.Conn.WriteMessage(msgType, data)
+}
+
+func (conn *WsConnection) Addr() string {
+	return conn.Conn.RemoteAddr().String()
+}
+
+func OptionHandler(c echo.Context) error {
+	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
+	return c.String(200, "")
+}
+func WebHandler(c echo.Context) error {
+	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
+	return c.JSON(200, "pong")
+}
+
+func originMiddlewareFunc(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+		c.Response().Header().Set("Access-Control-Allow-Headers", "*")
+		return next(c)
+	}
 }

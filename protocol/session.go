@@ -1,45 +1,26 @@
 package protocol
 
 import (
-	"sync"
 	"sync/atomic"
 	"unsafe"
-
-	"github.com/gorilla/websocket"
 )
 
-type Connection struct {
-	Conn        *websocket.Conn
-	Mutex       sync.Mutex
-	OnTransMsg  func(conn *Connection, msg []byte)
-	OnClientMsg func(conn *Connection, msg []byte)
-	OnConnect   func(conn *Connection)
-	OnClose     func(conn *Connection)
+type Connection interface {
+	WriteJSON(data interface{}) error
+	WriteMsg(msgType int, data []byte) error
+	Close() error
+	Addr() string
 }
 
 type Connect interface {
-	OnTransMsg(conn *Connection, msg []byte)
-	OnClientMsg(conn *Connection, msg []byte)
-	OnConnect(conn *Connection)
-	OnClose(conn *Connection)
-}
-
-// WriteJSON send json message
-func (conn *Connection) WriteJSON(data interface{}) error {
-	conn.Mutex.Lock()
-	defer conn.Mutex.Unlock()
-	return conn.Conn.WriteJSON(data)
-}
-
-// WriteMsg send byte array message
-func (conn *Connection) WriteMsg(msgType int, data []byte) error {
-	conn.Mutex.Lock()
-	defer conn.Mutex.Unlock()
-	return conn.Conn.WriteMessage(msgType, data)
+	OnTransMsg(conn Connection, msg []byte)
+	OnClientMsg(conn Connection, msg []byte)
+	OnConnect(conn Connection)
+	OnClose(conn Connection)
 }
 
 type Session struct {
-	Conn     *Connection
+	Conn     Connection
 	ClientId string
 }
 
