@@ -14,15 +14,17 @@ import (
 	"sync"
 
 	"github.com/lucas-clemente/quic-go"
+	"github.com/weblazy/socket-cluster/protocol"
 )
 
-type Connection struct {
+type QuicConnection struct {
 	Stream quic.Stream
 	Mutex  sync.Mutex
+	protocol.Connection
 }
 
 // WriteJSON send json message
-func (conn *Connection) WriteJSON(data interface{}) error {
+func (conn *QuicConnection) WriteJSON(data interface{}) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
 	msg, err := json.Marshal(data)
@@ -34,14 +36,18 @@ func (conn *Connection) WriteJSON(data interface{}) error {
 }
 
 // WriteMsg send byte array message
-func (conn *Connection) WriteMsg(msgType int, data []byte) error {
+func (conn *QuicConnection) WriteMsg(msgType int, data []byte) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
 	_, err := conn.Stream.Write(data)
 	return err
 }
 
-func Dail(addr string) (quic.Stream, error) {
+type QuicProtocol struct {
+	ConnectHandler protocol.Node
+}
+
+func (this *QuicProtocol) Dail(addr string) (quic.Stream, error) {
 	tlsConf := &tls.Config{NextProtos: []string{"quic-echo-example"}, InsecureSkipVerify: true}
 	session, err := quic.DialAddr(addr, tlsConf, nil)
 	if err != nil {
@@ -56,7 +62,7 @@ func Dail(addr string) (quic.Stream, error) {
 	return stream, err
 }
 
-func Listen(addr string) {
+func (this *QuicProtocol) Listen(addr string) {
 	tlsConf := generateTLSConfig()
 	listener, err := quic.ListenAddr(addr, tlsConf, nil)
 	if err != nil {

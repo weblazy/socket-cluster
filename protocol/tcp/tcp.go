@@ -6,15 +6,18 @@ import (
 	"log"
 	"net"
 	"sync"
+
+	"github.com/weblazy/socket-cluster/protocol"
 )
 
-type Connection struct {
+type TcpConnection struct {
 	Conn  net.Conn
 	Mutex sync.Mutex
+	protocol.Connection
 }
 
 // WriteJSON send json message
-func (conn *Connection) WriteJSON(data interface{}) error {
+func (conn *TcpConnection) WriteJSON(data interface{}) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
 	msg, err := json.Marshal(data)
@@ -26,14 +29,18 @@ func (conn *Connection) WriteJSON(data interface{}) error {
 }
 
 // WriteMsg send byte array message
-func (conn *Connection) WriteMsg(msgType int, data []byte) error {
+func (conn *TcpConnection) WriteMsg(msgType int, data []byte) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
 	_, err := conn.Conn.Write(data)
 	return err
 }
 
-func Dail(addr string) (net.Conn, error) {
+type TcpProtocol struct {
+	ConnectHandler protocol.Node
+}
+
+func (this *TcpProtocol) Dail(addr string) (net.Conn, error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
 	if err != nil {
 		log.Printf("Resolve tcp addr failed: %v\n", err)
@@ -50,7 +57,7 @@ func Dail(addr string) (net.Conn, error) {
 	return conn, err
 }
 
-func Listen(port string) {
+func (this *TcpProtocol) Listen(port string) {
 	fmt.Println("tcp run on localhost:7123")
 	listener, err := net.Listen("tcp", ":7123")
 	if err != nil {

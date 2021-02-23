@@ -25,7 +25,7 @@ type (
 
 	// Node communication node
 	Node struct {
-		protocol.Connect
+		protocol.Node
 		// adminRedis redis client store node info
 		adminRedis       *redis.Client
 		nodeConf         *NodeConf

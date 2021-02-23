@@ -25,17 +25,11 @@ var (
 	defaultMasterPort int64 = 9527
 )
 
-type Ws struct {
-	ConnectHandler protocol.Connect
+type WsProtocol struct {
+	ConnectHandler protocol.Node
 }
 
-type WsConnection struct {
-	Conn  *websocket.Conn
-	Mutex sync.Mutex
-	protocol.Connection
-}
-
-func (this *Ws) ListenAndServe(port int64, connectHandler protocol.Connect, protoFunc ...protocol.ProtoFunc) error {
+func (this *WsProtocol) ListenAndServe(port int64, connectHandler protocol.Node, protoFunc ...protocol.ProtoFunc) error {
 	// this.transAddress = fmt.Sprintf("%s%s/trans", cfg.Host, cfg.TransPath)
 	// this.clientAddress = fmt.Sprintf("%s%s/client", cfg.Host, cfg.ClientPath)
 	this.ConnectHandler = connectHandler
@@ -55,7 +49,7 @@ func (this *Ws) ListenAndServe(port int64, connectHandler protocol.Connect, prot
 }
 
 // transHandler deal node connection
-func (this *Ws) transHandler(c echo.Context) error {
+func (this *WsProtocol) transHandler(c echo.Context) error {
 	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	defer func() {
 		if connect != nil {
@@ -86,7 +80,7 @@ func (this *Ws) transHandler(c echo.Context) error {
 }
 
 // clientHandler deal client connection
-func (this *Ws) clientHandler(c echo.Context) error {
+func (this *WsProtocol) clientHandler(c echo.Context) error {
 	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
@@ -117,6 +111,12 @@ func (this *Ws) clientHandler(c echo.Context) error {
 	}
 
 	return nil
+}
+
+type WsConnection struct {
+	Conn  *websocket.Conn
+	Mutex sync.Mutex
+	protocol.Connection
 }
 
 // WriteJSON send json message

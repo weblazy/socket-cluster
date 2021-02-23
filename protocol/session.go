@@ -13,7 +13,7 @@ type Connection interface {
 	Addr() string
 }
 
-type Connect interface {
+type Node interface {
 	OnTransMsg(conn Connection, msg []byte)
 	OnClientMsg(conn Connection, msg []byte)
 	OnConnect(conn Connection)
