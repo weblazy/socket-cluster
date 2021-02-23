@@ -396,7 +396,7 @@ func (this *Node) UpdateNodeList() error {
 			continue
 		}
 
-		connect, _, err := websocket.DefaultDialer.Dial(ipAddress, nil)
+		session, err := this.nodeConf.protocolHandler.Dial(ipAddress)
 		if err != nil {
 			logx.Info("dial:", err)
 			this.transServices.Delete(ipAddress)
@@ -411,16 +411,16 @@ func (this *Node) UpdateNodeList() error {
 			MsgType: "auth",
 			Data:    auth,
 		}
-		conn := &protocol.Connection{Conn: connect}
+		conn := session.Conn
 		err = conn.WriteJSON(data)
 		if err != nil {
 			logx.Info(err)
 		}
 		this.transServices.Store(ipAddress, conn)
-		go func(ipAddress string, conn *protocol.Connection) {
-			defer func(ipAddress string, conn *protocol.Connection) {
+		go func(ipAddress string, conn protocol.Connection) {
+			defer func(ipAddress string, conn protocol.Connection) {
 				this.transServices.Delete(ipAddress)
-				conn.Conn.Close()
+				conn.Close()
 			}(ipAddress, conn)
 			for {
 				_, msg, err := conn.Conn.ReadMessage()
