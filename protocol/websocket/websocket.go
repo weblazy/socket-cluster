@@ -26,12 +26,15 @@ var (
 )
 
 type Connection struct {
-	Conn       *websocket.Conn
-	Mutex      sync.Mutex
-	OnTransMsg func(conn *Connection, msg []byte)
+	Conn        *websocket.Conn
+	Mutex       sync.Mutex
+	OnTransMsg  func(conn *protocol.Connection, msg []byte)
+	OnClientMsg func(conn *protocol.Connection, msg []byte)
+	OnConnect   func(conn *protocol.Connection)
+	OnClose     func(conn *protocol.Connection)
 }
 
-func (this *Connection) ListenAndServe(port int64, OnTransMsg func(conn *Connection, msg []byte), clientHandler func(c echo.Context) error, protoFunc ...protocol.ProtoFunc) error {
+func (this *Connection) ListenAndServe(port int64, OnTransMsg func(conn *protocol.Connection, msg []byte), clientHandler func(c echo.Context) error, protoFunc ...protocol.ProtoFunc) error {
 	// this.transAddress = fmt.Sprintf("%s%s/trans", cfg.Host, cfg.TransPath)
 	// this.clientAddress = fmt.Sprintf("%s%s/client", cfg.Host, cfg.ClientPath)
 	this.OnTransMsg = OnTransMsg
@@ -65,7 +68,7 @@ func (this *Connection) transHandler(c echo.Context) error {
 		}
 		return err
 	}
-	conn := &Connection{Conn: connect}
+	conn := &protocol.Connection{Conn: connect}
 	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
 	for {
 		_, msg, err := connect.ReadMessage()
@@ -78,6 +81,40 @@ func (this *Connection) transHandler(c echo.Context) error {
 		logx.Info(string(msg))
 		this.OnTransMsg(conn, msg)
 	}
+	return nil
+}
+
+// clientHandler deal client connection
+func (this *Connection) clientHandler(c echo.Context) error {
+	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	if err != nil {
+		if _, ok := err.(websocket.HandshakeError); !ok {
+			logx.Info(err)
+		}
+		return err
+	}
+	conn := &protocol.Connection{Conn: connect}
+	defer func() {
+		this.OnClose(conn)
+		if connect != nil {
+			connect.Close()
+		}
+	}()
+
+	this.OnConnect(conn)
+	// log.Sugar.Info(connect.RemoteAddr().String(), connect.LocalAddr().String(), "start")
+	for {
+		_, msg, err := connect.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				logx.Info(err)
+			}
+			break
+		}
+		logx.Info(string(msg))
+		this.OnClientMsg(conn, msg)
+	}
+
 	return nil
 }
 

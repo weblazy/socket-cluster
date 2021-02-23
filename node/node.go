@@ -157,6 +157,22 @@ func (this *Node) clientHandler(c echo.Context) error {
 	return nil
 }
 
+func (this *Node) OnConnect(connect *websocket.Conn) {
+	key := connect.RemoteAddr().String()
+	v1, ok := this.clientConns.Load(key)
+	if ok {
+		clientId := v1.(*Session).ClientId
+		if clientId != "" {
+			this.clientIdSessions.Delete(clientId, key)
+		}
+	}
+	this.clientConns.Delete(key)
+}
+
+func (this *Node) OnClose(connect *websocket.Conn) {
+	this.timer.SetTimer(connect.RemoteAddr().String(), connect, authTime)
+}
+
 // SendPing send node Heartbeat
 func (this *Node) SendPing() {
 	go func() {

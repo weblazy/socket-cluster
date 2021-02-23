@@ -9,8 +9,12 @@ import (
 )
 
 type Connection struct {
-	Conn  *websocket.Conn
-	Mutex sync.Mutex
+	Conn        *websocket.Conn
+	Mutex       sync.Mutex
+	OnTransMsg  func(conn *Connection, msg []byte)
+	OnClientMsg func(conn *Connection, msg []byte)
+	OnConnect   func(conn *Connection)
+	OnClose     func(conn *Connection)
 }
 
 // WriteJSON send json message
