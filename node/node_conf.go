@@ -5,6 +5,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/protocol"
+	"github.com/weblazy/socket-cluster/session_storage"
 )
 
 type (
@@ -15,21 +16,22 @@ type (
 	}
 	// NodeConf node config
 	NodeConf struct {
-		Host               string         // the ip or domain of the node
-		ClientPath         string         // the client path
-		TransPath          string         // the transport path
-		RedisNodeList      []*RedisNode   // the slice of RedisNode
-		RedisConf          *redis.Options // the redis config
-		RedisMaxCount      uint32         // the hash ring node count
-		Port               int64          // Node port
-		Password           string         // Password for auth when connect to other node
-		ClientPingInterval int64
-		NodePingInterval   int64                  // Heartbeat interval
-		onMsg              func(context *Context) // callback function when receive client message
-		router             func(g *echo.Group)    // http router of echo
-		echoObj            *echo.Echo             //Echo object
-		discoveryHandler   discovery.ServiceDiscovery
-		protocolHandler    protocol.Protocol
+		Host                  string         // the ip or domain of the node
+		ClientPath            string         // the client path
+		TransPath             string         // the transport path
+		RedisNodeList         []*RedisNode   // the slice of RedisNode
+		RedisConf             *redis.Options // the redis config
+		RedisMaxCount         uint32         // the hash ring node count
+		Port                  int64          // Node port
+		Password              string         // Password for auth when connect to other node
+		ClientPingInterval    int64
+		NodePingInterval      int64                  // Heartbeat interval
+		onMsg                 func(context *Context) // callback function when receive client message
+		router                func(g *echo.Group)    // http router of echo
+		echoObj               *echo.Echo             //Echo object
+		discoveryHandler      discovery.ServiceDiscovery
+		protocolHandler       protocol.Protocol
+		sessionStorageHandler session_storage.SessionStorage
 	}
 	// Params of onMsg
 	Context struct {
