@@ -6,10 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// @desc 登录
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// Login
 func Login(c echo.Context) error {
 	//参数验证绑定
 	req, response, err := ParseJson(c)
@@ -25,10 +22,7 @@ func Login(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 注册
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// Register
 func Register(c echo.Context) error {
 	//参数验证绑定
 	req, response, err := ParseJson(c)
@@ -47,10 +41,7 @@ func Register(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 发送验证码
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// SendSmsCode
 func SendSmsCode(c echo.Context) error {
 	//参数验证绑定
 	req, response, err := ParseJson(c)
@@ -65,10 +56,7 @@ func SendSmsCode(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 聊天初始化
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// ChatInit
 func ChatInit(c echo.Context) error {
 	uid, _, response, err := ParseParams(c)
 	if err != nil {
@@ -81,10 +69,7 @@ func ChatInit(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 获取群成员
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// GetGroupMembers
 func GetGroupMembers(c echo.Context) error {
 	uid, _, response, err := ParseParams(c)
 	if err != nil {
@@ -97,10 +82,7 @@ func GetGroupMembers(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 搜索
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// Search
 func Search(c echo.Context) error {
 	_, req, response, err := ParseParams(c)
 	if err != nil {
@@ -115,10 +97,7 @@ func Search(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 添加好友
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// AddFriend
 func AddFriend(c echo.Context) error {
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
@@ -133,10 +112,7 @@ func AddFriend(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 管理系统消息
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// ManageSystemMsg
 func ManageSystemMsg(c echo.Context) error {
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
@@ -151,10 +127,7 @@ func ManageSystemMsg(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 回复添加好友
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// ManageAddFriend
 func ManageAddFriend(c echo.Context) error {
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
@@ -169,10 +142,7 @@ func ManageAddFriend(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 添加好友
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// JoinGroup
 func JoinGroup(c echo.Context) error {
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
@@ -187,10 +157,7 @@ func JoinGroup(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 管理加群
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// ManageJoinGroup
 func ManageJoinGroup(c echo.Context) error {
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
@@ -205,10 +172,7 @@ func ManageJoinGroup(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 建群
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// CreateGroup
 func CreateGroup(c echo.Context) error {
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
@@ -223,10 +187,7 @@ func CreateGroup(c echo.Context) error {
 	return response.RetCustomize(0, resp, "")
 }
 
-// @desc 获取系统消息
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// GetSystemMsg
 func GetSystemMsg(c echo.Context) error {
 	uid, req, response, err := ParseParams(c)
 	if err != nil {

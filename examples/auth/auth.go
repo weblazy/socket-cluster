@@ -37,7 +37,7 @@ var (
 	prefix        = "token#"
 )
 
-// NewPeer creates a new peer.
+// NewAuthConf
 func NewAuthConf(redisNodeList []*RedisNode) *AuthConf {
 	return &AuthConf{
 		RedisNodeList: redisNodeList,
@@ -46,11 +46,13 @@ func NewAuthConf(redisNodeList []*RedisNode) *AuthConf {
 
 }
 
+// WithMaxCount
 func (conf *AuthConf) WithMaxCount(count uint32) *AuthConf {
 	conf.MaxCount = count
 	return conf
 }
 
+// InitAuth
 func InitAuth(conf *AuthConf) error {
 	cHashRing := unsafehash.NewConsistent(conf.MaxCount)
 	for _, value := range conf.RedisNodeList {
@@ -61,6 +63,7 @@ func InitAuth(conf *AuthConf) error {
 	return nil
 }
 
+// Validate
 func (auth *Auth) Validate(token string) (string, error) {
 	if token == "" {
 		return "", TokenNotFound
@@ -84,6 +87,7 @@ func (auth *Auth) Validate(token string) (string, error) {
 	return arr[0], nil
 }
 
+// Add
 func (auth *Auth) Add(id string) (string, error) {
 	now := time.Now().Unix()
 	nowStr := strconv.FormatInt(now, 10)

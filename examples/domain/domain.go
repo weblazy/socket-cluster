@@ -46,10 +46,7 @@ var avatarArr = []string{
 	"https://img.sucai999.com/bIS1dEpwM%7BJyPD5yOj5yNkVvOEBw%5Bnmt%5BYNwNkBzNEF3M3%5BvOYe4N4B%7BbIin%5BIOiZUK%7BNz6rdHd%3E.jpg?w=300&h=",
 }
 
-// @desc 登录
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// Login
 func Login(username, password string) (map[string]interface{}, error) {
 	user, err := model.AuthHandler.GetOne("username = ? and password = ?", username, password)
 	if err != nil {
@@ -69,10 +66,7 @@ func Login(username, password string) (map[string]interface{}, error) {
 	}, nil
 }
 
-// @desc 注册
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// Register
 func Register(username, password, confirmPassword, email, code string) (map[string]interface{}, error) {
 	if password != confirmPassword {
 		return nil, fmt.Errorf("密码不一致")
@@ -114,10 +108,7 @@ func Register(username, password, confirmPassword, email, code string) (map[stri
 	}, nil
 }
 
-// @desc 发送验证码
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// SendSmsCode
 func SendSmsCode(email string) (map[string]interface{}, error) {
 	code := fmt.Sprintf("%06v", rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000))
 	now := time.Now()
@@ -156,10 +147,7 @@ func SendSmsCode(email string) (map[string]interface{}, error) {
 	return map[string]interface{}{}, nil
 }
 
-// @desc SendEmail body支持html格式字符串
-// @auth liuguoqiang 2020-11-30
-// @param
-// @return
+// SendEmail
 func SendEmail(email, subject, body string) error {
 	m := gomail.NewMessage()
 
@@ -177,10 +165,7 @@ func SendEmail(email, subject, body string) error {
 	return nil
 }
 
-// @desc 获取群成员
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// ChatInit
 func ChatInit(uid int64) (map[string]interface{}, error) {
 	resp := make(map[string]interface{})
 	user, err := model.AuthHandler.GetOne("id = ?", uid)
@@ -249,10 +234,7 @@ func ChatInit(uid int64) (map[string]interface{}, error) {
 	return resp, nil
 }
 
-// @desc 获取群成员
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// GetGroupMembers
 func GetGroupMembers(groupId int64) (map[string]interface{}, error) {
 	resp := make(map[string]interface{})
 	userGroupList, err := model.UserGroupHandler.GetList("group_id = ?", groupId)
@@ -283,10 +265,7 @@ func GetGroupMembers(groupId int64) (map[string]interface{}, error) {
 	return resp, nil
 }
 
-// @desc 搜索
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// Search
 func Search(keyword, searchType string) (map[string]interface{}, error) {
 	if searchType == "email" {
 		user, err := model.AuthHandler.GetOne("email = ?", keyword)
@@ -313,10 +292,7 @@ func Search(keyword, searchType string) (map[string]interface{}, error) {
 	}
 }
 
-// @desc 加好友
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// AddFriend
 func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, error) {
 	_, err := model.FriendHandler.GetOne("uid = ? and friend_uid = ?", uid, friendUid)
 	if err == nil {
@@ -388,10 +364,7 @@ func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, err
 	return nil, nil
 }
 
-// @desc 管理系统消息
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// ManageSystemMsg
 func ManageSystemMsg(uid, id, status int64) (map[string]interface{}, error) {
 	systemMsg, err := model.SystemMsgModel().GetOne("id = ? and notify_uid = ?", id, uid)
 	if err != nil {
@@ -403,10 +376,7 @@ func ManageSystemMsg(uid, id, status int64) (map[string]interface{}, error) {
 	return ManageAddFriend(uid, id, status)
 }
 
-// @desc 管理加好友申请
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// ManageAddFriend
 func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 	systemMsg, err := model.SystemMsgModel().GetOne("id = ? and notify_uid = ? and receive_uid = ? and msg_type = 1", id, uid, uid)
 	if err != nil {
@@ -485,10 +455,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 	return nil, nil
 }
 
-// @desc 加入群聊
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// JoinGroup
 func JoinGroup(uid, groupId int64, remark string) (map[string]interface{}, error) {
 	_, err := model.UserGroupHandler.GetOne("uid = ? and group_id = ?", uid, groupId)
 	if err == nil {
@@ -567,10 +534,7 @@ func JoinGroup(uid, groupId int64, remark string) (map[string]interface{}, error
 	return nil, nil
 }
 
-// @desc 管理加群
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// ManageJoinGroup
 func ManageJoinGroup(uid, id, status int64) (map[string]interface{}, error) {
 	systemMsg, err := model.SystemMsgModel().GetOne("id = ? and notify_uid = ? and msg_type = 2", id, uid)
 	if err != nil {
@@ -623,10 +587,7 @@ func ManageJoinGroup(uid, id, status int64) (map[string]interface{}, error) {
 	return nil, nil
 }
 
-// @desc 建群
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// CreateGroup
 func CreateGroup(uid int64, groupName, avatar string) (map[string]interface{}, error) {
 	group := model.Group{
 		Uid:       uid,
@@ -660,10 +621,7 @@ func CreateGroup(uid int64, groupName, avatar string) (map[string]interface{}, e
 	return map[string]interface{}{}, nil
 }
 
-// @desc 获取系统消息
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// GetSystemMsg
 func GetSystemMsg(uid int64, lastSystemMsgId int64, sort string) (map[string]interface{}, error) {
 	list := make([]map[string]interface{}, 0)
 	resp := map[string]interface{}{

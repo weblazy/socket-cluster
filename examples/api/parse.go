@@ -12,6 +12,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// ParseJson
 func ParseJson(c echo.Context) (gjson.Result, *api.Response, error) {
 	request := c.Request()
 	response := api.NewResponse(c)
@@ -28,6 +29,7 @@ func ParseJson(c echo.Context) (gjson.Result, *api.Response, error) {
 	return jsonParams, response, nil
 }
 
+// ParseParams
 func ParseParams(c echo.Context) (int64, gjson.Result, *api.Response, error) {
 	request := c.Request()
 	response := api.NewResponse(c)

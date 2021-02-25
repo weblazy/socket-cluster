@@ -22,10 +22,7 @@ type GroupMsg struct {
 
 var groupMsgMap map[int64]*GroupMsg = make(map[int64]*GroupMsg)
 
-// @desc
-// @auth liuguoqiang 2020-11-26
-// @param
-// @return
+// GroupMsgModel
 func GroupMsgModel(index int64) *GroupMsg {
 	return groupMsgMap[index]
 }

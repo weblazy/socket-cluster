@@ -9,6 +9,7 @@ import (
 	"github.com/sunmi-OS/gocore/nacos"
 )
 
+// InitNacos
 func InitNacos(runtime string) {
 	time.Sleep(time.Second * 10)
 	nacos.SetRunTime(runtime)

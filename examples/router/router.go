@@ -7,10 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// @desc
-// @auth liuguoqiang 2020-11-20
-// @param
-// @return
+// Router
 func Router(g *echo.Group) {
 	g.POST("/login", api.Login)
 	g.POST("/register", api.Register)
@@ -26,7 +23,7 @@ func Router(g *echo.Group) {
 	g.POST("/manageJoinGroup", api.ManageJoinGroup)
 	g.POST("/getSystemMsg", api.GetSystemMsg)
 
-	//解决跨域问题
+	// Solve cross-domain problems
 	g.OPTIONS("/login", websocket_protocol.OptionHandler)
 	g.OPTIONS("/register", websocket_protocol.OptionHandler)
 	g.OPTIONS("/sendSmsCode", websocket_protocol.OptionHandler)
