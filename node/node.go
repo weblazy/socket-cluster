@@ -502,31 +502,21 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 			newMap[k] = v
 		}
 		newMap["receive_client_ids"] = batchData.clientIds
-		reqByte, err := json.Marshal(newMap)
-		if err != nil {
-			logx.Info(err)
-		}
-		if this.nodeConf.Host == "" {
-			err = this.adminRedis.Publish(context.Background(), batchData.ip, string(reqByte)).Err()
+		connect, ok := this.transConns.Load(batchData.ip)
+		if ok {
+			conn, ok := connect.(protocol.Connection)
+			if !ok {
+				return
+			}
+			err := conn.WriteJSON(newMap)
 			if err != nil {
 				logx.Info(err)
 			}
 		} else {
-			connect, ok := this.transConns.Load(batchData.ip)
-			if ok {
-				conn, ok := connect.(protocol.Connection)
-				if !ok {
-					return
-				}
-				err = conn.WriteJSON(newMap)
-				if err != nil {
-					logx.Info(err)
-				}
-			} else {
-				logx.Info(fmt.Printf("trans:%#v不在线", batchData.ip))
-				return
-			}
+			logx.Info(fmt.Printf("trans:%#v不在线", batchData.ip))
+			return
 		}
+
 	})
 	// Concurrent sends to clients
 	mapreduce.MapVoid(func(source chan<- interface{}) {
@@ -625,8 +615,6 @@ func (this *Node) BindClientId(clientId string, se *Session) error {
 
 	now := time.Now().Unix()
 	redisNode := this.userHashRing.Get(clientId)
-	fmt.Printf("%#v\n", clientPrefix+clientId)
-	fmt.Printf("%#v\n", this.transAddress)
 	err := redisNode.Extra.(*redis.Client).ZAdd(context.Background(), clientPrefix+clientId, &redis.Z{Score: cast.ToFloat64(now), Member: this.transAddress}).Err()
 	if err != nil {
 		return err
@@ -668,34 +656,21 @@ func (this *Node) SendToClientId(clientId string, req map[string]interface{}) er
 					return true
 				})
 			} else {
-				if this.nodeConf.Host == "" {
-					reqByte, err := json.Marshal(newMap)
-					if err != nil {
-						logx.Info(err)
+				connect, ok := this.transConns.Load(ip)
+				if ok {
+					conn, ok := connect.(protocol.Connection)
+					if !ok {
+						return
 					}
-					err = this.adminRedis.Publish(context.Background(), ip, string(reqByte)).Err()
+					err = conn.WriteJSON(newMap)
 					if err != nil {
 						logx.Info(err)
 					}
 				} else {
-					connect, ok := this.transConns.Load(ip)
-					if ok {
-						conn, ok := connect.(protocol.Connection)
-						if !ok {
-							return
-						}
-						err = conn.WriteJSON(newMap)
-						if err != nil {
-							logx.Info(err)
-						}
-					} else {
-						logx.Info(fmt.Printf("trans:%#v不在线", ip))
-						return
-					}
+					logx.Info(fmt.Printf("trans:%#v不在线", ip))
+					return
 				}
-
 			}
-
 		})
 	}
 	return nil
@@ -752,41 +727,4 @@ func (this *Node) GetHosts() ([]string, error) {
 		list = append(list, sortList[k1].Obj.(string))
 	}
 	return list, nil
-}
-
-// Consumer pull message from other node
-func (this *Node) Consumer() {
-	go func() {
-		pb := this.adminRedis.Subscribe(context.Background(), this.transAddress)
-		for mg := range pb.Channel() {
-			data := make(map[string]interface{})
-			err := json.Unmarshal([]byte(mg.Payload), &data)
-			if err != nil {
-				logx.Info(err)
-				return
-			}
-			if receiveClientId, ok := data["receive_client_id"].(string); ok {
-				delete(data, "receive_client_id")
-				this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
-					err = se.(*Session).Conn.WriteJSON(data)
-					if err != nil {
-						logx.Info(err)
-					}
-					return true
-				})
-			} else if receiveClientIds, ok := data["receive_client_ids"].([]string); ok {
-				delete(data, "receive_client_ids")
-				for k1 := range receiveClientIds {
-					receiveClientId := receiveClientIds[k1]
-					this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
-						err = se.(*Session).Conn.WriteJSON(data)
-						if err != nil {
-							logx.Info(err)
-						}
-						return true
-					})
-				}
-			}
-		}
-	}()
 }
