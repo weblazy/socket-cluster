@@ -20,8 +20,8 @@ func Orm() *gorm.DB {
 }
 
 func CreateTable() {
-	fmt.Println("开始初始化数据库")
-	//自动建表，数据迁移
+	fmt.Println("initialize the database start")
+	// Automatically build table
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='认证表' AUTO_INCREMENT=1;").AutoMigrate(&Auth{})
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='好友表' AUTO_INCREMENT=1;").AutoMigrate(&Friend{})
 	Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='分组表' AUTO_INCREMENT=1;").AutoMigrate(&Group{})
@@ -40,5 +40,5 @@ func CreateTable() {
 		Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='用户消息表' AUTO_INCREMENT=1;").AutoMigrate(userMsgMap[int64(i)])
 		Orm().Set("gorm:table_options", "CHARSET=utf8mb4 comment='分组消息表' AUTO_INCREMENT=1;").AutoMigrate(groupMsgMap[int64(i)])
 	}
-	fmt.Println("数据库初始化完成")
+	fmt.Println("Initialize the database end")
 }

@@ -10,9 +10,9 @@ import (
 )
 
 func main() {
-	//初始化配置中心
+	// Initialize the configuration center
 	config.InitNacos(utils.GetRunTime())
-	// 初始化数据库
+	// Initialize the database
 	gorm.NewDB("dbDefault")
 	model.CreateTable()
 	// go websocket_cluster.StartMaster(websocket_cluster.NewMasterConf())
