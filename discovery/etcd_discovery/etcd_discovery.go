@@ -1,4 +1,4 @@
-package discovery
+package etcd_discovery
 
 import (
 	"context"
@@ -8,13 +8,14 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/weblazy/socket-cluster/discovery"
 )
 
 const defaultDialTimeout = 5 * time.Second
 
 //EtcdDiscovery 服务发现
 type EtcdDiscovery struct {
-	ServiceDiscovery
+	discovery.ServiceDiscovery
 	cli        *clientv3.Client  //etcd client
 	serverList map[string]string //服务列表
 	lock       sync.Mutex
@@ -53,7 +54,7 @@ func (s *EtcdDiscovery) GetServices(key string) error {
 }
 
 //watcher 监听前缀
-func (s *EtcdDiscovery) WatchService(watchChan WatchChan) {
+func (s *EtcdDiscovery) WatchService(watchChan discovery.WatchChan) {
 	prefix := s.key
 	rch := s.cli.Watch(context.Background(), prefix, clientv3.WithPrefix())
 	log.Printf("watching prefix:%s now...", prefix)
@@ -61,7 +62,7 @@ func (s *EtcdDiscovery) WatchService(watchChan WatchChan) {
 		for _, ev := range wresp.Events {
 			switch ev.Type {
 			case mvccpb.PUT: //修改或者新增
-				watchChan <- PUT
+				watchChan <- discovery.PUT
 			case mvccpb.DELETE: //删除
 
 			}

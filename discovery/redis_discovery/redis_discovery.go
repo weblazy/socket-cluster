@@ -1,4 +1,4 @@
-package discovery
+package redis_discovery
 
 import (
 	"context"
@@ -6,11 +6,12 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/weblazy/core/logx"
+	"github.com/weblazy/socket-cluster/discovery"
 )
 
 //RedisDiscovery 服务发现
 type RedisDiscovery struct {
-	ServiceDiscovery
+	discovery.ServiceDiscovery
 	transAddress string
 	adminRedis   *redis.Client
 	key          string
@@ -25,7 +26,7 @@ func NewRedisDiscovery(conf *redis.Options) *RedisDiscovery {
 }
 
 // Consumer pull message from other node
-func (this *RedisDiscovery) WatchService(watchChan WatchChan) {
+func (this *RedisDiscovery) WatchService(watchChan discovery.WatchChan) {
 	go func() {
 		pb := this.adminRedis.Subscribe(context.Background(), this.key)
 		for mg := range pb.Channel() {
@@ -35,7 +36,7 @@ func (this *RedisDiscovery) WatchService(watchChan WatchChan) {
 				logx.Info(err)
 				return
 			}
-			watchChan <- PUT
+			watchChan <- discovery.PUT
 		}
 	}()
 }

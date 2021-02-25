@@ -1,4 +1,4 @@
-package quic
+package quic_protocol
 
 import (
 	"context"

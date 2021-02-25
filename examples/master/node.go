@@ -7,7 +7,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/weblazy/socket-cluster/discovery"
+	"github.com/weblazy/socket-cluster/discovery/redis_discovery"
 	"github.com/weblazy/socket-cluster/examples/auth"
 	"github.com/weblazy/socket-cluster/examples/common"
 	"github.com/weblazy/socket-cluster/examples/model"
@@ -38,7 +38,7 @@ func Node() {
 	if err != nil {
 		panic(err)
 	}
-	discoveryHandler := discovery.NewRedisDiscovery(&redis.Options{Addr: redisHost, Password: redisPassword, DB: 0})
+	discoveryHandler := redis_discovery.NewRedisDiscovery(&redis.Options{Addr: redisHost, Password: redisPassword, DB: 0})
 	common.NodeINfo1, err = node.StartNode(node.NewNodeConf(*host, *path, *path, &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0}, []*node.RedisNode{&node.RedisNode{
 		RedisConf: &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,

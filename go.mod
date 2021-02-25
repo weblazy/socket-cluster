@@ -6,7 +6,6 @@ require (
 	git.apache.org/thrift.git v0.0.0-20190629060710-d9019fc5a4a2
 	github.com/coreos/etcd v3.3.25+incompatible
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
-	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/go-redis/redis/v8 v8.5.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.4.3
@@ -14,7 +13,6 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/henrylee2cn/goutil v0.0.0-20191020121818-c6a890a2c537
 	github.com/jinzhu/gorm v1.9.16
-	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/echo/v4 v4.1.16
 	github.com/lucas-clemente/quic-go v0.19.3
 	github.com/nacos-group/nacos-sdk-go v1.0.6
