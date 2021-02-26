@@ -627,7 +627,7 @@ func (this *Node) BindClientId(clientId string, se *Session) error {
 	return nil
 }
 
-//SendToClientId Send message to a clientId
+// SendToClientId Send message to a clientId
 func (this *Node) SendToClientId(clientId string, req map[string]interface{}) error {
 	if req == nil {
 		return fmt.Errorf("message is nil")
