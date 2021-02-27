@@ -12,8 +12,9 @@ type WatchChan chan EventType
 //ServiceDiscovery 服务发现
 type ServiceDiscovery interface {
 	//设置租约
-	// func (s *ServiceDiscovery) GetServices() ([]string,error)
+	// GetServices() ([]string, error)
 	WatchService(watchChan WatchChan)
+	UpdateInfo([]byte) error
 	Register() error
 	// func (s *ServiceDiscovery) Ping(value []byte)
 	// func (s *ServiceDiscovery) Close() error

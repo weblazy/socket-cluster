@@ -1,13 +1,10 @@
 package node
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/cast"
 	"github.com/weblazy/core/mapreduce"
@@ -27,8 +24,8 @@ type (
 	// Node communication node
 	Node struct {
 		protocol.Node
-		// adminRedis redis client store node info
-		adminRedis       *redis.Client
+		// // adminRedis redis client store node info
+		// adminRedis       *redis.Client
 		nodeConf         *NodeConf
 		clientIdSessions *syncx.ConcurrentDoubleMap
 		// key: socket address
@@ -53,7 +50,6 @@ var ()
 
 // NewPeer creates a new peer.
 func StartNode(cfg *NodeConf) (*Node, error) {
-	rds := redis.NewClient(cfg.RedisConf)
 	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
 		logx.Infof("%s auth timeout", k)
 		if v.(protocol.Connection) != nil {
@@ -70,7 +66,6 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 	}
 	this := &Node{
 		nodeConf:         cfg,
-		adminRedis:       rds,
 		clientIdSessions: syncx.NewConcurrentDoubleMap(32),
 		startTime:        time.Now(),
 		timer:            timer,
@@ -119,46 +114,25 @@ func (this *Node) SendPing() {
 			if err != nil {
 				logx.Info(err)
 			}
-			err = this.adminRedis.HSet(context.Background(), NodeAddress, this.transAddress, string(nodeInfoByte)).Err()
+			err = this.nodeConf.discoveryHandler.UpdateInfo(nodeInfoByte)
 			if err != nil {
 				logx.Info(err)
 			}
-			nodeMap, err := this.adminRedis.HGetAll(context.Background(), NodeAddress).Result()
+			err = this.UpdateNodeList()
 			if err != nil {
 				logx.Info(err)
 			}
-			if this.nodeConf.Host != "" {
-				// err = this.UpdateNodeList(nodeMap)
-				// if err != nil {
-				// 	logx.Info(err)
-				// }
-				this.transConns.Range(func(k, v interface{}) bool {
-					conn, ok := v.(protocol.Connection)
-					if !ok {
-						return true
-					}
-					err := conn.WriteMsg(websocket.PingMessage, []byte{})
-					if err != nil {
-						logx.Info(err)
-					}
+			this.transConns.Range(func(k, v interface{}) bool {
+				conn, ok := v.(protocol.Connection)
+				if !ok {
 					return true
-				})
-			} else {
-				now := time.Now().Unix()
-				for k1 := range nodeMap {
-					nodeInfo := make(map[string]interface{})
-					err := json.Unmarshal([]byte(nodeMap[k1]), &nodeInfo)
-					if err != nil {
-						logx.Info(err)
-					}
-					if cast.ToInt64(nodeInfo["timestamp"])+this.nodeTimeout < now {
-						err := this.adminRedis.HDel(context.Background(), NodeAddress, k1).Err()
-						if err != nil {
-							logx.Info(err)
-						}
-					}
 				}
-			}
+				err := conn.WriteMsg(websocket.PingMessage, []byte{})
+				if err != nil {
+					logx.Info(err)
+				}
+				return true
+			})
 
 		}
 	}()
@@ -582,34 +556,4 @@ func (this *Node) SendToTrans(clientId string, path string, req interface{}) err
 		}
 	})
 	return nil
-}
-
-// GetHosts get node address
-func (this *Node) GetHosts() ([]string, error) {
-	list := make([]string, 0)
-	now := time.Now().Unix()
-	addrMap, err := this.adminRedis.HGetAll(context.Background(), NodeAddress).Result()
-	if err != nil {
-		return nil, err
-	}
-	sortList := make([]Sort, 0)
-	expire := now - this.nodeTimeout
-	for k1 := range addrMap {
-		addrObj := make(map[string]interface{})
-		err := json.Unmarshal([]byte(addrMap[k1]), &addrObj)
-		if err != nil {
-			return nil, err
-		}
-		if cast.ToInt64(addrObj["timestamp"]) > expire {
-			sortList = append(sortList, Sort{
-				Obj:  k1,
-				Sort: cast.ToInt64(addrObj["client_count"]),
-			})
-		}
-	}
-	sort.Sort(SortList(sortList))
-	for k1 := range sortList {
-		list = append(list, sortList[k1].Obj.(string))
-	}
-	return list, nil
 }
