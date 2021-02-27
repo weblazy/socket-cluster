@@ -1,15 +1,64 @@
 <!doctype html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Socket-Cluster</title>
-</head>
-<body>
+    <style type="text/css">
+        #customers {
+            font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-    {{ range $k, $v := .names }}
-    <li>
-       {{ $k }}:{{ $v }}
-    </li>
-    {{ end }}
+        #customers td,
+        #customers th {
+            font-size: 1em;
+            border: 1px solid #98bf21;
+            padding: 3px 7px 2px 7px;
+        }
+
+        #customers th {
+            font-size: 1.1em;
+            text-align: left;
+            padding-top: 5px;
+            padding-bottom: 4px;
+            background-color: #A7C942;
+            color: #ffffff;
+        }
+
+        #customers tr.alt td {
+            color: #000000;
+            background-color: #EAF2D3;
+        }
+
+        .box {
+            height: 50px;
+            background :#ffffff;
+            text-align: center;
+            line-height: 50px;
+
+        }
+    </style>
+</head>
+
+<body>
+    <div class="box">Socket-Cluster</div>
+
+    <table id="customers">
+        <tr>
+            <th> ip</th>
+            <th>uuid</th>
+            <th>count</th>
+        </tr>
+        {{ range $k, $v := .list }}
+        <tr class="alt">
+            <td>{{ $v.ip }}</td>
+            <td>{{ $v.uuid }}</td>
+            <td>{{ $v.count }}</td>
+        </tr>
+        {{ end }}
+    </table>
 </body>
+
 </html>

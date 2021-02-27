@@ -37,6 +37,14 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 // Index
 func Index(c echo.Context) error {
 	params := make(map[string]interface{})
-	params["names"] = []string{"guoqiang", "xingming"}
+	params["list"] = []map[string]interface{}{map[string]interface{}{
+		"ip":    "127.0.0.1",
+		"uuid":  "9527",
+		"count": "100",
+	}, map[string]interface{}{
+		"ip":    "127.0.0.2",
+		"uuid":  "9528",
+		"count": "101",
+	}}
 	return c.Render(200, "index.html", params)
 }
