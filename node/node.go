@@ -10,7 +10,6 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/cast"
-	"github.com/weblazy/core/consistenthash/unsafehash"
 	"github.com/weblazy/core/mapreduce"
 	"github.com/weblazy/easy/utils/logx"
 	"github.com/weblazy/easy/utils/syncx"
@@ -19,6 +18,8 @@ import (
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/dns"
 	"github.com/weblazy/socket-cluster/protocol"
+	"github.com/weblazy/socket-cluster/session_storage"
+	"github.com/weblazy/socket-cluster/unsafehash"
 )
 
 type (
@@ -32,12 +33,12 @@ type (
 		clientIdSessions *syncx.ConcurrentDoubleMap
 		// key: socket address
 		// value: *session
-		clientConns   goutil.Map
-		clientAddress string                   // External communication address
-		transAddress  string                   // Internal communication address
-		timer         *timingwheel.TimingWheel // Timingwheel
-		startTime     time.Time                // start time
-		userHashRing  *unsafehash.Consistent   // userHashRing ring storage userId
+		clientConns    goutil.Map
+		clientAddress  string                         // External communication address
+		transAddress   string                         // Internal communication address
+		timer          *timingwheel.TimingWheel       // Timingwheel
+		startTime      time.Time                      // start time
+		sessionStorage session_storage.SessionStorage // userHashRing ring storage userId
 		// key: node transAddress
 		// value: *session
 		transConns    goutil.Map //
@@ -53,7 +54,6 @@ var ()
 // NewPeer creates a new peer.
 func StartNode(cfg *NodeConf) (*Node, error) {
 	rds := redis.NewClient(cfg.RedisConf)
-
 	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
 		logx.Infof("%s auth timeout", k)
 		if v.(protocol.Connection) != nil {
@@ -68,19 +68,12 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	userHashRing := unsafehash.NewConsistent(cfg.RedisMaxCount)
-	for _, value := range cfg.RedisNodeList {
-		rdsObj := redis.NewClient(value.RedisConf)
-		userHashRing.Add(unsafehash.NewNode(value.RedisConf.Addr, value.Position, rdsObj))
-	}
-
 	this := &Node{
 		nodeConf:         cfg,
 		adminRedis:       rds,
 		clientIdSessions: syncx.NewConcurrentDoubleMap(32),
 		startTime:        time.Now(),
 		timer:            timer,
-		userHashRing:     userHashRing,
 		clientConns:      goutil.AtomicMap(),
 		transConns:       goutil.AtomicMap(),
 		transServices:    goutil.AtomicMap(),
@@ -260,10 +253,8 @@ func (this *Node) Register() {
 // }
 
 // IsOnline determine if a clientId is online
-func (this *Node) IsOnline(clientId string) bool {
-	now := time.Now().Unix()
-	redisNode := this.userHashRing.Get(clientId)
-	addrArr, err := redisNode.Extra.(*redis.Client).ZRangeByScore(context.Background(), clientPrefix+clientId, &redis.ZRangeBy{Min: cast.ToString(now - this.clientTimeout), Max: "+inf"}).Result()
+func (this *Node) IsOnline(clientId int64) bool {
+	addrArr, err := this.sessionStorage.GetIps(clientId)
 	if err != nil {
 		logx.Info(err)
 		return false
@@ -283,18 +274,6 @@ func (this *Node) OnClientMsg(conn protocol.Connection, msg []byte) {
 		clientId = session.(*Session).ClientId
 	}
 	this.nodeConf.onMsg(&Context{Conn: conn, Msg: msg, ClientId: clientId})
-}
-
-// OnClientPing receive client heartbeat
-func (this *Node) OnClientPing(clientId string) error {
-	redisNode := this.userHashRing.Get(clientId)
-	now := time.Now().Unix()
-	err := redisNode.Extra.(*redis.Client).ZAdd(context.Background(), clientPrefix+clientId, &redis.Z{Score: cast.ToFloat64(now), Member: this.transAddress}).Err()
-	if err != nil {
-		return err
-	}
-	err = redisNode.Extra.(*redis.Client).Expire(context.Background(), clientPrefix+clientId, time.Duration(this.clientTimeout)*time.Second).Err()
-	return err
 }
 
 // OnTransMsg handle internal communication node messages
@@ -361,7 +340,7 @@ func (this *Node) AuthClient(conn protocol.Connection, clientId string) error {
 	this.timer.RemoveTimer(sid) //Cancel timeingwheel task
 	session := &Session{Conn: conn, ClientId: clientId}
 	this.clientConns.Store(sid, session)
-	return this.BindClientId(clientId, session)
+	return this.BindClientId(cast.ToInt64(clientId), session)
 }
 
 // UpdateNodeList Add handles addition request
@@ -443,57 +422,14 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 	if req == nil {
 		return fmt.Errorf("message is nil")
 	}
-	localClientIds := make([]string, 0)
-	nodes := make(map[string]*NodeMap)
-	rangeTime := cast.ToString(time.Now().Unix() - this.clientTimeout)
-	for k1 := range clientIds {
-		redisNode := this.userHashRing.Get(clientIds[k1])
-		if _, ok := nodes[redisNode.Id]; ok {
-			nodes[redisNode.Id].clientIds = append(nodes[redisNode.Id].clientIds, clientIds[k1])
-		} else {
-			nodes[redisNode.Id] = &NodeMap{
-				node:      redisNode,
-				clientIds: []string{clientIds[k1]},
-			}
-		}
-	}
-	otherMap := make(map[string][]string)
-
-	for k1 := range nodes {
-		nodeMap := nodes[k1]
-		pipe := nodeMap.node.Extra.(*redis.Client).Pipeline()
-		for k2 := range nodeMap.clientIds {
-			pipe.ZRangeByScore(context.Background(), clientPrefix+nodeMap.clientIds[k2], &redis.ZRangeBy{Min: rangeTime, Max: "+inf"}).Result()
-		}
-		cmders, err := pipe.Exec(context.Background())
-		if err != nil {
-			logx.Info(cmders, err)
-		}
-		for k3, cmder := range cmders {
-			cmd := cmder.(*redis.StringSliceCmd)
-			strMap, err := cmd.Result()
-			if err != nil {
-				logx.Info(err)
-			} else {
-				for k4 := range strMap {
-					if strMap[k4] == this.transAddress {
-						localClientIds = append(localClientIds, nodeMap.clientIds[k3])
-					} else {
-						if _, ok := otherMap[strMap[k4]]; ok {
-							otherMap[strMap[k4]] = append(otherMap[strMap[k4]], nodeMap.clientIds[k3])
-						} else {
-							otherMap[strMap[k4]] = []string{nodeMap.clientIds[k3]}
-						}
-					}
-				}
-
-			}
-		}
+	localClientIds, clientMap, err := this.sessionStorage.GetClientsIps(clientIds)
+	if err != nil {
+		return err
 	}
 	// Concurrent sends to other nodes
 	mapreduce.MapVoid(func(source chan<- interface{}) {
-		for k1 := range otherMap {
-			source <- &BatchData{ip: k1, clientIds: otherMap[k1]}
+		for k1 := range clientMap {
+			source <- &BatchData{ip: k1, clientIds: clientMap[k1]}
 		}
 	}, func(item interface{}) {
 		batchData := item.(*BatchData)
@@ -551,46 +487,6 @@ type BatchData struct {
 	clientIds []string
 }
 
-// ClientIdsOnline Get online users in the group
-func (this *Node) ClientIdsOnline(clientIds []string) []string {
-	// now := time.Now().Unix()
-	onlineClientIds := make([]string, 0)
-	nodes := make(map[string]*NodeMap)
-	for k1 := range clientIds {
-		redisNode := this.userHashRing.Get(clientIds[k1])
-		if _, ok := nodes[redisNode.Id]; ok {
-			nodes[redisNode.Id].clientIds = append(nodes[redisNode.Id].clientIds, clientIds[k1])
-		} else {
-			nodes[redisNode.Id] = &NodeMap{
-				node:      redisNode,
-				clientIds: []string{clientIds[k1]},
-			}
-		}
-	}
-	rangeTime := cast.ToString(time.Now().Unix() - this.clientTimeout)
-	for k1 := range nodes {
-		nodeMap := nodes[k1]
-		pipe := nodeMap.node.Extra.(*redis.Client).Pipeline()
-		for k2 := range nodeMap.clientIds {
-			pipe.ZRangeByScore(context.Background(), clientPrefix+nodeMap.clientIds[k2], &redis.ZRangeBy{Min: rangeTime, Max: "+inf"}).Result()
-		}
-		cmders, err := pipe.Exec(context.Background())
-		if err != nil {
-			logx.Info(err)
-		}
-		for k3, cmder := range cmders {
-			cmd := cmder.(*redis.StringSliceCmd)
-			err := cmd.Err()
-			if err != nil {
-				logx.Info(err)
-			} else {
-				onlineClientIds = append(onlineClientIds, nodeMap.clientIds[k3])
-			}
-		}
-	}
-	return onlineClientIds
-}
-
 //GetSessionsByClientIds Get online users in the group
 func (this *Node) GetSessionsByClientIds(clientIds []string) []*Session {
 	sessions := make([]*Session, 0)
@@ -604,27 +500,18 @@ func (this *Node) GetSessionsByClientIds(clientIds []string) []*Session {
 }
 
 //BindClientId bind clientId with session
-func (this *Node) BindClientId(clientId string, se *Session) error {
+func (this *Node) BindClientId(clientId int64, se *Session) error {
 	sid := se.Conn.Addr()
-	this.clientIdSessions.StoreWithPlugin(clientId, sid, se, func() {
-		oldClientId := se.CasClientId(clientId)
-		if oldClientId != "" && oldClientId != clientId {
+	this.clientIdSessions.StoreWithPlugin(cast.ToString(clientId), sid, se, func() {
+		oldClientId := se.CasClientId(cast.ToString(clientId))
+		oldClientIdInt := cast.ToInt64(oldClientId)
+		if oldClientId != "" && oldClientIdInt != clientId {
 			this.clientIdSessions.DeleteWithoutLock(oldClientId, sid)
 		}
 	})
 
-	now := time.Now().Unix()
-	redisNode := this.userHashRing.Get(clientId)
-	err := redisNode.Extra.(*redis.Client).ZAdd(context.Background(), clientPrefix+clientId, &redis.Z{Score: cast.ToFloat64(now), Member: this.transAddress}).Err()
-	if err != nil {
-		return err
-	}
-	err = redisNode.Extra.(*redis.Client).Expire(context.Background(), clientPrefix+clientId, time.Duration(this.clientTimeout)*time.Second).Err()
-	if err != nil {
-		return err
-	}
+	return this.sessionStorage.BindClientId(clientId)
 
-	return nil
 }
 
 // SendToClientId Send message to a clientId
@@ -632,9 +519,7 @@ func (this *Node) SendToClientId(clientId string, req map[string]interface{}) er
 	if req == nil {
 		return fmt.Errorf("message is nil")
 	}
-	now := time.Now().Unix()
-	redisNode := this.userHashRing.Get(clientId)
-	ipArr, err := redisNode.Extra.(*redis.Client).ZRangeByScore(context.Background(), clientPrefix+clientId, &redis.ZRangeBy{Min: cast.ToString(now - this.clientTimeout), Max: "+inf"}).Result()
+	ipArr, err := this.sessionStorage.GetIps(cast.ToInt64(clientId))
 	if err == nil {
 		newMap := make(map[string]interface{})
 		for k, v := range req {

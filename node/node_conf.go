@@ -20,8 +20,7 @@ type (
 		ClientPath            string         // the client path
 		TransPath             string         // the transport path
 		RedisNodeList         []*RedisNode   // the slice of RedisNode
-		RedisConf             *redis.Options // the redis config
-		RedisMaxCount         uint32         // the hash ring node count
+		RedisConf             *redis.Options // the redis configå
 		Port                  int64          // Node port
 		Password              string         // Password for auth when connect to other node
 		ClientPingInterval    int64

@@ -5,8 +5,10 @@ const (
 )
 
 type SessionStorage interface {
-	IsOnline(clientId string) bool
-	BindClientId(clientId string) error
-	GetIps(clientId string) ([]string, error)
+	IsOnline(clientId int64) bool
+	BindClientId(clientId int64) error
+	GetIps(clientId int64) ([]string, error)
+	GetClientsIps(clientIds []string) ([]string, map[string][]string, error)
 	ClientIdsOnline(clientIds []int64) []int64
+	OnClientPing(clientId int64) error
 }

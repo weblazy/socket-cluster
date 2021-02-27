@@ -112,3 +112,66 @@ func (this *RedisStorage) IsOnline(clientId int64) bool {
 	}
 	return false
 }
+
+// OnClientPing receive client heartbeat
+func (this *RedisStorage) OnClientPing(clientId int64) error {
+	redisNode := this.segmentMap.Get(clientId)
+	now := time.Now().Unix()
+	err := redisNode.Extra.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.transAddress}).Err()
+	if err != nil {
+		return err
+	}
+	err = redisNode.Extra.(*redis.Client).Expire(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), time.Duration(this.clientTimeout)*time.Second).Err()
+	return err
+}
+
+func (this *RedisStorage) GetClientsIps(clientIds []string) ([]string, map[string][]string, error) {
+
+	nodes := make(map[string]*NodeMap)
+	rangeTime := cast.ToString(time.Now().Unix() - this.clientTimeout)
+	for k1 := range clientIds {
+		redisNode := this.segmentMap.Get(cast.ToInt64(clientIds[k1]))
+		if _, ok := nodes[redisNode.Id]; ok {
+			nodes[redisNode.Id].clientIds = append(nodes[redisNode.Id].clientIds, cast.ToInt64(clientIds[k1]))
+		} else {
+			nodes[redisNode.Id] = &NodeMap{
+				node:      redisNode,
+				clientIds: []int64{cast.ToInt64(clientIds[k1])},
+			}
+		}
+	}
+	otherMap := make(map[string][]string)
+	localClientIds := make([]string, 0)
+	for k1 := range nodes {
+		nodeMap := nodes[k1]
+		pipe := nodeMap.node.Extra.(*redis.Client).Pipeline()
+		for k2 := range nodeMap.clientIds {
+			pipe.ZRangeByScore(context.Background(), session_storage.ClientPrefix+cast.ToString(nodeMap.clientIds[k2]), &redis.ZRangeBy{Min: rangeTime, Max: "+inf"}).Result()
+		}
+		cmders, err := pipe.Exec(context.Background())
+		if err != nil {
+			logx.Info(cmders, err)
+		}
+		for k3, cmder := range cmders {
+			cmd := cmder.(*redis.StringSliceCmd)
+			strMap, err := cmd.Result()
+			if err != nil {
+				logx.Info(err)
+			} else {
+				for k4 := range strMap {
+					if strMap[k4] == this.transAddress {
+						localClientIds = append(localClientIds, cast.ToString(nodeMap.clientIds[k3]))
+					} else {
+						if _, ok := otherMap[strMap[k4]]; ok {
+							otherMap[strMap[k4]] = append(otherMap[strMap[k4]], cast.ToString(nodeMap.clientIds[k3]))
+						} else {
+							otherMap[strMap[k4]] = []string{cast.ToString(nodeMap.clientIds[k3])}
+						}
+					}
+				}
+
+			}
+		}
+	}
+	return localClientIds, otherMap, nil
+}
