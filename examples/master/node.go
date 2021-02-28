@@ -11,8 +11,8 @@ import (
 	"github.com/weblazy/socket-cluster/examples/auth"
 	"github.com/weblazy/socket-cluster/examples/common"
 	"github.com/weblazy/socket-cluster/examples/model"
-	"github.com/weblazy/socket-cluster/examples/router"
 	"github.com/weblazy/socket-cluster/node"
+	"github.com/weblazy/socket-cluster/session_storage/redis_storage"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/cast"
@@ -38,11 +38,13 @@ func Node() {
 	if err != nil {
 		panic(err)
 	}
-	discoveryHandler := redis_discovery.NewRedisDiscovery(&redis.Options{Addr: redisHost, Password: redisPassword, DB: 0})
-	common.NodeINfo1, err = node.StartNode(node.NewNodeConf(*host, *path, *path, &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0}, []*node.RedisNode{&node.RedisNode{
+	sessionStorageHandler := redis_storage.NewRedisStorage([]*redis_storage.RedisNode{&redis_storage.RedisNode{
 		RedisConf: &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,
-	}}, discoveryHandler, onMsg).WithPort(*port).WithRouter(router.Router))
+	}})
+
+	discoveryHandler := redis_discovery.NewRedisDiscovery(&redis.Options{Addr: redisHost, Password: redisPassword, DB: 0})
+	common.NodeINfo1, err = node.StartNode(node.NewNodeConf(*host, *path, *path, sessionStorageHandler, discoveryHandler, onMsg).WithPort(*port))
 	if err != nil {
 		logx.Info(err)
 	}

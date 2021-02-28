@@ -2,7 +2,6 @@ package node
 
 import (
 	"github.com/go-redis/redis/v8"
-	"github.com/labstack/echo/v4"
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/protocol"
 	"github.com/weblazy/socket-cluster/session_storage"
@@ -16,18 +15,14 @@ type (
 	}
 	// NodeConf node config
 	NodeConf struct {
-		Host                  string         // the ip or domain of the node
-		ClientPath            string         // the client path
-		TransPath             string         // the transport path
-		RedisNodeList         []*RedisNode   // the slice of RedisNode
-		RedisConf             *redis.Options // the redis configå
-		Port                  int64          // Node port
-		Password              string         // Password for auth when connect to other node
+		Host                  string // the ip or domain of the node
+		ClientPath            string // the client path
+		TransPath             string // the transport path
+		Port                  int64  // Node port
+		Password              string // Password for auth when connect to other node
 		ClientPingInterval    int64
 		NodePingInterval      int64                  // Heartbeat interval
 		onMsg                 func(context *Context) // callback function when receive client message
-		router                func(g *echo.Group)    // http router of echo
-		echoObj               *echo.Echo             //Echo object
 		discoveryHandler      discovery.ServiceDiscovery
 		protocolHandler       protocol.Protocol
 		sessionStorageHandler session_storage.SessionStorage
@@ -41,20 +36,18 @@ type (
 )
 
 // NewNodeConf creates a new NodeConf.
-func NewNodeConf(host, clientPath, transPath string, redisConf *redis.Options, redisNodeList []*RedisNode, discoveryHandler discovery.ServiceDiscovery, onMsg func(context *Context)) *NodeConf {
+func NewNodeConf(host, clientPath, transPath string, sessionStorageHandler session_storage.SessionStorage, discoveryHandler discovery.ServiceDiscovery, onMsg func(context *Context)) *NodeConf {
 	return &NodeConf{
-		Host:               host,
-		ClientPath:         clientPath,
-		TransPath:          GetUUID(),
-		Port:               defaultPort,
-		RedisConf:          redisConf,
-		Password:           defaultPassword,
-		ClientPingInterval: defaultClientPingInterval,
-		NodePingInterval:   defaultNodePingInterval,
-		RedisNodeList:      redisNodeList,
-		discoveryHandler:   discoveryHandler,
-		onMsg:              onMsg,
-		router:             func(g *echo.Group) {},
+		Host:                  host,
+		ClientPath:            clientPath,
+		TransPath:             GetUUID(),
+		Port:                  defaultPort,
+		Password:              defaultPassword,
+		ClientPingInterval:    defaultClientPingInterval,
+		NodePingInterval:      defaultNodePingInterval,
+		sessionStorageHandler: sessionStorageHandler,
+		discoveryHandler:      discoveryHandler,
+		onMsg:                 onMsg,
 	}
 
 }
@@ -74,17 +67,5 @@ func (conf *NodeConf) WithPort(port int64) *NodeConf {
 // WithClientInterval sets the heartbeat interval
 func (conf *NodeConf) WithClientInterval(pingInterval int64) *NodeConf {
 	conf.ClientPingInterval = pingInterval
-	return conf
-}
-
-// WithRouter sets the router
-func (conf *NodeConf) WithRouter(router func(g *echo.Group)) *NodeConf {
-	conf.router = router
-	return conf
-}
-
-// WithEcho sets the echo
-func (conf *NodeConf) WithEcho(echoObj *echo.Echo) *NodeConf {
-	conf.echoObj = echoObj
 	return conf
 }
