@@ -12,6 +12,7 @@ import (
 	"github.com/weblazy/socket-cluster/examples/common"
 	"github.com/weblazy/socket-cluster/examples/model"
 	"github.com/weblazy/socket-cluster/node"
+	"github.com/weblazy/socket-cluster/protocol/websocket_protocol"
 	"github.com/weblazy/socket-cluster/session_storage/redis_storage"
 
 	"github.com/go-redis/redis/v8"
@@ -22,7 +23,6 @@ import (
 var (
 	port = flag.Int64("port1", 9528, "the  port")
 	host = flag.String("host1", "ws://localhost:9528", "the  host")
-	path = flag.String("path1", "/p1", "the  path")
 )
 
 func Node() {
@@ -38,13 +38,14 @@ func Node() {
 	if err != nil {
 		panic(err)
 	}
+	protocolHandler := &websocket_protocol.WsProtocol{}
 	sessionStorageHandler := redis_storage.NewRedisStorage([]*redis_storage.RedisNode{&redis_storage.RedisNode{
 		RedisConf: &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,
 	}})
 
 	discoveryHandler := redis_discovery.NewRedisDiscovery(&redis.Options{Addr: redisHost, Password: redisPassword, DB: 0})
-	common.NodeINfo1, err = node.StartNode(node.NewNodeConf(*host, *path, *path, sessionStorageHandler, discoveryHandler, onMsg).WithPort(*port))
+	common.NodeInfo, err = node.StartNode(node.NewNodeConf(*host, protocolHandler, sessionStorageHandler, discoveryHandler, onMsg).WithPort(*port))
 	if err != nil {
 		logx.Info(err)
 	}
@@ -83,7 +84,7 @@ func onMsg(context *node.Context) {
 			logx.Info(err)
 			return
 		}
-		common.NodeINfo1.AuthClient(context.Conn, uidStr)
+		common.NodeInfo.AuthClient(context.Conn, uidStr)
 		maxUserMsgId, err := model.UserMsgModel(userIndex).Max("notify_uid = ?", obj.Id)
 		if err != nil {
 			logx.Info(err)
@@ -341,7 +342,7 @@ func onMsg(context *node.Context) {
 			logx.Info(err)
 			return
 		}
-		common.NodeINfo1.SendToClientId(context.ClientId, map[string]interface{}{
+		common.NodeInfo.SendToClientId(context.ClientId, map[string]interface{}{
 			"msg_type": "have_new_msg",
 			"data": map[string]interface{}{
 				"max_user_msg_id": sendMsg.Id,
@@ -366,7 +367,7 @@ func onMsg(context *node.Context) {
 				logx.Info(err)
 				return
 			}
-			common.NodeINfo1.SendToClientId(receiveUid, map[string]interface{}{
+			common.NodeInfo.SendToClientId(receiveUid, map[string]interface{}{
 				"msg_type": "have_new_msg",
 				"data": map[string]interface{}{
 					"max_user_msg_id": receiveMsg.Id,
@@ -430,7 +431,7 @@ func onMsg(context *node.Context) {
 		for k1 := range userGroupList {
 			uids = append(uids, cast.ToString(userGroupList[k1].Uid))
 		}
-		common.NodeINfo1.SendToClientIds(uids, map[string]interface{}{
+		common.NodeInfo.SendToClientIds(uids, map[string]interface{}{
 			"msg_type": "have_new_msg",
 			"data": map[string]interface{}{
 				"max_group_msg_id": msg.Id,

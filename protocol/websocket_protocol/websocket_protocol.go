@@ -29,6 +29,10 @@ type WsProtocol struct {
 	ConnectHandler protocol.Node
 }
 
+func (this *WsProtocol) Dial(addr string, protoFunc ...protocol.ProtoFunc) (protocol.Session, error) {
+	return protocol.Session{}, nil
+}
+
 func (this *WsProtocol) ListenAndServe(port int64, connectHandler protocol.Node, protoFunc ...protocol.ProtoFunc) error {
 	// this.transAddress = fmt.Sprintf("%s%s/trans", cfg.Host, cfg.TransPath)
 	// this.clientAddress = fmt.Sprintf("%s%s/client", cfg.Host, cfg.ClientPath)

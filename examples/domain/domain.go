@@ -352,7 +352,7 @@ func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, err
 	if count == 0 {
 		return nil, nil
 	}
-	err = common.NodeINfo1.SendToClientId(cast.ToString(friendUid), map[string]interface{}{
+	err = common.NodeInfo.SendToClientId(cast.ToString(friendUid), map[string]interface{}{
 		"msg_type": "add_friend",
 		"data": map[string]interface{}{
 			"count": count,
@@ -421,7 +421,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
+	err = common.NodeInfo.SendToClientId(cast.ToString(uid), map[string]interface{}{
 		"msg_type": "manage_add_friend",
 		"data": map[string]interface{}{
 			"id":       sendUser.Id,
@@ -438,7 +438,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = common.NodeINfo1.SendToClientId(cast.ToString(systemMsg.SendUid), map[string]interface{}{
+	err = common.NodeInfo.SendToClientId(cast.ToString(systemMsg.SendUid), map[string]interface{}{
 		"msg_type": "manage_add_friend",
 		"data": map[string]interface{}{
 			"id":       receiveUser.Id,
@@ -522,7 +522,7 @@ func JoinGroup(uid, groupId int64, remark string) (map[string]interface{}, error
 	if count == 0 {
 		return nil, nil
 	}
-	err = common.NodeINfo1.SendToClientId(cast.ToString(group.Uid), map[string]interface{}{
+	err = common.NodeInfo.SendToClientId(cast.ToString(group.Uid), map[string]interface{}{
 		"msg_type": "join_group",
 		"data": map[string]interface{}{
 			"count": count,
@@ -572,7 +572,7 @@ func ManageJoinGroup(uid, id, status int64) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = common.NodeINfo1.SendToClientId(cast.ToString(systemMsg.SendUid), map[string]interface{}{
+	err = common.NodeInfo.SendToClientId(cast.ToString(systemMsg.SendUid), map[string]interface{}{
 		"msg_type": "manage_join_group",
 		"data": map[string]interface{}{
 			"id":         group.Id,
@@ -606,7 +606,7 @@ func CreateGroup(uid int64, groupName, avatar string) (map[string]interface{}, e
 		return nil, err
 	}
 
-	err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
+	err = common.NodeInfo.SendToClientId(cast.ToString(uid), map[string]interface{}{
 		"msg_type": "create_group",
 		"data": map[string]interface{}{
 			"type":      "group",
@@ -679,7 +679,7 @@ func GetSystemMsg(uid int64, lastSystemMsgId int64, sort string) (map[string]int
 		return nil, err
 	}
 	if num > 0 {
-		err = common.NodeINfo1.SendToClientId(cast.ToString(uid), map[string]interface{}{
+		err = common.NodeInfo.SendToClientId(cast.ToString(uid), map[string]interface{}{
 			"msg_type": "read_system_msg",
 			"data": map[string]interface{}{
 				"system_msg_id": maxMsgId,

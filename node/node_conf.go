@@ -16,8 +16,7 @@ type (
 	// NodeConf node config
 	NodeConf struct {
 		Host                  string // the ip or domain of the node
-		ClientPath            string // the client path
-		TransPath             string // the transport path
+		Key                   string // the transport path
 		Port                  int64  // Node port
 		Password              string // Password for auth when connect to other node
 		ClientPingInterval    int64
@@ -36,15 +35,15 @@ type (
 )
 
 // NewNodeConf creates a new NodeConf.
-func NewNodeConf(host, clientPath, transPath string, sessionStorageHandler session_storage.SessionStorage, discoveryHandler discovery.ServiceDiscovery, onMsg func(context *Context)) *NodeConf {
+func NewNodeConf(host string, protocolHandler protocol.Protocol, sessionStorageHandler session_storage.SessionStorage, discoveryHandler discovery.ServiceDiscovery, onMsg func(context *Context)) *NodeConf {
 	return &NodeConf{
 		Host:                  host,
-		ClientPath:            clientPath,
-		TransPath:             GetUUID(),
+		Key:                   GetUUID(),
 		Port:                  defaultPort,
 		Password:              defaultPassword,
 		ClientPingInterval:    defaultClientPingInterval,
 		NodePingInterval:      defaultNodePingInterval,
+		protocolHandler:       protocolHandler,
 		sessionStorageHandler: sessionStorageHandler,
 		discoveryHandler:      discoveryHandler,
 		onMsg:                 onMsg,
