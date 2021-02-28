@@ -15,7 +15,6 @@ import (
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/dns"
 	"github.com/weblazy/socket-cluster/protocol"
-	"github.com/weblazy/socket-cluster/session_storage"
 	"github.com/weblazy/socket-cluster/unsafehash"
 )
 
@@ -30,12 +29,11 @@ type (
 		clientIdSessions *syncx.ConcurrentDoubleMap
 		// key: socket address
 		// value: *session
-		clientConns    goutil.Map
-		clientAddress  string                         // External communication address
-		transAddress   string                         // Internal communication address
-		timer          *timingwheel.TimingWheel       // Timingwheel
-		startTime      time.Time                      // start time
-		sessionStorage session_storage.SessionStorage // userHashRing ring storage userId
+		clientConns   goutil.Map
+		clientAddress string                   // External communication address
+		transAddress  string                   // Internal communication address
+		timer         *timingwheel.TimingWheel // Timingwheel
+		startTime     time.Time                // start time
 		// key: node transAddress
 		// value: *session
 		transConns    goutil.Map //
@@ -228,7 +226,7 @@ func (this *Node) Register() {
 
 // IsOnline determine if a clientId is online
 func (this *Node) IsOnline(clientId int64) bool {
-	addrArr, err := this.sessionStorage.GetIps(clientId)
+	addrArr, err := this.nodeConf.sessionStorageHandler.GetIps(clientId)
 	if err != nil {
 		logx.Info(err)
 		return false
@@ -396,7 +394,7 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 	if req == nil {
 		return fmt.Errorf("message is nil")
 	}
-	localClientIds, clientMap, err := this.sessionStorage.GetClientsIps(clientIds)
+	localClientIds, clientMap, err := this.nodeConf.sessionStorageHandler.GetClientsIps(clientIds)
 	if err != nil {
 		return err
 	}
@@ -484,7 +482,7 @@ func (this *Node) BindClientId(clientId int64, se *Session) error {
 		}
 	})
 
-	return this.sessionStorage.BindClientId(clientId)
+	return this.nodeConf.sessionStorageHandler.BindClientId(clientId)
 
 }
 
@@ -493,7 +491,7 @@ func (this *Node) SendToClientId(clientId string, req map[string]interface{}) er
 	if req == nil {
 		return fmt.Errorf("message is nil")
 	}
-	ipArr, err := this.sessionStorage.GetIps(cast.ToInt64(clientId))
+	ipArr, err := this.nodeConf.sessionStorageHandler.GetIps(cast.ToInt64(clientId))
 	if err == nil {
 		newMap := make(map[string]interface{})
 		for k, v := range req {
