@@ -12,7 +12,7 @@ import (
 	"github.com/weblazy/socket-cluster/examples/common"
 	"github.com/weblazy/socket-cluster/examples/model"
 	"github.com/weblazy/socket-cluster/node"
-	"github.com/weblazy/socket-cluster/protocol/websocket_protocol"
+	"github.com/weblazy/socket-cluster/protocol/ws_protocol"
 	"github.com/weblazy/socket-cluster/session_storage/redis_storage"
 
 	"github.com/go-redis/redis/v8"
@@ -38,7 +38,7 @@ func Node() {
 	if err != nil {
 		panic(err)
 	}
-	protocolHandler := &websocket_protocol.WsProtocol{}
+	protocolHandler := &ws_protocol.WsProtocol{}
 	sessionStorageHandler := redis_storage.NewRedisStorage([]*redis_storage.RedisNode{&redis_storage.RedisNode{
 		RedisConf: &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0},
 		Position:  1,

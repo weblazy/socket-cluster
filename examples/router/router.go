@@ -2,7 +2,7 @@ package router
 
 import (
 	"github.com/weblazy/socket-cluster/examples/api"
-	"github.com/weblazy/socket-cluster/protocol/websocket_protocol"
+	"github.com/weblazy/socket-cluster/protocol/ws_protocol"
 
 	"github.com/labstack/echo/v4"
 )
@@ -24,17 +24,17 @@ func Router(g *echo.Group) {
 	g.POST("/getSystemMsg", api.GetSystemMsg)
 
 	// Solve cross-domain problems
-	g.OPTIONS("/login", websocket_protocol.OptionHandler)
-	g.OPTIONS("/register", websocket_protocol.OptionHandler)
-	g.OPTIONS("/sendSmsCode", websocket_protocol.OptionHandler)
-	g.OPTIONS("/chatInit", websocket_protocol.OptionHandler)
-	g.OPTIONS("/getGroupMembers", websocket_protocol.OptionHandler)
-	g.OPTIONS("/search", websocket_protocol.OptionHandler)
-	g.OPTIONS("/createGroup", websocket_protocol.OptionHandler)
-	g.OPTIONS("/addFriend", websocket_protocol.OptionHandler)
-	g.OPTIONS("/manageSystemMsg", websocket_protocol.OptionHandler)
-	g.OPTIONS("/manageAddFriend", websocket_protocol.OptionHandler)
-	g.OPTIONS("/joinGroup", websocket_protocol.OptionHandler)
-	g.OPTIONS("/manageJoinGroup", websocket_protocol.OptionHandler)
-	g.OPTIONS("/getSystemMsg", websocket_protocol.OptionHandler)
+	g.OPTIONS("/login", ws_protocol.OptionHandler)
+	g.OPTIONS("/register", ws_protocol.OptionHandler)
+	g.OPTIONS("/sendSmsCode", ws_protocol.OptionHandler)
+	g.OPTIONS("/chatInit", ws_protocol.OptionHandler)
+	g.OPTIONS("/getGroupMembers", ws_protocol.OptionHandler)
+	g.OPTIONS("/search", ws_protocol.OptionHandler)
+	g.OPTIONS("/createGroup", ws_protocol.OptionHandler)
+	g.OPTIONS("/addFriend", ws_protocol.OptionHandler)
+	g.OPTIONS("/manageSystemMsg", ws_protocol.OptionHandler)
+	g.OPTIONS("/manageAddFriend", ws_protocol.OptionHandler)
+	g.OPTIONS("/joinGroup", ws_protocol.OptionHandler)
+	g.OPTIONS("/manageJoinGroup", ws_protocol.OptionHandler)
+	g.OPTIONS("/getSystemMsg", ws_protocol.OptionHandler)
 }
