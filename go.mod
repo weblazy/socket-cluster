@@ -13,7 +13,6 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/henrylee2cn/goutil v0.0.0-20191020121818-c6a890a2c537
 	github.com/jinzhu/gorm v1.9.16
-	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/echo/v4 v4.1.16
 	github.com/lucas-clemente/quic-go v0.19.3
 	github.com/nacos-group/nacos-sdk-go v1.0.6

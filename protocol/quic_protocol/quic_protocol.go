@@ -34,9 +34,9 @@ func (this *QuicProtocol) Dail(addr string) (quic.Stream, error) {
 	return stream, err
 }
 
-func (this *QuicProtocol) Listen(addr string) {
+func (this *QuicProtocol) ListenAndServe(port int64) error {
 	tlsConf := generateTLSConfig()
-	listener, err := quic.ListenAddr(addr, tlsConf, nil)
+	listener, err := quic.ListenAddr(fmt.Sprintf(":%d", port), tlsConf, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -48,6 +48,7 @@ func (this *QuicProtocol) Listen(addr string) {
 			go handleClient(sess)
 		}
 	}
+	return nil
 }
 
 func handleClient(sess quic.Session) {
