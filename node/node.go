@@ -83,6 +83,10 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 }
 
 func (this *Node) OnConnect(connect protocol.Connection) {
+	this.timer.SetTimer(connect.Addr(), connect, authTime)
+}
+
+func (this *Node) OnClose(connect protocol.Connection) {
 	key := connect.Addr()
 	v1, ok := this.clientConns.Load(key)
 	if ok {
@@ -92,10 +96,6 @@ func (this *Node) OnConnect(connect protocol.Connection) {
 		}
 	}
 	this.clientConns.Delete(key)
-}
-
-func (this *Node) OnClose(connect protocol.Connection) {
-	this.timer.SetTimer(connect.Addr(), connect, authTime)
 }
 
 // SendPing send node Heartbeat

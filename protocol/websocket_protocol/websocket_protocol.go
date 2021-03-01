@@ -34,21 +34,16 @@ func (this *WsProtocol) Dial(addr string, protoFunc ...protocol.ProtoFunc) (prot
 }
 
 func (this *WsProtocol) ListenAndServe(port int64, connectHandler protocol.Node, protoFunc ...protocol.ProtoFunc) error {
-	// this.transAddress = fmt.Sprintf("%s%s/trans", cfg.Host, cfg.TransPath)
-	// this.clientAddress = fmt.Sprintf("%s%s/client", cfg.Host, cfg.ClientPath)
 	this.ConnectHandler = connectHandler
 	e := echo.New()
 	e.GET("/trans", this.transHandler)
 	e.GET("/client", this.clientHandler)
-	// webGroup := e.Group(fmt.Sprintf("%s/web", cfg.ClientPath))
-	// cfg.router(webGroup)
 	go func() {
 		err := e.Start(fmt.Sprintf(":%d", port))
 		if err != nil {
 			panic(err)
 		}
 	}()
-
 	return nil
 }
 
@@ -101,7 +96,6 @@ func (this *WsProtocol) clientHandler(c echo.Context) error {
 	}()
 
 	this.ConnectHandler.OnConnect(conn)
-	// log.Sugar.Info(connect.RemoteAddr().String(), connect.LocalAddr().String(), "start")
 	for {
 		_, msg, err := connect.ReadMessage()
 		if err != nil {
@@ -113,7 +107,6 @@ func (this *WsProtocol) clientHandler(c echo.Context) error {
 		logx.Info(string(msg))
 		this.ConnectHandler.OnClientMsg(conn, msg)
 	}
-
 	return nil
 }
 
@@ -139,6 +132,10 @@ func (conn *WsConnection) WriteMsg(msgType int, data []byte) error {
 
 func (conn *WsConnection) Addr() string {
 	return conn.Conn.RemoteAddr().String()
+}
+
+func (conn *WsConnection) Close() error {
+	return conn.Conn.Close()
 }
 
 func OptionHandler(c echo.Context) error {
