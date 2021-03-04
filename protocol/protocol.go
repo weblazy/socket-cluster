@@ -43,7 +43,7 @@ type Protocol interface {
 	// ListenAndServe turns on the listening service.
 	ListenAndServe(port int64, nodeHandler Node, protoFunc ...ProtoFunc) error
 	// Dial connects with the peer of the destination address.
-	Dial(addr string, protoFunc ...ProtoFunc) (Session, error)
+	Dial(addr string, protoFunc ...ProtoFunc) (Connection, error)
 	// ServeConn serves the connection and returns a session.
 	// NOTE:
 	//  Not support automatically redials after disconnection;

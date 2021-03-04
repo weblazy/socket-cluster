@@ -26,7 +26,7 @@ type QuicProtocol struct {
 	nodeHandler protocol.Node
 }
 
-func (this *QuicProtocol) Dail(addr string) (quic.Stream, error) {
+func (this *QuicProtocol) Dail(addr string) (*QuicConnection, error) {
 	tlsConf := &tls.Config{NextProtos: []string{"quic-echo-example"}, InsecureSkipVerify: true}
 	session, err := quic.DialAddr(addr, tlsConf, nil)
 	if err != nil {
@@ -38,7 +38,7 @@ func (this *QuicProtocol) Dail(addr string) (quic.Stream, error) {
 		fmt.Println(err)
 		return nil, err
 	}
-	return stream, err
+	return &QuicConnection{Stream: stream}, err
 }
 
 func (this *QuicProtocol) ListenAndServe(port int64) error {

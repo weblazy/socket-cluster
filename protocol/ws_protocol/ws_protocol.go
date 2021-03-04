@@ -28,8 +28,12 @@ type WsProtocol struct {
 	nodeHandler protocol.Node
 }
 
-func (this *WsProtocol) Dial(addr string, protoFunc ...protocol.ProtoFunc) (protocol.Session, error) {
-	return protocol.Session{}, nil
+func (this *WsProtocol) Dial(addr string, protoFunc ...protocol.ProtoFunc) (protocol.Connection, error) {
+	connect, _, err := websocket.DefaultDialer.Dial(addr, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &WsConnection{Conn: connect}, nil
 }
 
 func (this *WsProtocol) ListenAndServe(port int64, nodeHandler protocol.Node, protoFunc ...protocol.ProtoFunc) error {

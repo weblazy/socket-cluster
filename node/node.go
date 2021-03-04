@@ -347,7 +347,7 @@ func (this *Node) UpdateNodeList() error {
 			continue
 		}
 
-		session, err := this.nodeConf.protocolHandler.Dial(ipAddress)
+		conn, err := this.nodeConf.protocolHandler.Dial(ipAddress)
 		if err != nil {
 			logx.Info("dial:", err)
 			this.transServices.Delete(ipAddress)
@@ -362,7 +362,6 @@ func (this *Node) UpdateNodeList() error {
 			MsgType: "auth",
 			Data:    auth,
 		}
-		conn := session.Conn
 		err = conn.WriteJSON(data)
 		if err != nil {
 			logx.Info(err)

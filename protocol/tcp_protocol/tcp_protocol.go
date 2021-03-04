@@ -21,7 +21,7 @@ type TcpProtocol struct {
 	nodeHandler protocol.Node
 }
 
-func (this *TcpProtocol) Dail(addr string) (net.Conn, error) {
+func (this *TcpProtocol) Dail(addr string) (*TcpConnection, error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
 	if err != nil {
 		log.Printf("Resolve tcp addr failed: %v\n", err)
@@ -35,7 +35,7 @@ func (this *TcpProtocol) Dail(addr string) (net.Conn, error) {
 		return nil, err
 	}
 
-	return conn, err
+	return &TcpConnection{Conn: conn}, err
 }
 
 func (this *TcpProtocol) ListenAndServe(port int64) error {
