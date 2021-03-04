@@ -25,15 +25,15 @@ var (
 )
 
 type WsProtocol struct {
-	ConnectHandler protocol.Node
+	nodeHandler protocol.Node
 }
 
 func (this *WsProtocol) Dial(addr string, protoFunc ...protocol.ProtoFunc) (protocol.Session, error) {
 	return protocol.Session{}, nil
 }
 
-func (this *WsProtocol) ListenAndServe(port int64, connectHandler protocol.Node, protoFunc ...protocol.ProtoFunc) error {
-	this.ConnectHandler = connectHandler
+func (this *WsProtocol) ListenAndServe(port int64, nodeHandler protocol.Node, protoFunc ...protocol.ProtoFunc) error {
+	this.nodeHandler = nodeHandler
 	e := echo.New()
 	e.GET("/trans", this.transHandler)
 	e.GET("/client", this.clientHandler)
@@ -72,7 +72,7 @@ func (this *WsProtocol) transHandler(c echo.Context) error {
 			break
 		}
 		logx.Info(string(msg))
-		this.ConnectHandler.OnTransMsg(conn, msg)
+		this.nodeHandler.OnTransMsg(conn, msg)
 	}
 	return nil
 }
@@ -88,13 +88,13 @@ func (this *WsProtocol) clientHandler(c echo.Context) error {
 	}
 	conn := &WsConnection{Conn: connect}
 	defer func() {
-		this.ConnectHandler.OnClose(conn)
+		this.nodeHandler.OnClose(conn)
 		if connect != nil {
 			connect.Close()
 		}
 	}()
 
-	this.ConnectHandler.OnConnect(conn)
+	this.nodeHandler.OnConnect(conn)
 	for {
 		_, msg, err := connect.ReadMessage()
 		if err != nil {
@@ -104,7 +104,7 @@ func (this *WsProtocol) clientHandler(c echo.Context) error {
 			break
 		}
 		logx.Info(string(msg))
-		this.ConnectHandler.OnClientMsg(conn, msg)
+		this.nodeHandler.OnClientMsg(conn, msg)
 	}
 	return nil
 }

@@ -23,7 +23,7 @@ const BUFFER_LENGTH = 1024 * 70
 const CHAN_MSG_COUNT = 2
 
 type QuicProtocol struct {
-	ConnectHandler protocol.Node
+	nodeHandler protocol.Node
 }
 
 func (this *QuicProtocol) Dail(addr string) (quic.Stream, error) {

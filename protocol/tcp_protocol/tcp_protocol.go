@@ -18,7 +18,7 @@ const BUFFER_LENGTH = 1024 * 70
 const CHAN_MSG_COUNT = 2
 
 type TcpProtocol struct {
-	ConnectHandler protocol.Node
+	nodeHandler protocol.Node
 }
 
 func (this *TcpProtocol) Dail(addr string) (net.Conn, error) {
