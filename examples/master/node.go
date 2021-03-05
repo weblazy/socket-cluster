@@ -342,12 +342,13 @@ func onMsg(context *node.Context) {
 			logx.Info(err)
 			return
 		}
-		common.NodeInfo.SendToClientId(context.ClientId, map[string]interface{}{
+		msgBytes, err := json.Marshal(map[string]interface{}{
 			"msg_type": "have_new_msg",
 			"data": map[string]interface{}{
 				"max_user_msg_id": sendMsg.Id,
 			},
 		})
+		common.NodeInfo.SendToClientId(context.ClientId, msgBytes)
 		if err != nil {
 			logx.Info(err)
 		}
@@ -367,12 +368,13 @@ func onMsg(context *node.Context) {
 				logx.Info(err)
 				return
 			}
-			common.NodeInfo.SendToClientId(receiveUid, map[string]interface{}{
+			msgBytes, err := json.Marshal(map[string]interface{}{
 				"msg_type": "have_new_msg",
 				"data": map[string]interface{}{
 					"max_user_msg_id": receiveMsg.Id,
 				},
 			})
+			common.NodeInfo.SendToClientId(receiveUid, msgBytes)
 			if err != nil {
 				logx.Info(err)
 			}

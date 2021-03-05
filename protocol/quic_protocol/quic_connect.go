@@ -27,7 +27,7 @@ func (conn *QuicConnection) WriteJSON(data interface{}) error {
 }
 
 // WriteMsg send byte array message
-func (conn *QuicConnection) WriteMsg(msgType int, data []byte) error {
+func (conn *QuicConnection) WriteMsg(data []byte) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
 	_, err := conn.Stream.Write(data)

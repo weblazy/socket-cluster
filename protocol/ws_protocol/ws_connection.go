@@ -22,10 +22,10 @@ func (conn *WsConnection) WriteJSON(data interface{}) error {
 }
 
 // WriteMsg send byte array message
-func (conn *WsConnection) WriteMsg(msgType int, data []byte) error {
+func (conn *WsConnection) WriteMsg(data []byte) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
-	return conn.Conn.WriteMessage(msgType, data)
+	return conn.Conn.WriteMessage(websocket.BinaryMessage, data)
 }
 
 func (conn *WsConnection) Addr() string {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/cast"
 	"github.com/weblazy/core/mapreduce"
@@ -125,7 +126,7 @@ func (this *Node) SendPing() {
 				if !ok {
 					return true
 				}
-				err := conn.WriteMsg(websocket.PingMessage, []byte{})
+				err := conn.WriteMsg([]byte{})
 				if err != nil {
 					logx.Info(err)
 				}
@@ -166,7 +167,7 @@ func (this *Node) Ping() {
 				if !ok {
 					return true
 				}
-				err := conn.WriteMsg(websocket.PingMessage, []byte{})
+				err := conn.WriteMsg([]byte{})
 				if err != nil {
 					logx.Info(err)
 				}
@@ -250,55 +251,51 @@ func (this *Node) OnClientMsg(conn protocol.Connection, msg []byte) {
 
 // OnTransMsg handle internal communication node messages
 func (this *Node) OnTransMsg(conn protocol.Connection, msg []byte) {
-	data := make(map[string]interface{})
-	err := json.Unmarshal(msg, &data)
+	// data := make(map[string]interface{})
+	// err := json.Unmarshal(msg, &data)
+	var transMsg Msg
+	err := proto.Unmarshal(msg, &transMsg)
 	if err != nil {
 		logx.Info(err)
 		return
 	}
-	v1, ok := data["msg_type"]
-	if !ok {
-		logx.Info("msg_type is nil")
-		return
-	}
-	switch v1 {
-	case "auth":
-		err = this.AuthTrans(conn, data["data"].(map[string]interface{}))
+	switch transMsg.MsgType {
+	case AuthMsgType:
+		var authMsg AuthMsg
+		err = proto.Unmarshal(transMsg.Data, &authMsg)
+		if err != nil {
+			logx.Info(err)
+		}
+		err = this.AuthTrans(conn, &authMsg)
 		if err != nil {
 			logx.Info(err)
 		}
 	default:
-		if receiveClientId, ok := data["receive_client_id"].(string); ok {
-			delete(data, "receive_client_id")
-			this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
-				err = se.(*Session).Conn.WriteJSON(data)
+		var clientsMsg ClientsMsg
+		err = proto.Unmarshal(transMsg.Data, &clientsMsg)
+		if err != nil {
+			logx.Info(err)
+		}
+		for k1 := range clientsMsg.ReceiveClientIds {
+			receiveClientId := clientsMsg.ReceiveClientIds[k1]
+			this.clientIdSessions.RangeNextMap(cast.ToString(receiveClientId), func(k1, k2 string, se interface{}) bool {
+				err = se.(*Session).Conn.WriteJSON(clientsMsg.Data)
 				if err != nil {
 					logx.Info(err)
 				}
 				return true
 			})
-		} else if receiveClientIds, ok := data["receive_client_ids"].([]string); ok {
-			delete(data, "receive_client_ids")
-			for k1 := range receiveClientIds {
-				receiveClientId := receiveClientIds[k1]
-				this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
-					err = se.(*Session).Conn.WriteJSON(data)
-					if err != nil {
-						logx.Info(err)
-					}
-					return true
-				})
-			}
 		}
 	}
+
 }
 
 // AuthTrans Auth the node
-func (this *Node) AuthTrans(conn protocol.Connection, args map[string]interface{}) error {
-	sid := args["trans_address"].(string)
+func (this *Node) AuthTrans(conn protocol.Connection, authMsg *AuthMsg) error {
+	sid := authMsg.TransAddress
 	this.timer.RemoveTimer(conn.Addr()) //Cancel timeingwheel task
-	if args["password"].(string) != this.nodeConf.Password {
-		logx.Infof("Connect:%s,Wrong password:%s", sid, args["password"].(string))
+	if authMsg.Password != this.nodeConf.Password {
+		logx.Infof("Connect:%s,Wrong password:%s", sid, authMsg.Password)
 		conn.Close()
 		return fmt.Errorf("auth faild")
 	}
@@ -354,15 +351,23 @@ func (this *Node) UpdateNodeList() error {
 			continue
 		}
 
-		auth := &Auth{
+		auth := AuthMsg{
 			Password:     this.nodeConf.Password,
 			TransAddress: this.transAddress,
 		}
-		data := Msg{
-			MsgType: "auth",
-			Data:    auth,
+		authBytes, err := proto.Marshal(&auth)
+		if err != nil {
+			logx.Info(err)
 		}
-		err = conn.WriteJSON(data)
+		data := Msg{
+			MsgType: AuthMsgType,
+			Data:    authBytes,
+		}
+		reqBytes, err := proto.Marshal(&data)
+		if err != nil {
+			logx.Info(err)
+		}
+		err = conn.WriteMsg(reqBytes)
 		if err != nil {
 			logx.Info(err)
 		}
@@ -486,17 +491,12 @@ func (this *Node) BindClientId(clientId int64, se *Session) error {
 }
 
 // SendToClientId Send message to a clientId
-func (this *Node) SendToClientId(clientId string, req map[string]interface{}) error {
+func (this *Node) SendToClientId(clientId string, req []byte) error {
 	if req == nil {
 		return fmt.Errorf("message is nil")
 	}
 	ipArr, err := this.nodeConf.sessionStorageHandler.GetIps(cast.ToInt64(clientId))
 	if err == nil {
-		newMap := make(map[string]interface{})
-		for k, v := range req {
-			newMap[k] = v
-		}
-		newMap["receive_client_id"] = clientId
 		mapreduce.MapVoid(func(source chan<- interface{}) {
 			for key := range ipArr {
 				source <- ipArr[key]
@@ -505,7 +505,7 @@ func (this *Node) SendToClientId(clientId string, req map[string]interface{}) er
 			ip := item.(string)
 			if ip == this.transAddress {
 				this.clientIdSessions.RangeNextMap(clientId, func(k1, k2 string, se interface{}) bool {
-					err = se.(*Session).Conn.WriteJSON(req)
+					err = se.(*Session).Conn.WriteMsg(req)
 					if err != nil {
 						logx.Info(err)
 					}
@@ -518,7 +518,17 @@ func (this *Node) SendToClientId(clientId string, req map[string]interface{}) er
 					if !ok {
 						return
 					}
-					err = conn.WriteJSON(newMap)
+					clientsMsg := ClientsMsg{
+						ReceiveClientIds: []int64{cast.ToInt64(clientId)},
+						Data:             req,
+					}
+					clientsMsgBytes, err := proto.Marshal(&clientsMsg)
+					transReq := Msg{
+						MsgType: ClientMsgType,
+						Data:    clientsMsgBytes,
+					}
+					reqBytes, err := proto.Marshal(&transReq)
+					err = conn.WriteMsg(reqBytes)
 					if err != nil {
 						logx.Info(err)
 					}

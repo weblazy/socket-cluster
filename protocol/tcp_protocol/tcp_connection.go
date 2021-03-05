@@ -27,7 +27,7 @@ func (conn *TcpConnection) WriteJSON(data interface{}) error {
 }
 
 // WriteMsg send byte array message
-func (conn *TcpConnection) WriteMsg(msgType int, data []byte) error {
+func (conn *TcpConnection) WriteMsg(data []byte) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
 	_, err := conn.Conn.Write(data)

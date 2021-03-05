@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -352,12 +353,16 @@ func AddFriend(uid, friendUid int64, remark string) (map[string]interface{}, err
 	if count == 0 {
 		return nil, nil
 	}
-	err = common.NodeInfo.SendToClientId(cast.ToString(friendUid), map[string]interface{}{
+	msgBytes, err := json.Marshal(map[string]interface{}{
 		"msg_type": "add_friend",
 		"data": map[string]interface{}{
 			"count": count,
 		},
 	})
+	if err != nil {
+		return nil, err
+	}
+	err = common.NodeInfo.SendToClientId(cast.ToString(friendUid), msgBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -421,7 +426,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = common.NodeInfo.SendToClientId(cast.ToString(uid), map[string]interface{}{
+	msgBytes, err := json.Marshal(map[string]interface{}{
 		"msg_type": "manage_add_friend",
 		"data": map[string]interface{}{
 			"id":       sendUser.Id,
@@ -431,6 +436,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 			"sign":     sendUser.Username + "的个性签名",
 		},
 	})
+	err = common.NodeInfo.SendToClientId(cast.ToString(uid), msgBytes)
 	if err != nil {
 		logx.Info(err)
 	}
@@ -438,7 +444,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = common.NodeInfo.SendToClientId(cast.ToString(systemMsg.SendUid), map[string]interface{}{
+	msgBytes, err = json.Marshal(map[string]interface{}{
 		"msg_type": "manage_add_friend",
 		"data": map[string]interface{}{
 			"id":       receiveUser.Id,
@@ -448,6 +454,7 @@ func ManageAddFriend(uid, id, status int64) (map[string]interface{}, error) {
 			"sign":     receiveUser.Username + "的个性签名",
 		},
 	})
+	err = common.NodeInfo.SendToClientId(cast.ToString(systemMsg.SendUid), msgBytes)
 	if err != nil {
 		logx.Info(err)
 	}
@@ -522,12 +529,13 @@ func JoinGroup(uid, groupId int64, remark string) (map[string]interface{}, error
 	if count == 0 {
 		return nil, nil
 	}
-	err = common.NodeInfo.SendToClientId(cast.ToString(group.Uid), map[string]interface{}{
+	msgBytes, err := json.Marshal(map[string]interface{}{
 		"msg_type": "join_group",
 		"data": map[string]interface{}{
 			"count": count,
 		},
 	})
+	err = common.NodeInfo.SendToClientId(cast.ToString(group.Uid), msgBytes)
 	if err != nil {
 		logx.Info(err)
 	}
@@ -572,7 +580,7 @@ func ManageJoinGroup(uid, id, status int64) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = common.NodeInfo.SendToClientId(cast.ToString(systemMsg.SendUid), map[string]interface{}{
+	msgBytes, err := json.Marshal(map[string]interface{}{
 		"msg_type": "manage_join_group",
 		"data": map[string]interface{}{
 			"id":         group.Id,
@@ -580,6 +588,7 @@ func ManageJoinGroup(uid, id, status int64) (map[string]interface{}, error) {
 			"avatar":     group.Avatar,
 		},
 	})
+	err = common.NodeInfo.SendToClientId(cast.ToString(systemMsg.SendUid), msgBytes)
 	if err != nil {
 		logx.Info(err)
 	}
@@ -605,8 +614,7 @@ func CreateGroup(uid int64, groupName, avatar string) (map[string]interface{}, e
 	if err != nil {
 		return nil, err
 	}
-
-	err = common.NodeInfo.SendToClientId(cast.ToString(uid), map[string]interface{}{
+	msgBytes, err := json.Marshal(map[string]interface{}{
 		"msg_type": "create_group",
 		"data": map[string]interface{}{
 			"type":      "group",
@@ -615,6 +623,7 @@ func CreateGroup(uid int64, groupName, avatar string) (map[string]interface{}, e
 			"id":        group.Id,
 		},
 	})
+	err = common.NodeInfo.SendToClientId(cast.ToString(uid), msgBytes)
 	if err != nil {
 		logx.Info(err)
 	}
@@ -679,13 +688,14 @@ func GetSystemMsg(uid int64, lastSystemMsgId int64, sort string) (map[string]int
 		return nil, err
 	}
 	if num > 0 {
-		err = common.NodeInfo.SendToClientId(cast.ToString(uid), map[string]interface{}{
+		msgBytes, err := json.Marshal(map[string]interface{}{
 			"msg_type": "read_system_msg",
 			"data": map[string]interface{}{
 				"system_msg_id": maxMsgId,
 				"count":         0,
 			},
 		})
+		err = common.NodeInfo.SendToClientId(cast.ToString(uid), msgBytes)
 		if err != nil {
 			logx.Info(err)
 		}

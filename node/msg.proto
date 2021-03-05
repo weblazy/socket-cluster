@@ -1,0 +1,19 @@
+//指定版本 protoc --go_out=plugins=grpc:. msg.proto 
+syntax = "proto3";
+
+package node;
+
+message Msg {
+    int32 msg_type = 1;
+    bytes data = 2;
+}
+
+message ClientsMsg {
+    repeated int64 receive_client_ids = 1;
+    bytes data = 2;
+}
+
+message AuthMsg {
+    string trans_address = 1;
+    string password = 2;
+}

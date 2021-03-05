@@ -9,3 +9,8 @@ const (
 	NodeAddress               = "node_address"
 	TransAddress              = "trans_address"
 )
+
+const (
+	AuthMsgType   int32 = 1
+	ClientMsgType int32 = 2
+)
