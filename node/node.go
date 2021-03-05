@@ -24,7 +24,7 @@ type (
 	// Node communication node
 	Node struct {
 		protocol.Node
-		// // adminRedis redis client store node info
+		// adminRedis redis client store node info
 		// adminRedis       *redis.Client
 		nodeConf         *NodeConf
 		clientIdSessions *syncx.ConcurrentDoubleMap
@@ -47,7 +47,7 @@ type (
 
 var ()
 
-// NewPeer creates a new peer.
+// StartNode
 func StartNode(cfg *NodeConf) (*Node, error) {
 	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
 		logx.Infof("%s auth timeout", k)
@@ -394,7 +394,7 @@ func (this *Node) UpdateNodeList() error {
 }
 
 // SendToClientIds Sending messages to multiple clients
-func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}) error {
+func (this *Node) SendToClientIds(clientIds []string, req []byte) error {
 	if req == nil {
 		return fmt.Errorf("message is nil")
 	}
@@ -409,18 +409,33 @@ func (this *Node) SendToClientIds(clientIds []string, req map[string]interface{}
 		}
 	}, func(item interface{}) {
 		batchData := item.(*BatchData)
-		newMap := make(map[string]interface{})
-		for k, v := range req {
-			newMap[k] = v
+		msg := Msg{
+			MsgType: ClientMsgType,
+			Data:    req,
 		}
-		newMap["receive_client_ids"] = batchData.clientIds
+		msgBytes, err := proto.Marshal(&msg)
+		if err != nil {
+			logx.Info(err)
+		}
+		ids := make([]int64, 0)
+		for k1 := range batchData.clientIds {
+			ids = append(ids, cast.ToInt64(batchData.clientIds[k1]))
+		}
+		clientsMsg := ClientsMsg{
+			ReceiveClientIds: ids,
+			Data:             msgBytes,
+		}
 		connect, ok := this.transConns.Load(batchData.ip)
 		if ok {
 			conn, ok := connect.(protocol.Connection)
 			if !ok {
 				return
 			}
-			err := conn.WriteJSON(newMap)
+			clientsMsgBytes, err := proto.Marshal(&clientsMsg)
+			if err != nil {
+				logx.Info(err)
+			}
+			err = conn.WriteMsg(clientsMsgBytes)
 			if err != nil {
 				logx.Info(err)
 			}

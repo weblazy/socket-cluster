@@ -433,13 +433,18 @@ func onMsg(context *node.Context) {
 		for k1 := range userGroupList {
 			uids = append(uids, cast.ToString(userGroupList[k1].Uid))
 		}
-		common.NodeInfo.SendToClientIds(uids, map[string]interface{}{
+		msgBytes, err := json.Marshal(map[string]interface{}{
 			"msg_type": "have_new_msg",
 			"data": map[string]interface{}{
 				"max_group_msg_id": msg.Id,
 				"group_id":         groupId,
 			},
 		})
+		if err != nil {
+			logx.Info(err)
+			return
+		}
+		common.NodeInfo.SendToClientIds(uids, msgBytes)
 	default:
 		logx.Info(string(context.Msg))
 	}
