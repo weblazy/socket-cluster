@@ -1,4 +1,4 @@
-//指定版本 protoc --go_out=plugins=grpc:. msg.proto 
+// protoc --go_out=. msg.proto 
 syntax = "proto3";
 
 package node;

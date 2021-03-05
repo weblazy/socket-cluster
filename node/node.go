@@ -478,7 +478,7 @@ type BatchData struct {
 	clientIds []string
 }
 
-//GetSessionsByClientIds Get online users in the group
+// GetSessionsByClientIds Get online users in the group
 func (this *Node) GetSessionsByClientIds(clientIds []string) []*Session {
 	sessions := make([]*Session, 0)
 	for k1 := range clientIds {
@@ -490,7 +490,7 @@ func (this *Node) GetSessionsByClientIds(clientIds []string) []*Session {
 	return sessions
 }
 
-//BindClientId bind clientId with session
+// BindClientId bind clientId with session
 func (this *Node) BindClientId(clientId int64, se *Session) error {
 	sid := se.Conn.Addr()
 	this.clientIdSessions.StoreWithPlugin(cast.ToString(clientId), sid, se, func() {
@@ -557,7 +557,7 @@ func (this *Node) SendToClientId(clientId string, req []byte) error {
 	return nil
 }
 
-//SendToTrans Send message to a clientId
+// SendToTrans Send message to a clientId
 func (this *Node) SendToTrans(clientId string, path string, req interface{}) error {
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		this.transConns.Range(func(key, value interface{}) bool {
