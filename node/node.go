@@ -279,7 +279,7 @@ func (this *Node) OnTransMsg(conn protocol.Connection, msg []byte) {
 		for k1 := range clientsMsg.ReceiveClientIds {
 			receiveClientId := clientsMsg.ReceiveClientIds[k1]
 			this.clientIdSessions.RangeNextMap(cast.ToString(receiveClientId), func(k1, k2 string, se interface{}) bool {
-				err = se.(*Session).Conn.WriteJSON(clientsMsg.Data)
+				err = se.(*Session).Conn.WriteMsg(clientsMsg.Data)
 				if err != nil {
 					logx.Info(err)
 				}
@@ -455,12 +455,7 @@ func (this *Node) SendToClientIds(clientIds []string, req []byte) error {
 		}
 	}, func(item interface{}) {
 		se := item.(*Session)
-		// newMap := make(map[string]interface{})
-		// for k, v := range req {
-		// 	newMap[k] = v
-		// }
-		// newMap["receive_client_id"] = se.ClientId
-		err := se.Conn.WriteJSON(req)
+		err := se.Conn.WriteMsg(req)
 		if err != nil {
 			logx.Info(err)
 		}
@@ -558,7 +553,7 @@ func (this *Node) SendToClientId(clientId string, req []byte) error {
 }
 
 // SendToTrans Send message to a clientId
-func (this *Node) SendToTrans(clientId string, path string, req interface{}) error {
+func (this *Node) SendToTrans(clientId string, path string, req []byte) error {
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		this.transConns.Range(func(key, value interface{}) bool {
 			if key == this.transAddress {
@@ -572,7 +567,7 @@ func (this *Node) SendToTrans(clientId string, path string, req interface{}) err
 		if !ok {
 			return
 		}
-		err := conn.WriteJSON(req)
+		err := conn.WriteMsg(req)
 		if err != nil {
 			logx.Info(err)
 		}

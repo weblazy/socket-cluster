@@ -6,7 +6,6 @@ import (
 )
 
 type Connection interface {
-	WriteJSON(data interface{}) error
 	WriteMsg(data []byte) error
 	ReadMessage() (p []byte, err error)
 	Close() error

@@ -13,15 +13,25 @@ const HEAD_SIZE = 4
 type Buffer struct {
 	reader     io.Reader
 	header     string
+	headLength int
 	buf        []byte
-	buf_length int
+	bufLength  int
 	start      int
 	end        int
 }
 
-func NewBuffer(reader io.Reader, header string, len int) *Buffer {
-	buf := make([]byte, len)
-	return &Buffer{reader, header, buf, len, 0, 0}
+func NewBuffer(reader io.Reader, header string, bufLength int) *Buffer {
+	buf := make([]byte, bufLength)
+
+	return &Buffer{
+		reader:     reader,
+		header:     header,
+		headLength: len(header) + HEAD_SIZE,
+		buf:        buf,
+		bufLength:  bufLength,
+		start:      0,
+		end:        0,
+	}
 }
 
 // grow 将有用的字节前移
@@ -39,9 +49,9 @@ func (b *Buffer) len() int {
 }
 
 //返回n个字节，而不产生移位
-func (b *Buffer) seek(n int) ([]byte, error) {
-	if b.end-b.start >= n {
-		buf := b.buf[b.start : b.start+n]
+func (b *Buffer) seek() ([]byte, error) {
+	if b.end-b.start >= b.headLength {
+		buf := b.buf[b.start : b.start+b.headLength]
 		return buf, nil
 	}
 	return nil, errors.New("not enough")
@@ -55,10 +65,10 @@ func (b *Buffer) read(offset, n int) []byte {
 	return buf
 }
 
-//从reader里面读取数据，如果reader阻塞，会发生阻塞
+// 从reader里面读取数据，如果reader阻塞，会发生阻塞
 func (b *Buffer) readFromReader() error {
-	if b.end == b.buf_length {
-		return errors.New(fmt.Sprintf("一个完整的数据包太长已经超过你定义的example.BUFFER_LENGTH(%d)\n", b.buf_length))
+	if b.end == b.bufLength {
+		return errors.New(fmt.Sprintf("一个完整的数据包太长已经超过你定义的example.BUFFER_LENGTH(%d)\n", b.bufLength))
 	}
 	n, err := b.reader.Read(b.buf[b.end:])
 	if err != nil {
@@ -85,8 +95,7 @@ func (buffer *Buffer) Read(msg chan string) error {
 }
 
 func (buffer *Buffer) checkMsg(msg chan string) error {
-	HEADER_LENG := HEAD_SIZE + len(buffer.header)
-	headBuf, err1 := buffer.seek(HEADER_LENG)
+	headBuf, err1 := buffer.seek()
 	if err1 != nil { // 一个消息头都不够， 跳出去继续读吧, 但是这不是一种错误
 		return nil
 	}
@@ -96,8 +105,8 @@ func (buffer *Buffer) checkMsg(msg chan string) error {
 		return errors.New("消息头部不正确")
 	}
 	contentSize := int(binary.BigEndian.Uint32(headBuf[len(buffer.header):]))
-	if buffer.len() >= contentSize-HEADER_LENG { // 一个消息体也是够的
-		contentBuf := buffer.read(HEADER_LENG, contentSize) // 把消息读出来，把start往后移
+	if buffer.len() >= contentSize-buffer.headLength { // 一个消息体也是够的
+		contentBuf := buffer.read(buffer.headLength, contentSize) // 把消息读出来，把start往后移
 		msg <- string(contentBuf)
 		// 递归，看剩下的还够一个消息不
 		err3 := buffer.checkMsg(msg)

@@ -104,13 +104,17 @@ func onMsg(context *node.Context) {
 			}
 			userGroupList = append(userGroupList, obj)
 		}
-		err = context.Conn.WriteJSON(map[string]interface{}{
+		msgBytes, err := json.Marshal(map[string]interface{}{
 			"msg_type": "init",
 			"data": map[string]interface{}{
 				"user_group_list": userGroupList,
 				"max_user_msg_id": maxUserMsgId,
 			},
 		})
+		if err != nil {
+			logx.Info(err)
+		}
+		err = context.Conn.WriteMsg(msgBytes)
 		if err != nil {
 			logx.Info(err)
 		}
@@ -168,13 +172,16 @@ func onMsg(context *node.Context) {
 			}
 			chatGroupMsgList = append(chatGroupMsgList, obj)
 		}
-
-		err = context.Conn.WriteJSON(map[string]interface{}{
+		msgBytes, err := json.Marshal(map[string]interface{}{
 			"msg_type": "pull_group_msg",
 			"data": map[string]interface{}{
 				"group_msg_list": chatGroupMsgList,
 			},
 		})
+		if err != nil {
+			logx.Info(err)
+		}
+		err = context.Conn.WriteMsg(msgBytes)
 		if err != nil {
 			logx.Info(err)
 		}
@@ -214,13 +221,16 @@ func onMsg(context *node.Context) {
 			}
 			list = append(list, obj)
 		}
-
-		err = context.Conn.WriteJSON(map[string]interface{}{
+		msgBytes, err := json.Marshal(map[string]interface{}{
 			"msg_type": "sync_user_msg",
 			"data": map[string]interface{}{
 				"user_msg_list": list,
 			},
 		})
+		if err != nil {
+			logx.Info(err)
+		}
+		err = context.Conn.WriteMsg(msgBytes)
 		if err != nil {
 			logx.Info(err)
 		}
@@ -311,8 +321,7 @@ func onMsg(context *node.Context) {
 			}
 			chatGroupMsgList = append(chatGroupMsgList, obj)
 		}
-
-		err = context.Conn.WriteJSON(map[string]interface{}{
+		msgBytes, err := json.Marshal(map[string]interface{}{
 			"msg_type":    "chat_msg_list",
 			"receive_uid": uid,
 			"data": map[string]interface{}{
@@ -320,6 +329,10 @@ func onMsg(context *node.Context) {
 				"user_group_msg_list": chatGroupMsgList,
 			},
 		})
+		if err != nil {
+			logx.Info(err)
+		}
+		err = context.Conn.WriteMsg(msgBytes)
 		if err != nil {
 			logx.Info(err)
 		}

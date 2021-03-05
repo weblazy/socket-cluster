@@ -14,13 +14,6 @@ type WsConnection struct {
 	protocol.Connection
 }
 
-// WriteJSON send json message
-func (conn *WsConnection) WriteJSON(data interface{}) error {
-	conn.Mutex.Lock()
-	defer conn.Mutex.Unlock()
-	return conn.Conn.WriteJSON(data)
-}
-
 // WriteMsg send byte array message
 func (conn *WsConnection) WriteMsg(data []byte) error {
 	conn.Mutex.Lock()
