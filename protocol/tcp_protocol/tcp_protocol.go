@@ -73,36 +73,6 @@ func (this *TcpProtocol) doMsg(conn net.Conn, msg []byte) {
 	fmt.Println("个消息体长:", len(msg))
 }
 
-// transHandler deal node connection
-func (this *TcpProtocol) transHandler(connect net.Conn) error {
-	defer func() {
-		if connect != nil {
-			connect.Close()
-		}
-	}()
-
-	if err != nil {
-		if _, ok := err.(websocket.HandshakeError); !ok {
-			logx.Info(err)
-		}
-		return err
-	}
-	conn := &TcpConnection{Conn: connect}
-	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
-	for {
-		_, msg, err := connect.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logx.Info(err)
-			}
-			break
-		}
-		logx.Info(string(msg))
-		this.nodeHandler.OnTransMsg(conn, msg)
-	}
-	return nil
-}
-
 // clientHandler deal client connection
 func (this *TcpProtocol) clientHandler(connect net.Conn) error {
 	conn := &TcpConnection{Conn: connect}

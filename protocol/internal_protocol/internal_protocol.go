@@ -1,11 +1,10 @@
-package protocol
+package internal_protocol
 
 import (
 	"fmt"
 	"log"
 	"net"
 
-	"github.com/gorilla/websocket"
 	"github.com/weblazy/core/logx"
 	"github.com/weblazy/socket-cluster/protocol"
 	"github.com/weblazy/socket-cluster/protocol/tcp_protocol"
@@ -54,9 +53,17 @@ func (this *TcpProtocol) ListenAndServe(port int64) error {
 	return nil
 }
 
-func (this *TcpProtocol) handleClient(conn net.Conn) {
+func (this *TcpProtocol) handleClient(connect net.Conn) {
+	defer func() {
+		if connect != nil {
+			connect.Close()
+		}
+	}()
+
+	// conn := &tcp_protocol.TcpConnection{Conn: connect}
+	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
 	// 缓存区设置最大为4G字节， 如果单个消息大于这个值就不能接受了
-	buffer1 := protocol.NewBuffer(conn, HEADER, MAX_LENGTH)
+	buffer1 := protocol.NewBuffer(connect, HEADER, MAX_LENGTH)
 	go func() {
 		err := buffer1.Read(this.doMsg)
 		if err != nil {
@@ -70,36 +77,6 @@ func (this *TcpProtocol) handleClient(conn net.Conn) {
 }
 
 func (this *TcpProtocol) doMsg(conn net.Conn, msg []byte) {
-	this.nodeHandler.OnClientMsg(&tcp_protocol.TcpConnection{Conn: conn}, msg)
+	this.nodeHandler.OnTransMsg(&tcp_protocol.TcpConnection{Conn: conn}, msg)
 	fmt.Println("个消息体长:", len(msg))
-}
-
-// transHandler deal node connection
-func (this *TcpProtocol) transHandler(connect net.Conn) error {
-	defer func() {
-		if connect != nil {
-			connect.Close()
-		}
-	}()
-
-	if err != nil {
-		if _, ok := err.(websocket.HandshakeError); !ok {
-			logx.Info(err)
-		}
-		return err
-	}
-	conn := &tcp_protocol.TcpConnection{Conn: connect}
-	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
-	for {
-		_, msg, err := connect.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logx.Info(err)
-			}
-			break
-		}
-		logx.Info(string(msg))
-		this.nodeHandler.OnTransMsg(conn, msg)
-	}
-	return nil
 }

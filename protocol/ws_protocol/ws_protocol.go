@@ -39,7 +39,6 @@ func (this *WsProtocol) Dial(addr string, protoFunc ...protocol.ProtoFunc) (prot
 func (this *WsProtocol) ListenAndServe(port int64, nodeHandler protocol.Node, protoFunc ...protocol.ProtoFunc) error {
 	this.nodeHandler = nodeHandler
 	e := echo.New()
-	e.GET("/trans", this.transHandler)
 	e.GET("/client", this.clientHandler)
 	go func() {
 		err := e.Start(fmt.Sprintf(":%d", port))
@@ -47,37 +46,6 @@ func (this *WsProtocol) ListenAndServe(port int64, nodeHandler protocol.Node, pr
 			panic(err)
 		}
 	}()
-	return nil
-}
-
-// transHandler deal node connection
-func (this *WsProtocol) transHandler(c echo.Context) error {
-	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	defer func() {
-		if connect != nil {
-			connect.Close()
-		}
-	}()
-
-	if err != nil {
-		if _, ok := err.(websocket.HandshakeError); !ok {
-			logx.Info(err)
-		}
-		return err
-	}
-	conn := &WsConnection{Conn: connect}
-	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
-	for {
-		_, msg, err := connect.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logx.Info(err)
-			}
-			break
-		}
-		logx.Info(string(msg))
-		this.nodeHandler.OnTransMsg(conn, msg)
-	}
 	return nil
 }
 

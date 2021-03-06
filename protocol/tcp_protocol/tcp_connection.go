@@ -25,3 +25,11 @@ func (conn *TcpConnection) WriteMsg(data []byte) error {
 	_, err = conn.Conn.Write(data)
 	return err
 }
+
+func (conn *TcpConnection) Addr() string {
+	return conn.Conn.RemoteAddr().String()
+}
+
+func (conn *TcpConnection) Close() error {
+	return conn.Conn.Close()
+}
