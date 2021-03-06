@@ -84,37 +84,34 @@ func (b *Buffer) readFromReader() error {
 
 func (buffer *Buffer) Read(f func(conn net.Conn, msg []byte)) error {
 	for {
-		buffer.grow()                   // 移动数据
-		err1 := buffer.readFromReader() // 读数据拼接到定额缓存后面
-		if err1 != nil {
-			return err1
+		buffer.grow()                  // 移动数据
+		err := buffer.readFromReader() // 读数据拼接到定额缓存后面
+		if err != nil {
+			return err
 		}
 		// 检查定额缓存里面的数据有几个消息(可能不到1个，可能连一个消息头都不够，可能有几个完整消息+一个消息的部分)
-		err2 := buffer.checkMsg(f)
-		if err2 != nil {
-			return err2
+		err = buffer.checkMsg(f)
+		if err != nil {
+			return err
 		}
 	}
 }
 
 func (buffer *Buffer) checkMsg(f func(conn net.Conn, msg []byte)) error {
-	headBuf, err1 := buffer.seek()
-	if err1 != nil { // 一个消息头都不够， 跳出去继续读吧, 但是这不是一种错误
-		return nil
-	}
-	if string(headBuf[:len(buffer.header)]) == buffer.header { // 判断消息头正确性
+	for {
+		headBuf, err1 := buffer.seek()
+		if err1 != nil { // 一个消息头都不够， 跳出去继续读吧, 但是这不是一种错误
+			return nil
+		}
+		if string(headBuf[:len(buffer.header)]) == buffer.header { // 判断消息头正确性
 
-	} else {
-		return errors.New("消息头部不正确")
-	}
-	contentSize := int(binary.BigEndian.Uint32(headBuf[len(buffer.header):]))
-	if buffer.len() >= contentSize-buffer.headLength { // 一个消息体也是够的
-		contentBuf := buffer.read(buffer.headLength, contentSize) // 把消息读出来，把start往后移
-		f(buffer.reader, contentBuf)
-		// 递归，看剩下的还够一个消息不
-		err3 := buffer.checkMsg(f)
-		if err3 != nil {
-			return err3
+		} else {
+			return errors.New("消息头部不正确")
+		}
+		contentSize := int(binary.BigEndian.Uint32(headBuf[len(buffer.header):]))
+		if buffer.len() >= contentSize-buffer.headLength { // 一个消息体也是够的
+			contentBuf := buffer.read(buffer.headLength, contentSize) // 把消息读出来，把start往后移
+			f(buffer.reader, contentBuf)
 		}
 	}
 	return nil

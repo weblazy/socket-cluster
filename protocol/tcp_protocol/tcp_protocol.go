@@ -57,6 +57,12 @@ func (this *TcpProtocol) handleClient(conn net.Conn) {
 	// 缓存区设置最大为4G字节， 如果单个消息大于这个值就不能接受了
 	buffer1 := protocol.NewBuffer(conn, HEADER, MAX_LENGTH)
 	go func() {
+		defer func() {
+			this.nodeHandler.OnClose(conn)
+			if conn != nil {
+				conn.Close()
+			}
+		}()
 		err := buffer1.Read(this.doMsg)
 		if err != nil {
 			if err.Error() == "EOF" {
@@ -76,13 +82,6 @@ func (this *TcpProtocol) doMsg(conn net.Conn, msg []byte) {
 // clientHandler deal client connection
 func (this *TcpProtocol) clientHandler(connect net.Conn) error {
 	conn := &TcpConnection{Conn: connect}
-	defer func() {
-		this.nodeHandler.OnClose(conn)
-		if connect != nil {
-			connect.Close()
-		}
-	}()
-
 	this.nodeHandler.OnConnect(conn)
 	for {
 		_, msg, err := connect.ReadMessage()

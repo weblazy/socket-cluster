@@ -54,17 +54,17 @@ func (this *TcpProtocol) ListenAndServe(port int64) error {
 }
 
 func (this *TcpProtocol) handleClient(connect net.Conn) {
-	defer func() {
-		if connect != nil {
-			connect.Close()
-		}
-	}()
 
 	// conn := &tcp_protocol.TcpConnection{Conn: connect}
 	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
 	// 缓存区设置最大为4G字节， 如果单个消息大于这个值就不能接受了
 	buffer1 := protocol.NewBuffer(connect, HEADER, MAX_LENGTH)
 	go func() {
+		defer func() {
+			if connect != nil {
+				connect.Close()
+			}
+		}()
 		err := buffer1.Read(this.doMsg)
 		if err != nil {
 			if err.Error() == "EOF" {
