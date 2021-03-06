@@ -15,16 +15,18 @@ type (
 	}
 	// NodeConf node config
 	NodeConf struct {
-		Host                  string // the ip or domain of the node
-		Key                   string // the transport path
-		Port                  int64  // Node port
-		Password              string // Password for auth when connect to other node
-		ClientPingInterval    int64
-		NodePingInterval      int64                  // Heartbeat interval
-		onMsg                 func(context *Context) // callback function when receive client message
-		discoveryHandler      discovery.ServiceDiscovery
-		protocolHandler       protocol.Protocol
-		sessionStorageHandler session_storage.SessionStorage
+		Host                    string // the ip or domain of the node
+		Key                     string // the transport path
+		Port                    int64  // Node port
+		InternalPort            int64  // Node port
+		Password                string // Password for auth when connect to other node
+		ClientPingInterval      int64
+		NodePingInterval        int64                  // Heartbeat interval
+		onMsg                   func(context *Context) // callback function when receive client message
+		discoveryHandler        discovery.ServiceDiscovery
+		protocolHandler         protocol.Protocol
+		internalProtocolHandler protocol.Protocol
+		sessionStorageHandler   session_storage.SessionStorage
 	}
 	// Params of onMsg
 	Context struct {

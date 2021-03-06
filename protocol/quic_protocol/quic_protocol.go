@@ -19,7 +19,7 @@ const HEAD_SIZE = 4
 const HEADER = "BEGIN"
 
 // 每个消息(包括头部)的最大长度， 这里最大可以设置4G
-const BUFFER_LENGTH = 1024 * 70
+const MAX_LENGTH = 1024 * 70
 const CHAN_MSG_COUNT = 2
 
 type QuicProtocol struct {
@@ -65,7 +65,7 @@ func handleClient(sess quic.Session) {
 	if err != nil {
 		panic(err)
 	}
-	buffer1 := protocol.NewBuffer(stream, HEADER, BUFFER_LENGTH)
+	buffer1 := protocol.NewBuffer(stream, HEADER, MAX_LENGTH)
 
 	var wg sync.WaitGroup
 	wg.Add(2) // 主的routine将等待两个routine(读消息, 打印消息)的完成

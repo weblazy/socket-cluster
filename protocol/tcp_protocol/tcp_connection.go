@@ -11,12 +11,17 @@ type TcpConnection struct {
 	Conn  net.Conn
 	Mutex sync.Mutex
 	protocol.Connection
+	protoHandler protocol.Proto
 }
 
 // WriteMsg send byte array message
 func (conn *TcpConnection) WriteMsg(data []byte) error {
+	data, err := conn.protoHandler.Pack(data)
+	if err != nil {
+		return err
+	}
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
-	_, err := conn.Conn.Write(data)
+	_, err = conn.Conn.Write(data)
 	return err
 }

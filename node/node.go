@@ -74,8 +74,8 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 		nodeTimeout:      cfg.NodePingInterval * 3,
 		clientTimeout:    cfg.ClientPingInterval * 3,
 	}
+	cfg.internalProtocolHandler.ListenAndServe(cfg.InternalPort, this)
 	cfg.protocolHandler.ListenAndServe(cfg.Port, this)
-
 	this.SendPing()
 	this.Ping()
 	this.Register()
@@ -344,7 +344,7 @@ func (this *Node) UpdateNodeList() error {
 			continue
 		}
 
-		conn, err := this.nodeConf.protocolHandler.Dial(ipAddress)
+		conn, err := this.nodeConf.internalProtocolHandler.Dial(ipAddress)
 		if err != nil {
 			logx.Info("dial:", err)
 			this.transServices.Delete(ipAddress)

@@ -1,4 +1,4 @@
-package tcp_protocol
+package protocol
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/weblazy/core/logx"
 	"github.com/weblazy/socket-cluster/protocol"
+	"github.com/weblazy/socket-cluster/protocol/tcp_protocol"
 )
 
 const HEAD_SIZE = 4
@@ -21,7 +22,7 @@ type TcpProtocol struct {
 	nodeHandler protocol.Node
 }
 
-func (this *TcpProtocol) Dail(addr string) (*TcpConnection, error) {
+func (this *TcpProtocol) Dail(addr string) (*tcp_protocol.TcpConnection, error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
 	if err != nil {
 		log.Printf("Resolve tcp addr failed: %v\n", err)
@@ -32,7 +33,7 @@ func (this *TcpProtocol) Dail(addr string) (*TcpConnection, error) {
 		log.Printf("Dial to server failed: %v\n", err)
 		return nil, err
 	}
-	return &TcpConnection{Conn: conn}, err
+	return &tcp_protocol.TcpConnection{Conn: conn}, err
 }
 
 func (this *TcpProtocol) ListenAndServe(port int64) error {
@@ -69,7 +70,7 @@ func (this *TcpProtocol) handleClient(conn net.Conn) {
 }
 
 func (this *TcpProtocol) doMsg(conn net.Conn, msg []byte) {
-	this.nodeHandler.OnClientMsg(&TcpConnection{Conn: conn}, msg)
+	this.nodeHandler.OnClientMsg(&tcp_protocol.TcpConnection{Conn: conn}, msg)
 	fmt.Println("个消息体长:", len(msg))
 }
 
@@ -87,7 +88,7 @@ func (this *TcpProtocol) transHandler(connect net.Conn) error {
 		}
 		return err
 	}
-	conn := &TcpConnection{Conn: connect}
+	conn := &tcp_protocol.TcpConnection{Conn: connect}
 	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
 	for {
 		_, msg, err := connect.ReadMessage()
@@ -99,31 +100,6 @@ func (this *TcpProtocol) transHandler(connect net.Conn) error {
 		}
 		logx.Info(string(msg))
 		this.nodeHandler.OnTransMsg(conn, msg)
-	}
-	return nil
-}
-
-// clientHandler deal client connection
-func (this *TcpProtocol) clientHandler(connect net.Conn) error {
-	conn := &TcpConnection{Conn: connect}
-	defer func() {
-		this.nodeHandler.OnClose(conn)
-		if connect != nil {
-			connect.Close()
-		}
-	}()
-
-	this.nodeHandler.OnConnect(conn)
-	for {
-		_, msg, err := connect.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logx.Info(err)
-			}
-			break
-		}
-		logx.Info(string(msg))
-		this.nodeHandler.OnClientMsg(conn, msg)
 	}
 	return nil
 }

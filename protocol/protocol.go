@@ -26,10 +26,10 @@ type (
 		Version() (byte, string)
 		// Pack writes the Message into the connection.
 		// NOTE: Make sure to write only once or there will be package contamination!
-		Pack(Message) error
+		Pack([]byte) ([]byte, error)
 		// Unpack reads bytes from the connection to the Message.
 		// NOTE: Concurrent unsafe!
-		Unpack(Message) error
+		Unpack([]byte) ([]byte, error)
 	}
 	// IOWithReadBuffer implements buffered I/O with buffered reader.
 	IOWithReadBuffer interface {
