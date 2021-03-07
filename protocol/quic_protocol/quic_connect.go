@@ -20,3 +20,7 @@ func (conn *QuicConnection) WriteMsg(data []byte) error {
 	_, err := conn.Stream.Write(data)
 	return err
 }
+
+func (conn *QuicConnection) ReadMsg(data []byte) (int, error) {
+	return conn.Stream.Read(data)
+}

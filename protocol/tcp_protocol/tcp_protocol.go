@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 
-	"github.com/gorilla/websocket"
 	"github.com/weblazy/core/logx"
 	"github.com/weblazy/socket-cluster/protocol"
 )
@@ -21,7 +20,7 @@ type TcpProtocol struct {
 	nodeHandler protocol.Node
 }
 
-func (this *TcpProtocol) Dail(addr string) (*TcpConnection, error) {
+func (this *TcpProtocol) Dial(addr string) (protocol.Connection, error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
 	if err != nil {
 		log.Printf("Resolve tcp addr failed: %v\n", err)
@@ -53,17 +52,20 @@ func (this *TcpProtocol) ListenAndServe(port int64) error {
 	return nil
 }
 
-func (this *TcpProtocol) handleClient(conn net.Conn) {
+func (this *TcpProtocol) handleClient(connect net.Conn) {
 	// 缓存区设置最大为4G字节， 如果单个消息大于这个值就不能接受了
-	buffer1 := protocol.NewBuffer(conn, HEADER, MAX_LENGTH)
+	conn := &TcpConnection{Conn: connect}
+	this.nodeHandler.OnConnect(conn)
+	buffer1 := protocol.NewBuffer(HEADER, MAX_LENGTH)
 	go func() {
+
 		defer func() {
 			this.nodeHandler.OnClose(conn)
 			if conn != nil {
 				conn.Close()
 			}
 		}()
-		err := buffer1.Read(this.doMsg)
+		err := buffer1.Read(conn, this.nodeHandler.OnClientMsg)
 		if err != nil {
 			if err.Error() == "EOF" {
 				// 对等方关闭了, 这里关闭chan, 通知接收消息的routine别等了，人家都关了
@@ -74,25 +76,24 @@ func (this *TcpProtocol) handleClient(conn net.Conn) {
 	}()
 }
 
-func (this *TcpProtocol) doMsg(conn net.Conn, msg []byte) {
-	this.nodeHandler.OnClientMsg(&TcpConnection{Conn: conn}, msg)
-	fmt.Println("个消息体长:", len(msg))
-}
+func (this *TcpProtocol) ServeConn(conn protocol.Connection, f func(conn protocol.Connection, p []byte)) {
 
-// clientHandler deal client connection
-func (this *TcpProtocol) clientHandler(connect net.Conn) error {
-	conn := &TcpConnection{Conn: connect}
-	this.nodeHandler.OnConnect(conn)
-	for {
-		_, msg, err := connect.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logx.Info(err)
+	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
+	// 缓存区设置最大为4G字节， 如果单个消息大于这个值就不能接受了
+	buffer1 := protocol.NewBuffer(HEADER, MAX_LENGTH)
+	go func() {
+		defer func() {
+			if conn != nil {
+				conn.Close()
 			}
-			break
+		}()
+		err := buffer1.Read(conn, this.nodeHandler.OnTransMsg)
+		if err != nil {
+			if err.Error() == "EOF" {
+				// 对等方关闭了, 这里关闭chan, 通知接收消息的routine别等了，人家都关了
+			} else {
+				panic(err)
+			}
 		}
-		logx.Info(string(msg))
-		this.nodeHandler.OnClientMsg(conn, msg)
-	}
-	return nil
+	}()
 }

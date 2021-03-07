@@ -21,6 +21,10 @@ func (conn *WsConnection) WriteMsg(data []byte) error {
 	return conn.Conn.WriteMessage(websocket.BinaryMessage, data)
 }
 
+func (conn *WsConnection) ReadMsg(data []byte) (int, error) {
+	_, data, err := conn.Conn.ReadMessage()
+	return len(data), err
+}
 func (conn *WsConnection) Addr() string {
 	return conn.Conn.RemoteAddr().String()
 }

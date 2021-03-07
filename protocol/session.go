@@ -7,7 +7,7 @@ import (
 
 type Connection interface {
 	WriteMsg(data []byte) error
-	// ReadMessage() (p []byte, err error)
+	ReadMsg(p []byte) (int, error)
 	Close() error
 	Addr() string
 }

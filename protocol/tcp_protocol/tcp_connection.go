@@ -26,6 +26,10 @@ func (conn *TcpConnection) WriteMsg(data []byte) error {
 	return err
 }
 
+func (conn *TcpConnection) ReadMsg(data []byte) (int, error) {
+	return conn.Conn.Read(data)
+}
+
 func (conn *TcpConnection) Addr() string {
 	return conn.Conn.RemoteAddr().String()
 }

@@ -80,3 +80,26 @@ func (this *WsProtocol) clientHandler(c echo.Context) error {
 	}
 	return nil
 }
+
+func (this *WsProtocol) ServeConn(conn protocol.Connection, OnTransMsg func(conn protocol.Connection, msg []byte)) error {
+	defer func() {
+		this.nodeHandler.OnClose(conn)
+		if conn != nil {
+			conn.Close()
+		}
+	}()
+
+	this.nodeHandler.OnConnect(conn)
+	for {
+		_, msg, err := conn.(*WsConnection).Conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				logx.Info(err)
+			}
+			break
+		}
+		logx.Info(string(msg))
+		this.nodeHandler.OnClientMsg(conn, msg)
+	}
+	return nil
+}

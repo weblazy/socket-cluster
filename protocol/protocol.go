@@ -49,5 +49,5 @@ type Protocol interface {
 	//  Not support automatically redials after disconnection;
 	//  Not check TLS;
 	//  Execute the PostAcceptPlugin plugins.
-	// ServeConn(conn net.Conn, protoFunc ...ProtoFunc) (Session, error)
+	ServeConn(conn Connection, OnTransMsg func(conn Connection, msg []byte)) error
 }

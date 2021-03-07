@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/gorilla/websocket"
 	"github.com/spf13/cast"
 	"github.com/weblazy/core/mapreduce"
 	"github.com/weblazy/easy/utils/logx"
@@ -377,17 +376,11 @@ func (this *Node) UpdateNodeList() error {
 				this.transServices.Delete(ipAddress)
 				conn.Close()
 			}(ipAddress, conn)
-			for {
-				msg, err := conn.ReadMessage()
-				if err != nil {
-					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-						logx.Info(err)
-					}
-					break
-				}
-				logx.Info(string(msg))
-				this.OnTransMsg(conn, msg)
+			err := this.nodeConf.internalProtocolHandler.ServeConn(conn, this.OnTransMsg)
+			if err != nil {
+				return
 			}
+
 		}(ipAddress, conn)
 	}
 	return nil
