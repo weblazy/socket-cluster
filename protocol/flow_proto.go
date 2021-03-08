@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"io"
 )
 
 const (
@@ -21,14 +20,9 @@ var DefaultFlowProto = NewFlowProto(HEADER, MAX_LENGTH)
 
 type FlowProto struct {
 	Proto
-	conn       Connection
-	reader     io.Reader
 	header     string
 	headLength int
-	buf        []byte
 	bufLength  int
-	start      int
-	end        int
 }
 
 func NewFlowProto(header string, bufLength int) *FlowProto {
@@ -36,49 +30,49 @@ func NewFlowProto(header string, bufLength int) *FlowProto {
 	return &FlowProto{
 		header:     header,
 		headLength: len(header) + HEAD_SIZE,
-		buf:        buf,
 		bufLength:  bufLength,
-		start:      0,
-		end:        0,
 	}
 }
 
 // Read Read and parse the received message
-func (this *FlowProto) Read(conn Connection, onMsg func(conn Connection, msg []byte)) error {
+func (this *FlowProto) Read(conn FlowConnection, onMsg func(conn FlowConnection, msg []byte)) error {
+	var start, end int
+	buf := make([]byte, this.bufLength)
+
 	for {
 		// 移动数据
-		if this.start > 0 {
-			copy(this.buf, this.buf[this.start:this.end])
-			this.end -= this.start
-			this.start = 0
+		if start > 0 {
+			copy(buf, buf[start:end])
+			end -= start
+			start = 0
 		}
 		// 读数据拼接到定额缓存后面
-		if this.end == this.bufLength {
+		if end == this.bufLength {
 			return ExceededErr
 		}
-		n, err := conn.ReadMsg(this.buf[this.end:])
+		n, err := conn.ReadMsg(buf[end:])
 		if err != nil {
 			return err
 		}
-		this.end += n
+		end += n
 		// 检查定额缓存里面的数据有几个消息(可能不到1个，可能连一个消息头都不够，可能有几个完整消息+一个消息的部分)
 		for {
-			if this.end-this.start < this.headLength {
+			if end-start < this.headLength {
 				// 一个消息头都不够， 跳出去继续读吧, 但是这不是一种错误
 				break
 			}
-			headBuf := this.buf[this.start : this.start+this.headLength]
+			headBuf := buf[start : start+this.headLength]
 			if string(headBuf[:len(this.header)]) != this.header { // 判断消息头正确性
 				return HeaderErr
 			}
 			contentSize := int(binary.BigEndian.Uint32(headBuf[len(this.header):]))
-			if this.end-this.start < contentSize-this.headLength { // 一个消息体都不够， 跳出去继续读吧, 但是这不是一种错误
+			if end-start < contentSize-this.headLength { // 一个消息体都不够， 跳出去继续读吧, 但是这不是一种错误
 				break
 			}
 			// 把消息读出来，把start往后移
-			this.start += this.headLength
-			contentBuf := this.buf[this.start : this.start+contentSize]
-			this.start += contentSize
+			start += this.headLength
+			contentBuf := buf[start : start+contentSize]
+			start += contentSize
 			onMsg(conn, contentBuf)
 		}
 	}

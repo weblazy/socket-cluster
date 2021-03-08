@@ -15,13 +15,6 @@ import (
 	"github.com/weblazy/socket-cluster/protocol"
 )
 
-const HEAD_SIZE = 4
-const HEADER = "BEGIN"
-
-// 每个消息(包括头部)的最大长度， 这里最大可以设置4G
-const MAX_LENGTH = 1024 * 70
-const CHAN_MSG_COUNT = 2
-
 type QuicProtocol struct {
 	nodeHandler protocol.Node
 }

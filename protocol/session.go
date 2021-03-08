@@ -5,9 +5,12 @@ import (
 	"unsafe"
 )
 
+type FlowConnection interface {
+	Connection
+	ReadMsg(p []byte) (int, error)
+}
 type Connection interface {
 	WriteMsg(data []byte) error
-	ReadMsg(p []byte) (int, error)
 	Close() error
 	Addr() string
 }
