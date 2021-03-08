@@ -26,7 +26,6 @@ type FlowProto struct {
 }
 
 func NewFlowProto(header string, bufLength int) *FlowProto {
-	buf := make([]byte, bufLength)
 	return &FlowProto{
 		header:     header,
 		headLength: len(header) + HEAD_SIZE,
@@ -35,7 +34,7 @@ func NewFlowProto(header string, bufLength int) *FlowProto {
 }
 
 // Read Read and parse the received message
-func (this *FlowProto) Read(conn FlowConnection, onMsg func(conn FlowConnection, msg []byte)) error {
+func (this *FlowProto) Read(conn FlowConnection, onMsg func(conn Connection, msg []byte)) error {
 	var start, end int
 	buf := make([]byte, this.bufLength)
 

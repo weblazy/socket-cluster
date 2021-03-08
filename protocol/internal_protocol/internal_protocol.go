@@ -77,7 +77,7 @@ func (this *TcpProtocol) ServeConn(conn protocol.Connection, f func(conn protoco
 				conn.Close()
 			}
 		}()
-		err := protocol.DefaultFlowProto.Read(conn, this.nodeHandler.OnTransMsg)
+		err := protocol.DefaultFlowProto.Read(conn.(*tcp_protocol.TcpConnection), this.nodeHandler.OnTransMsg)
 		if err != nil {
 			if err.Error() == "EOF" {
 				// 对等方关闭了, 这里关闭chan, 通知接收消息的routine别等了，人家都关了
