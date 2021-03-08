@@ -34,8 +34,10 @@ func NewFlowProto(header string, bufLength int) *FlowProto {
 }
 
 // Read Read and parse the received message
-func (this *FlowProto) Read(conn FlowConnection, onMsg func(conn Connection, msg []byte)) error {
+func (this *FlowProto) ReadMsg(conn FlowConnection, onMsg func(conn Connection, msg []byte)) error {
 	var start, end int
+	needBytesCount := this.headLength
+
 	buf := make([]byte, this.bufLength)
 
 	for {
@@ -55,17 +57,18 @@ func (this *FlowProto) Read(conn FlowConnection, onMsg func(conn Connection, msg
 		}
 		end += n
 		// 检查定额缓存里面的数据有几个消息(可能不到1个，可能连一个消息头都不够，可能有几个完整消息+一个消息的部分)
-		for {
-			if end-start < this.headLength {
-				// 一个消息头都不够， 跳出去继续读吧, 但是这不是一种错误
-				break
-			}
+		for end-start >= needBytesCount {
 			headBuf := buf[start : start+this.headLength]
 			if string(headBuf[:len(this.header)]) != this.header { // 判断消息头正确性
 				return HeaderErr
 			}
 			contentSize := int(binary.BigEndian.Uint32(headBuf[len(this.header):]))
-			if end-start < contentSize-this.headLength { // 一个消息体都不够， 跳出去继续读吧, 但是这不是一种错误
+			totalLenth := this.headLength + contentSize
+			if totalLenth > this.bufLength {
+				return ExceededErr
+			}
+			if end-start < totalLenth { // 一个消息体都不够， 跳出去继续读吧, 但是这不是一种错误
+				needBytesCount = totalLenth
 				break
 			}
 			// 把消息读出来，把start往后移
@@ -73,7 +76,60 @@ func (this *FlowProto) Read(conn FlowConnection, onMsg func(conn Connection, msg
 			contentBuf := buf[start : start+contentSize]
 			start += contentSize
 			onMsg(conn, contentBuf)
+			needBytesCount = this.headLength
 		}
+	}
+
+}
+
+// Read Read and parse the received message
+func (this *FlowProto) Read(conn FlowConnection, onMsg func(conn Connection, msg []byte)) error {
+	var start, end int
+	buf := make([]byte, this.bufLength)
+	for {
+		// 读取header
+		for end-start < this.headLength {
+			// 重置start
+			if start > 0 {
+				copy(buf, buf[start:end])
+				end -= start
+				start = 0
+			}
+			n, err := conn.ReadMsg(buf[end:])
+			if err != nil {
+				return err
+			}
+			end += n
+			// 读数据拼接到定额缓存后面
+			if end == this.bufLength {
+				return ExceededErr
+			}
+		}
+		headBuf := buf[start : start+this.headLength]
+		if string(headBuf[:len(this.header)]) != this.header { // 判断消息头正确性
+			return HeaderErr
+		}
+		// 读取content
+		contentSize := int(binary.BigEndian.Uint32(headBuf[len(this.header):]))
+		totalLenth := this.headLength + contentSize
+		if totalLenth > this.bufLength {
+			return ExceededErr
+		}
+		for end-start < totalLenth {
+			n, err := conn.ReadMsg(buf[end:])
+			if err != nil {
+				return err
+			}
+			end += n
+			// 读数据拼接到定额缓存后面
+			if end == this.bufLength {
+				return ExceededErr
+			}
+		}
+		start += this.headLength
+		contentBuf := buf[start : start+contentSize]
+		start += contentSize
+		onMsg(conn, contentBuf)
 	}
 
 }
