@@ -28,7 +28,7 @@ type WsProtocol struct {
 	nodeHandler protocol.Node
 }
 
-func (this *WsProtocol) Dial(addr string, protoFunc ...protocol.ProtoFunc) (protocol.Connection, error) {
+func (this *WsProtocol) Dial(addr string) (protocol.Connection, error) {
 	connect, _, err := websocket.DefaultDialer.Dial(addr, nil)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (this *WsProtocol) Dial(addr string, protoFunc ...protocol.ProtoFunc) (prot
 	return &WsConnection{Conn: connect}, nil
 }
 
-func (this *WsProtocol) ListenAndServe(port int64, nodeHandler protocol.Node, protoFunc ...protocol.ProtoFunc) error {
+func (this *WsProtocol) ListenAndServe(port int64, nodeHandler protocol.Node) error {
 	this.nodeHandler = nodeHandler
 	e := echo.New()
 	e.GET("/client", this.clientHandler)

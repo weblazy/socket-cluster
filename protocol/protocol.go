@@ -1,9 +1,5 @@
 package protocol
 
-import (
-	"io"
-)
-
 type (
 	// Message a socket message interface.
 	Message interface {
@@ -19,31 +15,21 @@ type (
 	Body interface{}
 )
 type (
-	// Proto pack/unpack protocol scheme of socket message.
-	// NOTE: Implementation specifications for Message interface should be complied with.
+	// Proto pack/read protocol scheme of socket message.
 	Proto interface {
-		// Version returns the protocol's id and name.
-		Version() (byte, string)
 		// Pack writes the Message into the connection.
 		// NOTE: Make sure to write only once or there will be package contamination!
 		Pack([]byte) ([]byte, error)
-		// Unpack reads bytes from the connection to the Message.
-		// NOTE: Concurrent unsafe!
-		Unpack([]byte) ([]byte, error)
+		// Read bytes from the connection.
+		Read(conn Connection, f func(conn Connection, msg []byte)) error
 	}
-	// IOWithReadBuffer implements buffered I/O with buffered reader.
-	IOWithReadBuffer interface {
-		io.ReadWriter
-	}
-	// ProtoFunc function used to create a custom Proto interface.
-	ProtoFunc func(IOWithReadBuffer) Proto
 )
 
 type Protocol interface {
 	// ListenAndServe turns on the listening service.
-	ListenAndServe(port int64, nodeHandler Node, protoFunc ...ProtoFunc) error
-	// Dial connects with the peer of the destination address.
-	Dial(addr string, protoFunc ...ProtoFunc) (Connection, error)
+	ListenAndServe(port int64, nodeHandler Node) error
+	// Dial connects with the socket of the destination address.
+	Dial(addr string) (Connection, error)
 	// ServeConn serves the connection and returns a session.
 	// NOTE:
 	//  Not support automatically redials after disconnection;

@@ -65,7 +65,6 @@ func (this *QuicProtocol) handleClient(sess quic.Session) {
 	if err != nil {
 		panic(err)
 	}
-	buffer1 := protocol.NewBuffer(HEADER, MAX_LENGTH)
 
 	var wg sync.WaitGroup
 	wg.Add(2) // 主的routine将等待两个routine(读消息, 打印消息)的完成
@@ -75,7 +74,7 @@ func (this *QuicProtocol) handleClient(sess quic.Session) {
 	}()
 	go func() {
 		conn := &QuicConnection{Stream: stream}
-		err := buffer1.Read(conn, this.nodeHandler.OnClientMsg)
+		err := protocol.DefaultFlowProto.Read(conn, this.nodeHandler.OnClientMsg)
 		if err != nil {
 			if err.Error() == "EOF" {
 				close(msg) // 对等方关闭了, 这里关闭chan, 通知接收消息的routine别等了，人家都关了
