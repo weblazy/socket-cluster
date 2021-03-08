@@ -1,11 +1,9 @@
 package node
 
 import (
-	"net/http"
 	"strings"
 	"time"
 
-	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -22,15 +20,7 @@ type (
 )
 
 var (
-	authTime = 10 * time.Second
-	upgrader = websocket.Upgrader{
-		ReadBufferSize:    4096,
-		WriteBufferSize:   4096,
-		EnableCompression: true,
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
+	authTime                = 10 * time.Second
 	defaultMasterPort int64 = 9527
 )
 
