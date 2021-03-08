@@ -9,7 +9,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
-	"sync"
 
 	"github.com/lucas-clemente/quic-go"
 	"github.com/weblazy/socket-cluster/protocol"
@@ -48,7 +47,6 @@ func (this *QuicProtocol) ListenAndServe(port int64) error {
 			go this.handleClient(sess)
 		}
 	}
-	return nil
 }
 
 func (this *QuicProtocol) handleClient(sess quic.Session) {
@@ -58,15 +56,10 @@ func (this *QuicProtocol) handleClient(sess quic.Session) {
 	if err != nil {
 		panic(err)
 	}
+	conn := &QuicConnection{Stream: stream}
+	this.nodeHandler.OnConnect(conn)
+	go func() {
 
-	var wg sync.WaitGroup
-	wg.Add(2) // 主的routine将等待两个routine(读消息, 打印消息)的完成
-	go func() {
-		doMsg(msg)
-		defer wg.Add(-1)
-	}()
-	go func() {
-		conn := &QuicConnection{Stream: stream}
 		err := protocol.DefaultFlowProto.Read(conn, this.nodeHandler.OnClientMsg)
 		if err != nil {
 			if err.Error() == "EOF" {
@@ -75,10 +68,9 @@ func (this *QuicProtocol) handleClient(sess quic.Session) {
 				panic(err)
 			}
 		}
-		defer wg.Add(-1)
+
 	}()
-	wg.Wait()
-	fmt.Println("一个客户端处理的消息处理完毕")
+
 }
 
 // Setup a bare-bones TLS config for the server
@@ -103,10 +95,12 @@ func generateTLSConfig() *tls.Config {
 	return &tls.Config{NextProtos: []string{"quic-echo-example"}, Certificates: []tls.Certificate{tlsCert}}
 }
 
-func doMsg(msg chan string) {
-	count := 0
-	for v := range msg {
-		fmt.Println("第", count, "个消息体长:", len(v))
-		count++
-	}
+func (this *QuicProtocol) ServeConn(conn protocol.Connection, f func(conn protocol.Connection, p []byte)) error {
+	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
+	defer func() {
+		if conn != nil {
+			conn.Close()
+		}
+	}()
+	return protocol.DefaultFlowProto.Read(conn.(*QuicConnection), this.nodeHandler.OnTransMsg)
 }

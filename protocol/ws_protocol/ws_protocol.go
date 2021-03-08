@@ -96,10 +96,9 @@ func (this *WsProtocol) ServeConn(conn protocol.Connection, OnTransMsg func(conn
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				logx.Info(err)
 			}
-			break
+			return err
 		}
 		logx.Info(string(msg))
 		this.nodeHandler.OnClientMsg(conn, msg)
 	}
-	return nil
 }

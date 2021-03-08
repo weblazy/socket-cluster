@@ -21,10 +21,6 @@ func (conn *WsConnection) WriteMsg(data []byte) error {
 	return conn.Conn.WriteMessage(websocket.BinaryMessage, data)
 }
 
-func (conn *WsConnection) ReadMsg(data []byte) (int, error) {
-	_, data, err := conn.Conn.ReadMessage()
-	return len(data), err
-}
 func (conn *WsConnection) Addr() string {
 	return conn.Conn.RemoteAddr().String()
 }
@@ -37,17 +33,4 @@ func OptionHandler(c echo.Context) error {
 	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
 	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
 	return c.String(200, "")
-}
-func WebHandler(c echo.Context) error {
-	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
-	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
-	return c.JSON(200, "pong")
-}
-
-func originMiddlewareFunc(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		c.Response().Header().Set("Access-Control-Allow-Origin", "*")
-		c.Response().Header().Set("Access-Control-Allow-Headers", "*")
-		return next(c)
-	}
 }
