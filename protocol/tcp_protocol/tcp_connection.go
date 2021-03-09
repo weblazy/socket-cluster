@@ -10,7 +10,7 @@ import (
 type TcpConnection struct {
 	Conn  net.Conn
 	Mutex sync.Mutex
-	protocol.Connection
+	protocol.FlowConnection
 	protoHandler protocol.Proto
 }
 

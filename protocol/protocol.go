@@ -21,7 +21,7 @@ type (
 		// NOTE: Make sure to write only once or there will be package contamination!
 		Pack([]byte) ([]byte, error)
 		// Read bytes from the connection.
-		Read(conn Connection, f func(conn Connection, msg []byte)) error
+		Read(conn FlowConnection, f func(conn Connection, msg []byte)) error
 	}
 )
 

@@ -10,7 +10,7 @@ import (
 type QuicConnection struct {
 	Stream quic.Stream
 	Mutex  sync.Mutex
-	protocol.Connection
+	protocol.FlowConnection
 }
 
 // WriteMsg send byte array message
