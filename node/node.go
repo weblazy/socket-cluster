@@ -42,7 +42,7 @@ type (
 	}
 )
 
-// StartNode
+// NewNode
 func NewNode(cfg *NodeConf) (*Node, error) {
 	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
 		logx.Infof("%s auth timeout", k)
@@ -141,16 +141,14 @@ func (this *Node) Register() {
 				fmt.Printf("%#v\n", value)
 				fmt.Printf("%#v\n", ok)
 				if !ok {
-					fmt.Printf("监听失败退出\n")
+					fmt.Printf("channel关闭退出\n")
 					return
 				}
 				err := this.UpdateNodeList()
 				if err != nil {
 					logx.Info(err)
 				}
-
 			}
-
 		}
 	}()
 	// init
