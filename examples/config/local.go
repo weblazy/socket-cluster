@@ -1,7 +1,7 @@
 package config
 
 var localConfig = `
-[dbDefault]
+[DbLocal]
 dbHost = "127.0.0.1"        #数据库连接地址
 dbName = "socket_cluster"                  #数据库名称
 dbUser = "root"           #数据库用户名

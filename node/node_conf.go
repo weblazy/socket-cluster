@@ -4,6 +4,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/protocol"
+	"github.com/weblazy/socket-cluster/protocol/internal_protocol"
 	"github.com/weblazy/socket-cluster/session_storage"
 )
 
@@ -39,16 +40,18 @@ type (
 // NewNodeConf creates a new NodeConf.
 func NewNodeConf(host string, protocolHandler protocol.Protocol, sessionStorageHandler session_storage.SessionStorage, discoveryHandler discovery.ServiceDiscovery, onMsg func(context *Context)) *NodeConf {
 	return &NodeConf{
-		Host:                  host,
-		Key:                   GetUUID(),
-		Port:                  defaultPort,
-		Password:              defaultPassword,
-		ClientPingInterval:    defaultClientPingInterval,
-		NodePingInterval:      defaultNodePingInterval,
-		protocolHandler:       protocolHandler,
-		sessionStorageHandler: sessionStorageHandler,
-		discoveryHandler:      discoveryHandler,
-		onMsg:                 onMsg,
+		Host:                    host,
+		Key:                     GetUUID(),
+		Port:                    defaultPort,
+		Password:                defaultPassword,
+		ClientPingInterval:      defaultClientPingInterval,
+		NodePingInterval:        defaultNodePingInterval,
+		protocolHandler:         protocolHandler,
+		internalProtocolHandler: &internal_protocol.TcpProtocol{},
+		InternalPort:            defaultInternalPort,
+		sessionStorageHandler:   sessionStorageHandler,
+		discoveryHandler:        discoveryHandler,
+		onMsg:                   onMsg,
 	}
 
 }
@@ -62,6 +65,18 @@ func (conf *NodeConf) WithPassword(password string) *NodeConf {
 // WithPort sets the port for websocket
 func (conf *NodeConf) WithPort(port int64) *NodeConf {
 	conf.Port = port
+	return conf
+}
+
+// WithPort sets the port for websocket
+func (conf *NodeConf) WithInternalPort(port int64) *NodeConf {
+	conf.InternalPort = port
+	return conf
+}
+
+// WithPort sets the port for websocket
+func (conf *NodeConf) WithInternalProtocolHandler(internalProtocolHandler protocol.Protocol) *NodeConf {
+	conf.internalProtocolHandler = internalProtocolHandler
 	return conf
 }
 

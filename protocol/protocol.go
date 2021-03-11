@@ -27,7 +27,10 @@ type (
 
 type Protocol interface {
 	// ListenAndServe turns on the listening service.
-	ListenAndServe(port int64, nodeHandler Node) error
+	ListenAndServe(port int64) error
+
+	// ListenAndServe turns on the listening service.
+	SetNodeHandler(nodeHandler Node)
 	// Dial connects with the socket of the destination address.
 	Dial(addr string) (Connection, error)
 	// ServeConn serves the connection and returns a session.

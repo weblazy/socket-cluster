@@ -13,6 +13,10 @@ type TcpProtocol struct {
 	nodeHandler protocol.Node
 }
 
+func (this *TcpProtocol) SetNodeHandler(nodeHandler protocol.Node) {
+	this.nodeHandler = nodeHandler
+}
+
 func (this *TcpProtocol) Dial(addr string) (protocol.Connection, error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
 	if err != nil {
@@ -24,7 +28,7 @@ func (this *TcpProtocol) Dial(addr string) (protocol.Connection, error) {
 		log.Printf("Dial to server failed: %v\n", err)
 		return nil, err
 	}
-	return &TcpConnection{Conn: conn}, err
+	return NewTcpConnection(conn), err
 }
 
 func (this *TcpProtocol) ListenAndServe(port int64) error {
@@ -47,7 +51,7 @@ func (this *TcpProtocol) ListenAndServe(port int64) error {
 
 func (this *TcpProtocol) handleClient(connect net.Conn) {
 	// 缓存区设置最大为4G字节， 如果单个消息大于这个值就不能接受了
-	conn := &TcpConnection{Conn: connect}
+	conn := NewTcpConnection(connect)
 	this.nodeHandler.OnConnect(conn)
 	go func() {
 		defer func() {

@@ -18,6 +18,10 @@ type QuicProtocol struct {
 	nodeHandler protocol.Node
 }
 
+func (this *QuicProtocol) SetNodeHandler(nodeHandler protocol.Node) {
+	this.nodeHandler = nodeHandler
+}
+
 func (this *QuicProtocol) Dial(addr string) (*QuicConnection, error) {
 	tlsConf := &tls.Config{NextProtos: []string{"quic-echo-example"}, InsecureSkipVerify: true}
 	session, err := quic.DialAddr(addr, tlsConf, nil)

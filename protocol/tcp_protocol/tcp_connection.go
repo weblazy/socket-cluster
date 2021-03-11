@@ -11,12 +11,19 @@ type TcpConnection struct {
 	Conn  net.Conn
 	Mutex sync.Mutex
 	protocol.FlowConnection
-	protoHandler protocol.Proto
+	ProtoHandler protocol.Proto
+}
+
+func NewTcpConnection(conn net.Conn) *TcpConnection {
+	return &TcpConnection{
+		Conn:         conn,
+		ProtoHandler: protocol.DefaultFlowProto,
+	}
 }
 
 // WriteMsg send byte array message
 func (conn *TcpConnection) WriteMsg(data []byte) error {
-	data, err := conn.protoHandler.Pack(data)
+	data, err := conn.ProtoHandler.Pack(data)
 	if err != nil {
 		return err
 	}

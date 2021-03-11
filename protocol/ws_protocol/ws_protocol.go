@@ -28,6 +28,10 @@ type WsProtocol struct {
 	nodeHandler protocol.Node
 }
 
+func (this *WsProtocol) SetNodeHandler(nodeHandler protocol.Node) {
+	this.nodeHandler = nodeHandler
+}
+
 func (this *WsProtocol) Dial(addr string) (protocol.Connection, error) {
 	connect, _, err := websocket.DefaultDialer.Dial(addr, nil)
 	if err != nil {
@@ -36,8 +40,7 @@ func (this *WsProtocol) Dial(addr string) (protocol.Connection, error) {
 	return &WsConnection{Conn: connect}, nil
 }
 
-func (this *WsProtocol) ListenAndServe(port int64, nodeHandler protocol.Node) error {
-	this.nodeHandler = nodeHandler
+func (this *WsProtocol) ListenAndServe(port int64) error {
 	e := echo.New()
 	e.GET("/client", this.clientHandler)
 	go func() {

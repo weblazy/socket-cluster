@@ -13,7 +13,7 @@ func main() {
 	// Initialize the configuration center
 	config.InitNacos(utils.GetRunTime())
 	// Initialize the database
-	gorm.NewDB("dbDefault")
+	gorm.NewDB("DbLocal")
 	model.CreateTable()
 	// go websocket_cluster.StartMaster(websocket_cluster.NewMasterConf())
 	master.Node()
