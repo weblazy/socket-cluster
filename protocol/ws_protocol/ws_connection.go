@@ -18,7 +18,7 @@ type WsConnection struct {
 func (conn *WsConnection) WriteMsg(data []byte) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
-	return conn.Conn.WriteMessage(websocket.BinaryMessage, data)
+	return conn.Conn.WriteMessage(websocket.TextMessage, data)
 }
 
 func (conn *WsConnection) Addr() string {
@@ -33,4 +33,12 @@ func OptionHandler(c echo.Context) error {
 	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
 	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
 	return c.String(200, "")
+}
+
+func OriginMiddlewareFunc(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+		c.Response().Header().Set("Access-Control-Allow-Headers", "*")
+		return next(c)
+	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/weblazy/socket-cluster/examples/master"
 	"github.com/weblazy/socket-cluster/examples/model"
 	"github.com/weblazy/socket-cluster/examples/router"
+	"github.com/weblazy/socket-cluster/protocol/ws_protocol"
 
 	"github.com/sunmi-OS/gocore/gorm"
 	"github.com/sunmi-OS/gocore/utils"
@@ -21,7 +22,7 @@ func main() {
 	model.CreateTable()
 	// go websocket_cluster.StartMaster(websocket_cluster.NewMasterConf())
 	e := echo.New()
-	router.Router(e.Group("/p1/web"))
+	router.Router(e.Group("/p1/web", ws_protocol.OriginMiddlewareFunc))
 	go func() {
 		err := e.Start(fmt.Sprintf(":%d", 80))
 		if err != nil {
