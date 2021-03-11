@@ -29,7 +29,7 @@ func NewRedisStorage(redisNodeList []*RedisNode) *RedisStorage {
 		rdsObj := redis.NewClient(value.RedisConf)
 		segmentMap.Add(unsafehash.NewNode(value.RedisConf.Addr, value.Position, rdsObj))
 	}
-	return &RedisStorage{segmentMap: segmentMap}
+	return &RedisStorage{segmentMap: segmentMap, clientTimeout: 180}
 }
 
 func (this *RedisStorage) GetIps(clientId int64) ([]string, error) {
@@ -42,14 +42,19 @@ func (this *RedisStorage) GetIps(clientId int64) ([]string, error) {
 func (this *RedisStorage) BindClientId(clientId int64) error {
 	now := time.Now().Unix()
 	redisNode := this.segmentMap.Get(clientId)
+	logx.Error(clientId)
 	err := redisNode.Extra.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.transAddress}).Err()
 	if err != nil {
+		logx.Error(err.Error())
 		return err
 	}
+
 	err = redisNode.Extra.(*redis.Client).Expire(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), time.Duration(this.clientTimeout)*time.Second).Err()
 	if err != nil {
+		logx.Error(err.Error())
 		return err
 	}
+
 	return nil
 }
 
