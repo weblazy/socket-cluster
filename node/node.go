@@ -19,7 +19,6 @@ import (
 )
 
 type (
-
 	// Node communication node
 	Node struct {
 		protocol.Node
@@ -43,8 +42,6 @@ type (
 		clientTimeout int64      // client heartbeat timeout time
 	}
 )
-
-var ()
 
 // StartNode
 func StartNode(cfg *NodeConf) (*Node, error) {
