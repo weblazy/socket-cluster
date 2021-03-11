@@ -15,7 +15,7 @@ type RedisStorage struct {
 	session_storage.SessionStorage
 	clientTimeout int64 // client heartbeat timeout time
 	segmentMap    *unsafehash.SegmentMap
-	transAddress  string
+	nodeId        string
 }
 
 type RedisNode struct {
@@ -32,6 +32,10 @@ func NewRedisStorage(redisNodeList []*RedisNode) *RedisStorage {
 	return &RedisStorage{segmentMap: segmentMap, clientTimeout: 180}
 }
 
+func (this *RedisStorage) SetNodeId(nodeId string) {
+	this.nodeId = nodeId
+}
+
 func (this *RedisStorage) GetIps(clientId int64) ([]string, error) {
 	redisNode := this.segmentMap.Get(clientId)
 	now := time.Now().Unix()
@@ -43,7 +47,7 @@ func (this *RedisStorage) BindClientId(clientId int64) error {
 	now := time.Now().Unix()
 	redisNode := this.segmentMap.Get(clientId)
 	logx.Error(clientId)
-	err := redisNode.Extra.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.transAddress}).Err()
+	err := redisNode.Extra.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.nodeId}).Err()
 	if err != nil {
 		logx.Error(err.Error())
 		return err
@@ -122,7 +126,7 @@ func (this *RedisStorage) IsOnline(clientId int64) bool {
 func (this *RedisStorage) OnClientPing(clientId int64) error {
 	redisNode := this.segmentMap.Get(clientId)
 	now := time.Now().Unix()
-	err := redisNode.Extra.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.transAddress}).Err()
+	err := redisNode.Extra.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.nodeId}).Err()
 	if err != nil {
 		return err
 	}
@@ -164,7 +168,7 @@ func (this *RedisStorage) GetClientsIps(clientIds []string) ([]string, map[strin
 				logx.Info(err)
 			} else {
 				for k4 := range strMap {
-					if strMap[k4] == this.transAddress {
+					if strMap[k4] == this.nodeId {
 						localClientIds = append(localClientIds, cast.ToString(nodeMap.clientIds[k3]))
 					} else {
 						if _, ok := otherMap[strMap[k4]]; ok {

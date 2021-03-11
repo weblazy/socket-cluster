@@ -69,6 +69,7 @@ func NewNode(cfg *NodeConf) (*Node, error) {
 		clientTimeout:    cfg.ClientPingInterval * 3,
 	}
 	node.nodeConf.discoveryHandler.SetNodeId(cfg.Key)
+	node.nodeConf.sessionStorageHandler.SetNodeId(cfg.Key)
 	cfg.internalProtocolHandler.SetNodeHandler(node)
 	cfg.internalProtocolHandler.ListenAndServe(cfg.InternalPort)
 	cfg.protocolHandler.SetNodeHandler(node)
@@ -400,7 +401,7 @@ func (this *Node) SendToClientIds(clientIds []string, req []byte) error {
 	// Concurrent sends to clients
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		for k1 := range localClientIds {
-			this.clientIdSessions.RangeNextMap(clientIds[k1], func(key1 string, key2 string, value interface{}) bool {
+			this.clientIdSessions.RangeNextMap(localClientIds[k1], func(key1 string, key2 string, value interface{}) bool {
 				source <- value
 				return true
 			})
