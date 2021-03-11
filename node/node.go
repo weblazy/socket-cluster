@@ -22,29 +22,27 @@ type (
 	// Node communication node
 	Node struct {
 		protocol.Node
-		// adminRedis redis client store node info
-		// adminRedis       *redis.Client
 		nodeConf         *NodeConf
 		clientIdSessions *syncx.ConcurrentDoubleMap
 		// key: socket address
 		// value: *session
-		clientConns   goutil.Map
-		clientAddress string                   // External communication address
-		transAddress  string                   // Internal communication address
-		timer         *timingwheel.TimingWheel // Timingwheel
-		startTime     time.Time                // start time
-		// key: node transAddress
+		clientConns goutil.Map
+		nodeId      string                   // Node unique identification
+		timer       *timingwheel.TimingWheel // Timingwheel Close connects that timeout without authentication
+		startTime   time.Time                // Start time
+		// key: nodeId
 		// value: *session
-		transConns    goutil.Map //
-		transClients  goutil.Map //
-		transServices goutil.Map //
+		transClients goutil.Map // Receive messages forwarded by other nodes
+		// key: nodeId
+		// value: *session
+		transServices goutil.Map // Forward the message to another node
 		nodeTimeout   int64      // node heartbeat timeout time
 		clientTimeout int64      // client heartbeat timeout time
 	}
 )
 
-// StartNode
-func StartNode(cfg *NodeConf) (*Node, error) {
+// NewNode
+func NewNode(cfg *NodeConf) (*Node, error) {
 	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
 		logx.Infof("%s auth timeout", k)
 		if v.(protocol.Connection) != nil {
@@ -53,30 +51,27 @@ func StartNode(cfg *NodeConf) (*Node, error) {
 				logx.Info(err)
 			}
 		}
-
 	})
 
 	if err != nil {
 		return nil, err
 	}
-	this := &Node{
+	node := &Node{
 		nodeConf:         cfg,
 		clientIdSessions: syncx.NewConcurrentDoubleMap(32),
 		startTime:        time.Now(),
 		timer:            timer,
 		clientConns:      goutil.AtomicMap(),
-		transConns:       goutil.AtomicMap(),
+		transClients:     goutil.AtomicMap(),
 		transServices:    goutil.AtomicMap(),
 		nodeTimeout:      cfg.NodePingInterval * 3,
 		clientTimeout:    cfg.ClientPingInterval * 3,
 	}
-	cfg.internalProtocolHandler.ListenAndServe(cfg.InternalPort, this)
-	cfg.protocolHandler.ListenAndServe(cfg.Port, this)
-	this.SendPing()
-	this.Ping()
-	this.Register()
-
-	return this, nil
+	cfg.internalProtocolHandler.ListenAndServe(cfg.InternalPort, node)
+	cfg.protocolHandler.ListenAndServe(cfg.Port, node)
+	node.SendPing()
+	node.Register()
+	return node, nil
 }
 
 func (this *Node) OnConnect(connect protocol.Connection) {
@@ -101,9 +96,9 @@ func (this *Node) SendPing() {
 		for {
 			time.Sleep(time.Duration(this.nodeConf.NodePingInterval) * time.Second)
 			nodeInfo := map[string]interface{}{
-				"client_address": this.clientAddress,
-				"client_count":   this.clientConns.Len(),
-				"timestamp":      time.Now().Unix(),
+				"node_id":      this.nodeId,
+				"client_count": this.clientConns.Len(),
+				"timestamp":    time.Now().Unix(),
 			}
 			nodeInfoByte, err := json.Marshal(nodeInfo)
 			if err != nil {
@@ -117,7 +112,7 @@ func (this *Node) SendPing() {
 			if err != nil {
 				logx.Info(err)
 			}
-			this.transConns.Range(func(k, v interface{}) bool {
+			this.transServices.Range(func(k, v interface{}) bool {
 				conn, ok := v.(protocol.Connection)
 				if !ok {
 					return true
@@ -128,48 +123,6 @@ func (this *Node) SendPing() {
 				}
 				return true
 			})
-
-		}
-	}()
-}
-
-// SendPing send node Heartbeat
-func (this *Node) Ping() {
-	go func() {
-		for {
-			time.Sleep(time.Duration(this.nodeConf.NodePingInterval) * time.Second)
-			// nodeInfo := NodeInfo{
-			// 	ClientAddress: this.clientAddress,
-			// 	ClientCount:   int64(this.clientConns.Len()),
-			// 	Timestamp:     time.Now().Unix(),
-			// }
-			// nodeInfoByte, err := proto.Marshal(nodeInfo)
-			// if err != nil {
-			// 	logx.Info(err)
-			// }
-			// discoveryHandler.Ping(nodeInfoByte)
-			// nodeMap, err := discoveryHandler.GetServices()
-
-			// if err != nil {
-			// 	logx.Info(err)
-			// }
-
-			// err = this.UpdateNodeList(nodeMap)
-			// if err != nil {
-			// 	logx.Info(err)
-			// }
-			this.transConns.Range(func(k, v interface{}) bool {
-				conn, ok := v.(protocol.Connection)
-				if !ok {
-					return true
-				}
-				err := conn.WriteMsg([]byte{})
-				if err != nil {
-					logx.Info(err)
-				}
-				return true
-			})
-
 		}
 	}()
 }
@@ -187,16 +140,14 @@ func (this *Node) Register() {
 				fmt.Printf("%#v\n", value)
 				fmt.Printf("%#v\n", ok)
 				if !ok {
-					fmt.Printf("监听失败退出\n")
+					fmt.Printf("channel关闭退出\n")
 					return
 				}
 				err := this.UpdateNodeList()
 				if err != nil {
 					logx.Info(err)
 				}
-
 			}
-
 		}
 	}()
 	// init
@@ -288,14 +239,14 @@ func (this *Node) OnTransMsg(conn protocol.Connection, msg []byte) {
 
 // AuthTrans Auth the node
 func (this *Node) AuthTrans(conn protocol.Connection, authMsg *AuthMsg) error {
-	sid := authMsg.TransAddress
+	nodeId := authMsg.NodeId
 	this.timer.RemoveTimer(conn.Addr()) //Cancel timeingwheel task
 	if authMsg.Password != this.nodeConf.Password {
-		logx.Infof("Connect:%s,Wrong password:%s", sid, authMsg.Password)
+		logx.Infof("Connect:%s,Wrong password:%s", nodeId, authMsg.Password)
 		conn.Close()
 		return fmt.Errorf("auth faild")
 	}
-	this.transConns.Store(sid, conn)
+	this.transClients.Store(nodeId, conn)
 	return nil
 }
 
@@ -318,7 +269,7 @@ func (this *Node) UpdateNodeList() error {
 	// now := time.Now().Unix()
 	for key := range nodeMap {
 		ipAddress := nodeMap[key]
-		if ipAddress == this.transAddress {
+		if ipAddress == this.nodeId {
 			continue
 		}
 		// nodeInfo := make(map[string]interface{})
@@ -348,8 +299,8 @@ func (this *Node) UpdateNodeList() error {
 		}
 
 		auth := AuthMsg{
-			Password:     this.nodeConf.Password,
-			TransAddress: this.transAddress,
+			Password: this.nodeConf.Password,
+			NodeId:   this.nodeId,
 		}
 		authBytes, err := proto.Marshal(&auth)
 		if err != nil {
@@ -415,7 +366,7 @@ func (this *Node) SendToClientIds(clientIds []string, req []byte) error {
 			ReceiveClientIds: ids,
 			Data:             msgBytes,
 		}
-		connect, ok := this.transConns.Load(batchData.ip)
+		connect, ok := this.transServices.Load(batchData.ip)
 		if ok {
 			conn, ok := connect.(protocol.Connection)
 			if !ok {
@@ -503,7 +454,7 @@ func (this *Node) SendToClientId(clientId string, req []byte) error {
 			}
 		}, func(item interface{}) {
 			ip := item.(string)
-			if ip == this.transAddress {
+			if ip == this.nodeId {
 				this.clientIdSessions.RangeNextMap(clientId, func(k1, k2 string, se interface{}) bool {
 					err = se.(*Session).Conn.WriteMsg(req)
 					if err != nil {
@@ -512,7 +463,7 @@ func (this *Node) SendToClientId(clientId string, req []byte) error {
 					return true
 				})
 			} else {
-				connect, ok := this.transConns.Load(ip)
+				connect, ok := this.transServices.Load(ip)
 				if ok {
 					conn, ok := connect.(protocol.Connection)
 					if !ok {
@@ -545,8 +496,8 @@ func (this *Node) SendToClientId(clientId string, req []byte) error {
 // SendToTrans Send message to a clientId
 func (this *Node) SendToTrans(clientId string, path string, req []byte) error {
 	mapreduce.MapVoid(func(source chan<- interface{}) {
-		this.transConns.Range(func(key, value interface{}) bool {
-			if key == this.transAddress {
+		this.transServices.Range(func(key, value interface{}) bool {
+			if key == this.nodeId {
 				return true
 			}
 			source <- value
