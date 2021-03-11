@@ -16,11 +16,12 @@ type (
 	}
 	// NodeConf node config
 	NodeConf struct {
-		Host                    string // the ip or domain of the node
-		Key                     string // the transport path
-		Port                    int64  // Node port
-		InternalPort            int64  // Node port
-		Password                string // Password for auth when connect to other node
+		HostList                []string // A list of IP or domain names for DNS resolution
+		Host                    string   // the ip or domain of the node
+		Key                     string   // the transport path
+		Port                    int64    // Node port
+		InternalPort            int64    // Node port
+		Password                string   // Password for auth when connect to other node
 		ClientPingInterval      int64
 		NodePingInterval        int64                  // Heartbeat interval
 		onMsg                   func(context *Context) // callback function when receive client message
@@ -41,6 +42,7 @@ type (
 func NewNodeConf(host string, protocolHandler protocol.Protocol, sessionStorageHandler session_storage.SessionStorage, discoveryHandler discovery.ServiceDiscovery, onMsg func(context *Context)) *NodeConf {
 	return &NodeConf{
 		Host:                    host,
+		HostList:                []string{host},
 		Key:                     GetUUID(),
 		Port:                    defaultPort,
 		Password:                defaultPassword,
@@ -83,5 +85,11 @@ func (conf *NodeConf) WithInternalProtocolHandler(internalProtocolHandler protoc
 // WithClientInterval sets the heartbeat interval
 func (conf *NodeConf) WithClientInterval(pingInterval int64) *NodeConf {
 	conf.ClientPingInterval = pingInterval
+	return conf
+}
+
+// WithPort sets the port for websocket
+func (conf *NodeConf) WithHostList(hostList []string) *NodeConf {
+	conf.HostList = hostList
 	return conf
 }

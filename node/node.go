@@ -263,14 +263,21 @@ func (this *Node) AuthClient(conn protocol.Connection, clientId string) error {
 
 // UpdateNodeList Add handles addition request
 func (this *Node) UpdateNodeList() error {
-	nodeMap, err := dns.DnsParse(this.nodeConf.Host)
-	if err != nil {
-		logx.Info(err)
-		return err
+	nodeMap := make(map[string]int)
+	for k1 := range this.nodeConf.HostList {
+		nodeList, err := dns.DnsParse(this.nodeConf.HostList[k1])
+		if err != nil {
+			logx.Info(err)
+			return err
+		}
+		for k2 := range nodeList {
+			nodeMap[nodeList[k2]] = 1
+		}
 	}
+
 	// now := time.Now().Unix()
-	for key := range nodeMap {
-		ipAddress := nodeMap[key]
+	for k1 := range nodeMap {
+		ipAddress := k1
 		if ipAddress == this.nodeId {
 			continue
 		}

@@ -22,7 +22,7 @@ import (
 
 var (
 	port = flag.Int64("port1", 9528, "the  port")
-	host = flag.String("host1", "web.xiaoyuantongbbs.cn", "the  host")
+	host = flag.String("host1", "127.0.0.1", "the  host")
 )
 
 func Node() {
