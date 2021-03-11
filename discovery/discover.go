@@ -13,6 +13,7 @@ type WatchChan chan EventType
 type ServiceDiscovery interface {
 	//设置租约
 	// GetServices() ([]string, error)
+	SetNodeId(nodeId string)
 	WatchService(watchChan WatchChan)
 	UpdateInfo([]byte) error
 	Register() error

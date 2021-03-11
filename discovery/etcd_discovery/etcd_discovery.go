@@ -20,6 +20,7 @@ type EtcdDiscovery struct {
 	serverList map[string]string //服务列表
 	lock       sync.Mutex
 	lease      int64
+	nodeId     string
 	key        string
 	val        string           //value
 	leaseID    clientv3.LeaseID //租约ID
@@ -37,6 +38,11 @@ func NewEtcdDiscovery(conf clientv3.Config) *EtcdDiscovery {
 		cli:        cli,
 		serverList: make(map[string]string),
 	}
+}
+
+// Consumer pull message from other node
+func (this *EtcdDiscovery) SetNodeId(nodeId string) {
+	this.nodeId = nodeId
 }
 
 //WatchService 初始化服务列表和监视

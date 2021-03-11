@@ -58,6 +58,7 @@ func NewNode(cfg *NodeConf) (*Node, error) {
 	}
 	node := &Node{
 		nodeConf:         cfg,
+		nodeId:           cfg.Key,
 		clientIdSessions: syncx.NewConcurrentDoubleMap(32),
 		startTime:        time.Now(),
 		timer:            timer,
@@ -67,6 +68,7 @@ func NewNode(cfg *NodeConf) (*Node, error) {
 		nodeTimeout:      cfg.NodePingInterval * 3,
 		clientTimeout:    cfg.ClientPingInterval * 3,
 	}
+	node.nodeConf.discoveryHandler.SetNodeId(cfg.Key)
 	cfg.internalProtocolHandler.SetNodeHandler(node)
 	cfg.internalProtocolHandler.ListenAndServe(cfg.InternalPort)
 	cfg.protocolHandler.SetNodeHandler(node)

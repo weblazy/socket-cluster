@@ -16,10 +16,10 @@ import (
 //RedisDiscovery 服务发现
 type RedisDiscovery struct {
 	discovery.ServiceDiscovery
-	transAddress string
-	adminRedis   *redis.Client
-	key          string
-	timeout      int64
+	nodeId     string
+	adminRedis *redis.Client
+	key        string
+	timeout    int64
 }
 
 //NewRedisDiscovery 新建发现服务
@@ -28,6 +28,11 @@ func NewRedisDiscovery(conf *redis.Options) *RedisDiscovery {
 	return &RedisDiscovery{
 		adminRedis: rds,
 	}
+}
+
+// Consumer pull message from other node
+func (this *RedisDiscovery) SetNodeId(nodeId string) {
+	this.nodeId = nodeId
 }
 
 // Consumer pull message from other node
@@ -53,7 +58,7 @@ func (s *RedisDiscovery) Close() error {
 
 //设置租约
 func (this *RedisDiscovery) Register() error {
-	err := this.adminRedis.Publish(context.Background(), this.key, this.transAddress).Err()
+	err := this.adminRedis.Publish(context.Background(), this.key, this.nodeId).Err()
 	if err != nil {
 		logx.Info(err)
 	}
@@ -61,7 +66,7 @@ func (this *RedisDiscovery) Register() error {
 }
 
 func (this *RedisDiscovery) UpdateInfo(nodeInfoByte []byte) error {
-	err := this.adminRedis.HSet(context.Background(), node.NodeAddress, this.transAddress, string(nodeInfoByte)).Err()
+	err := this.adminRedis.HSet(context.Background(), node.NodeAddress, this.nodeId, string(nodeInfoByte)).Err()
 	if err != nil {
 		logx.Info(err)
 	}
