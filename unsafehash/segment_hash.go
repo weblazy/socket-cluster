@@ -8,7 +8,7 @@ import (
 
 type Segment struct {
 	Position int64
-	List     []interface{}
+	List     []interface{} // client list
 }
 
 func NewSegment(position int64, list []interface{}) *Segment {
@@ -20,7 +20,6 @@ func NewSegment(position int64, list []interface{}) *Segment {
 
 type SegmentHash struct {
 	segmentList []esaySort.Sort
-	maxPosition int64
 }
 
 func NewSegmentHash(segmentList ...*Segment) *SegmentHash {
@@ -48,7 +47,8 @@ func (c *SegmentHash) Append(segmentList ...*Segment) {
 }
 
 func (c *SegmentHash) Get(key int64) interface{} {
-	if key > c.maxPosition {
+	if key > c.segmentList[len(c.segmentList)].Sort {
+		// out of range
 		return nil
 	}
 	index := c.search(key)
