@@ -267,13 +267,13 @@ func (this *Node) AuthClient(conn protocol.Connection, clientId string) error {
 func (this *Node) UpdateNodeList() error {
 	nodeMap := make(map[string]int)
 	for k1 := range this.nodeConf.HostList {
-		nodeList, err := dns.DnsParse(this.nodeConf.HostList[k1])
+		nodeList, port, err := dns.DnsParse(this.nodeConf.HostList[k1])
 		if err != nil {
 			logx.Info(err)
 			return err
 		}
 		for k2 := range nodeList {
-			nodeMap[nodeList[k2]] = 1
+			nodeMap[nodeList[k2]+":"+port] = 1
 		}
 	}
 
@@ -283,14 +283,6 @@ func (this *Node) UpdateNodeList() error {
 		if ipAddress == this.nodeId {
 			continue
 		}
-		// nodeInfo := make(map[string]interface{})
-		// err := json.Unmarshal([]byte(nodeMap[key]), &nodeInfo)
-		// if err != nil {
-		// 	logx.Info(err)
-		// }
-		// if cast.ToInt64(nodeInfo["timestamp"])+this.nodeTimeout < now {
-		// 	continue
-		// }
 
 		// 数字小的连接数字大的
 		// if strings.Compare(this.transAddress, transAddress) >= 0 {
