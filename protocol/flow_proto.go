@@ -87,9 +87,9 @@ func (this *FlowProto) Read(conn FlowConnection, onMsg func(conn Connection, msg
 	var start, end int
 	buf := make([]byte, this.bufLength)
 	for {
-		// 读取header
+		// read header
 		for end-start < this.headLength {
-			// 重置start
+			// reset start
 			if start > 0 {
 				copy(buf, buf[start:end])
 				end -= start
@@ -100,16 +100,19 @@ func (this *FlowProto) Read(conn FlowConnection, onMsg func(conn Connection, msg
 				return err
 			}
 			end += n
-			// 读数据拼接到定额缓存后面
+			// The maximum length of the packet is exceeded
 			if end == this.bufLength {
 				return ExceededErr
 			}
 		}
+
 		headBuf := buf[start : start+this.headLength]
-		if string(headBuf[:len(this.header)]) != this.header { // 判断消息头正确性
+		// Verify that the message header is correct
+		if string(headBuf[:len(this.header)]) != this.header {
 			return HeaderErr
 		}
-		// 读取content
+
+		// read content
 		contentSize := int(binary.BigEndian.Uint32(headBuf[len(this.header):]))
 		totalLenth := this.headLength + contentSize
 		if totalLenth > this.bufLength {
@@ -121,7 +124,7 @@ func (this *FlowProto) Read(conn FlowConnection, onMsg func(conn Connection, msg
 				return err
 			}
 			end += n
-			// 读数据拼接到定额缓存后面
+			// The maximum length of the packet is exceeded
 			if end == this.bufLength {
 				return ExceededErr
 			}

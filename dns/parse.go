@@ -81,9 +81,5 @@ func ParseScheme(target string) (ret Target) {
 func DnsParse(domain string) ([]string, error) {
 	target := ParseScheme(domain)
 	host, port, _ := ParsePort(target.Endpoint, "80")
-	// builder := resolver.Get(target.Scheme)
-	// addrs, err := builder.Parse(target)
-	fmt.Printf("%#v\n", host)
-	fmt.Printf("%#v\n", port)
-	return net.DefaultResolver.LookupHost(context.Background(), host)
+	return net.DefaultResolver.LookupHost(context.Background(), host+":"+port)
 }

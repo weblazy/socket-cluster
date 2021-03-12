@@ -301,7 +301,7 @@ func (this *Node) UpdateNodeList() error {
 		if ok {
 			continue
 		}
-		conn, err := this.nodeConf.internalProtocolHandler.Dial(fmt.Sprintf("%s:%d", ipAddress, this.nodeConf.InternalPort))
+		conn, err := this.nodeConf.internalProtocolHandler.Dial(ipAddress)
 		if err != nil {
 			logx.Info("dial:", err)
 			this.transServices.Delete(ipAddress)
