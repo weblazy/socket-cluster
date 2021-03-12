@@ -23,6 +23,7 @@ type RedisNode struct {
 	Position  int64 //the position of hash ring
 }
 
+// NewRedisStorage return a RedisStorage
 func NewRedisStorage(redisNodeList []*RedisNode) *RedisStorage {
 	segmentHash := unsafehash.NewSegmentHash()
 	for _, value := range redisNodeList {
@@ -34,10 +35,12 @@ func NewRedisStorage(redisNodeList []*RedisNode) *RedisStorage {
 	return &RedisStorage{segmentHash: segmentHash, clientTimeout: 180}
 }
 
+// SetNodeId set node id
 func (this *RedisStorage) SetNodeId(nodeId string) {
 	this.nodeId = nodeId
 }
 
+// GetIps get ip list by clientId
 func (this *RedisStorage) GetIps(clientId int64) ([]string, error) {
 	redisNode := this.segmentHash.Get(clientId)
 	now := time.Now().Unix()
@@ -45,6 +48,7 @@ func (this *RedisStorage) GetIps(clientId int64) ([]string, error) {
 	return ipArr, err
 }
 
+// BindClientId set online with clientId
 func (this *RedisStorage) BindClientId(clientId int64) error {
 	now := time.Now().Unix()
 	redisNode := this.segmentHash.Get(clientId)
@@ -136,6 +140,7 @@ func (this *RedisStorage) OnClientPing(clientId int64) error {
 	return err
 }
 
+// GetIps get ip list by clientId list
 func (this *RedisStorage) GetClientsIps(clientIds []string) ([]string, map[string][]string, error) {
 
 	nodes := make(map[string]*NodeMap)

@@ -1,20 +1,6 @@
 package protocol
 
 type (
-	// Message a socket message interface.
-	Message interface {
-	}
-
-	// Header is an operation interface of required message fields.
-	// NOTE: Must be supported by Proto interface.
-	Header interface {
-	}
-
-	// Body is an operation interface of optional message fields.
-	// SUGGEST: For features complete, the protocol interface should support it.
-	Body interface{}
-)
-type (
 	// Proto pack/read protocol scheme of socket message.
 	Proto interface {
 		// Pack writes the Message into the connection.
