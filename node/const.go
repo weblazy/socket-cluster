@@ -1,5 +1,7 @@
 package node
 
+import "time"
+
 const (
 	clientPrefix              = "client#"
 	defaultPassword           = "password"
@@ -9,6 +11,7 @@ const (
 	defaultPort               = 9528
 	NodeAddress               = "node_address"
 	TransAddress              = "trans_address"
+	authTime                  = 10 * time.Second
 )
 
 const (

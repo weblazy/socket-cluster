@@ -9,6 +9,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/cast"
 	"github.com/weblazy/core/logx"
+	easy_sort "github.com/weblazy/easy/utils/sort"
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/node"
 )
@@ -81,7 +82,7 @@ func (this *RedisDiscovery) GetInfo() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	sortList := make([]node.Sort, 0)
+	sortList := make([]easy_sort.Sort, 0)
 	expire := now - this.timeout
 	for k1 := range addrMap {
 		addrObj := make(map[string]interface{})
@@ -90,13 +91,13 @@ func (this *RedisDiscovery) GetInfo() ([]string, error) {
 			return nil, err
 		}
 		if cast.ToInt64(addrObj["timestamp"]) > expire {
-			sortList = append(sortList, node.Sort{
+			sortList = append(sortList, easy_sort.Sort{
 				Obj:  k1,
 				Sort: cast.ToInt64(addrObj["client_count"]),
 			})
 		}
 	}
-	sort.Sort(node.SortList(sortList))
+	sort.Sort(easy_sort.SortList(sortList))
 	for k1 := range sortList {
 		list = append(list, sortList[k1].Obj.(string))
 	}
