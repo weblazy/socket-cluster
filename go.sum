@@ -634,6 +634,7 @@ github.com/weblazy/gocore v1.7.2/go.mod h1:y12oFhWan2xPoEE+atclvXm8OqWm00oQmad0w
 github.com/weblazy/goutil v1.1.2 h1:gwwnUuNep7yt1//PiAckAepqLUJ7q0NRbgb8zBOMXh8=
 github.com/weblazy/goutil v1.1.2/go.mod h1:Wh58gIA/CC57gRdpcRBpv/r/0Y9PsZnHJqJwtqza/DY=
 github.com/weblazy/teleport v1.1.0/go.mod h1:tj/CxLB9vFgoKmgj766PH2F9EdSwXSn5etm3oguiGPQ=
+github.com/weblazy/utils v0.0.0-20200305012246-55624429fe48 h1:Pv0mQgNFXBQ6g0VEv7aoSV95QfypiucGjqTEzLKpGdY=
 github.com/wsddn/go-ecdh v0.0.0-20161211032359-48726bab9208/go.mod h1:IotVbo4F+mw0EzQ08zFqg7pK3FebNXpaMsRy2RT+Ees=
 github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c/go.mod h1:lB8K/P019DLNhemzwFU4jHLhdvlE6uDZjXFejJXr49I=
 github.com/xdg/stringprep v1.0.0/go.mod h1:Jhud4/sHMO4oL310DaZAKk9ZaJ08SJfe+sJh0HrGL1Y=

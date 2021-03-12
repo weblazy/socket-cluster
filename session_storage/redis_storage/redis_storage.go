@@ -14,7 +14,7 @@ import (
 type RedisStorage struct {
 	session_storage.SessionStorage
 	clientTimeout int64 // client heartbeat timeout time
-	segmentMap    *unsafehash.SegmentMap
+	segmentHash   *unsafehash.SegmentHash
 	nodeId        string
 }
 
@@ -24,12 +24,14 @@ type RedisNode struct {
 }
 
 func NewRedisStorage(redisNodeList []*RedisNode) *RedisStorage {
-	segmentMap := unsafehash.NewSegmentMap()
+	segmentHash := unsafehash.NewSegmentHash()
 	for _, value := range redisNodeList {
 		rdsObj := redis.NewClient(value.RedisConf)
-		segmentMap.Add(unsafehash.NewNode(value.RedisConf.Addr, value.Position, rdsObj))
+		segmentHash.Append(unsafehash.NewSegment(value.Position, []interface{}{rdsObj}))
+
 	}
-	return &RedisStorage{segmentMap: segmentMap, clientTimeout: 180}
+
+	return &RedisStorage{segmentHash: segmentHash, clientTimeout: 180}
 }
 
 func (this *RedisStorage) SetNodeId(nodeId string) {
@@ -37,23 +39,23 @@ func (this *RedisStorage) SetNodeId(nodeId string) {
 }
 
 func (this *RedisStorage) GetIps(clientId int64) ([]string, error) {
-	redisNode := this.segmentMap.Get(clientId)
+	redisNode := this.segmentHash.Get(clientId)
 	now := time.Now().Unix()
-	ipArr, err := redisNode.Extra.(*redis.Client).ZRangeByScore(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.ZRangeBy{Min: cast.ToString(now - this.clientTimeout), Max: "+inf"}).Result()
+	ipArr, err := redisNode.(*redis.Client).ZRangeByScore(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.ZRangeBy{Min: cast.ToString(now - this.clientTimeout), Max: "+inf"}).Result()
 	return ipArr, err
 }
 
 func (this *RedisStorage) BindClientId(clientId int64) error {
 	now := time.Now().Unix()
-	redisNode := this.segmentMap.Get(clientId)
+	redisNode := this.segmentHash.Get(clientId)
 	logx.Error(clientId)
-	err := redisNode.Extra.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.nodeId}).Err()
+	err := redisNode.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.nodeId}).Err()
 	if err != nil {
 		logx.Error(err.Error())
 		return err
 	}
 
-	err = redisNode.Extra.(*redis.Client).Expire(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), time.Duration(this.clientTimeout)*time.Second).Err()
+	err = redisNode.(*redis.Client).Expire(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), time.Duration(this.clientTimeout)*time.Second).Err()
 	if err != nil {
 		logx.Error(err.Error())
 		return err
@@ -63,7 +65,7 @@ func (this *RedisStorage) BindClientId(clientId int64) error {
 }
 
 type NodeMap struct {
-	node      *unsafehash.Node
+	node      *redis.Client
 	clientIds []int64
 }
 
@@ -73,11 +75,11 @@ func (this *RedisStorage) ClientIdsOnline(clientIds []int64) []int64 {
 	onlineClientIds := make([]int64, 0)
 	nodes := make(map[string]*NodeMap)
 	for k1 := range clientIds {
-		redisNode := this.segmentMap.Get(clientIds[k1])
-		if _, ok := nodes[redisNode.Id]; ok {
-			nodes[redisNode.Id].clientIds = append(nodes[redisNode.Id].clientIds, clientIds[k1])
+		redisNode := this.segmentHash.Get(clientIds[k1]).(*redis.Client)
+		if _, ok := nodes[redisNode.String()]; ok {
+			nodes[redisNode.String()].clientIds = append(nodes[redisNode.String()].clientIds, clientIds[k1])
 		} else {
-			nodes[redisNode.Id] = &NodeMap{
+			nodes[redisNode.String()] = &NodeMap{
 				node:      redisNode,
 				clientIds: []int64{clientIds[k1]},
 			}
@@ -86,7 +88,7 @@ func (this *RedisStorage) ClientIdsOnline(clientIds []int64) []int64 {
 	rangeTime := cast.ToString(time.Now().Unix() - this.clientTimeout)
 	for k1 := range nodes {
 		nodeMap := nodes[k1]
-		pipe := nodeMap.node.Extra.(*redis.Client).Pipeline()
+		pipe := nodeMap.node.Pipeline()
 		for k2 := range nodeMap.clientIds {
 			pipe.ZRangeByScore(context.Background(), session_storage.ClientPrefix+cast.ToString(nodeMap.clientIds[k2]), &redis.ZRangeBy{Min: rangeTime, Max: "+inf"}).Result()
 		}
@@ -110,8 +112,8 @@ func (this *RedisStorage) ClientIdsOnline(clientIds []int64) []int64 {
 // IsOnline determine if a clientId is online
 func (this *RedisStorage) IsOnline(clientId int64) bool {
 	now := time.Now().Unix()
-	redisNode := this.segmentMap.Get(clientId)
-	addrArr, err := redisNode.Extra.(*redis.Client).ZRangeByScore(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.ZRangeBy{Min: cast.ToString(now - this.clientTimeout), Max: "+inf"}).Result()
+	redisNode := this.segmentHash.Get(clientId)
+	addrArr, err := redisNode.(*redis.Client).ZRangeByScore(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.ZRangeBy{Min: cast.ToString(now - this.clientTimeout), Max: "+inf"}).Result()
 	if err != nil {
 		logx.Info(err)
 		return false
@@ -124,13 +126,13 @@ func (this *RedisStorage) IsOnline(clientId int64) bool {
 
 // OnClientPing receive client heartbeat
 func (this *RedisStorage) OnClientPing(clientId int64) error {
-	redisNode := this.segmentMap.Get(clientId)
+	redisNode := this.segmentHash.Get(clientId)
 	now := time.Now().Unix()
-	err := redisNode.Extra.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.nodeId}).Err()
+	err := redisNode.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.nodeId}).Err()
 	if err != nil {
 		return err
 	}
-	err = redisNode.Extra.(*redis.Client).Expire(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), time.Duration(this.clientTimeout)*time.Second).Err()
+	err = redisNode.(*redis.Client).Expire(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), time.Duration(this.clientTimeout)*time.Second).Err()
 	return err
 }
 
@@ -139,11 +141,11 @@ func (this *RedisStorage) GetClientsIps(clientIds []string) ([]string, map[strin
 	nodes := make(map[string]*NodeMap)
 	rangeTime := cast.ToString(time.Now().Unix() - this.clientTimeout)
 	for k1 := range clientIds {
-		redisNode := this.segmentMap.Get(cast.ToInt64(clientIds[k1]))
-		if _, ok := nodes[redisNode.Id]; ok {
-			nodes[redisNode.Id].clientIds = append(nodes[redisNode.Id].clientIds, cast.ToInt64(clientIds[k1]))
+		redisNode := this.segmentHash.Get(cast.ToInt64(clientIds[k1])).(*redis.Client)
+		if _, ok := nodes[redisNode.String()]; ok {
+			nodes[redisNode.String()].clientIds = append(nodes[redisNode.String()].clientIds, cast.ToInt64(clientIds[k1]))
 		} else {
-			nodes[redisNode.Id] = &NodeMap{
+			nodes[redisNode.String()] = &NodeMap{
 				node:      redisNode,
 				clientIds: []int64{cast.ToInt64(clientIds[k1])},
 			}
@@ -153,7 +155,7 @@ func (this *RedisStorage) GetClientsIps(clientIds []string) ([]string, map[strin
 	localClientIds := make([]string, 0)
 	for k1 := range nodes {
 		nodeMap := nodes[k1]
-		pipe := nodeMap.node.Extra.(*redis.Client).Pipeline()
+		pipe := nodeMap.node.Pipeline()
 		for k2 := range nodeMap.clientIds {
 			pipe.ZRangeByScore(context.Background(), session_storage.ClientPrefix+cast.ToString(nodeMap.clientIds[k2]), &redis.ZRangeBy{Min: rangeTime, Max: "+inf"}).Result()
 		}

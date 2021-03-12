@@ -15,7 +15,6 @@ import (
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/dns"
 	"github.com/weblazy/socket-cluster/protocol"
-	"github.com/weblazy/socket-cluster/unsafehash"
 )
 
 type (
@@ -32,10 +31,10 @@ type (
 		startTime   time.Time                // Start time
 		// key: nodeId
 		// value: *session
-		transClients goutil.Map // Receive messages forwarded by other nodes
+		transClients goutil.Map // Forward the message to another node
 		// key: nodeId
 		// value: *session
-		transServices goutil.Map // Forward the message to another node
+		transServices goutil.Map // Receive messages forwarded by other nodes
 		nodeTimeout   int64      // node heartbeat timeout time
 		clientTimeout int64      // client heartbeat timeout time
 	}
@@ -302,7 +301,6 @@ func (this *Node) UpdateNodeList() error {
 		if ok {
 			continue
 		}
-		logx.Info(fmt.Sprintf("%s:%d", ipAddress, this.nodeConf.InternalPort))
 		conn, err := this.nodeConf.internalProtocolHandler.Dial(fmt.Sprintf("%s:%d", ipAddress, this.nodeConf.InternalPort))
 		if err != nil {
 			logx.Info("dial:", err)
@@ -378,7 +376,7 @@ func (this *Node) SendToClientIds(clientIds []string, req []byte) error {
 			ReceiveClientIds: ids,
 			Data:             msgBytes,
 		}
-		connect, ok := this.transServices.Load(batchData.ip)
+		connect, ok := this.transClients.Load(batchData.ip)
 		if ok {
 			conn, ok := connect.(protocol.Connection)
 			if !ok {
@@ -414,11 +412,6 @@ func (this *Node) SendToClientIds(clientIds []string, req []byte) error {
 		}
 	})
 	return nil
-}
-
-type NodeMap struct {
-	node      *unsafehash.Node
-	clientIds []string
 }
 
 type BatchData struct {
@@ -475,7 +468,7 @@ func (this *Node) SendToClientId(clientId string, req []byte) error {
 					return true
 				})
 			} else {
-				connect, ok := this.transServices.Load(ip)
+				connect, ok := this.transClients.Load(ip)
 				if ok {
 					conn, ok := connect.(protocol.Connection)
 					if !ok {
