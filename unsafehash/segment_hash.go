@@ -47,7 +47,7 @@ func (c *SegmentHash) Append(segmentList ...*Segment) {
 }
 
 func (c *SegmentHash) Get(key int64) interface{} {
-	if key > c.segmentList[len(c.segmentList)].Sort {
+	if len(c.segmentList) == 0 || key > c.segmentList[len(c.segmentList) - 1].Sort {
 		// out of range
 		return nil
 	}
