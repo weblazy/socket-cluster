@@ -28,6 +28,7 @@ func NewRedisDiscovery(conf *redis.Options) *RedisDiscovery {
 	rds := redis.NewClient(conf)
 	return &RedisDiscovery{
 		adminRedis: rds,
+		timeout:    120,
 	}
 }
 
@@ -71,6 +72,7 @@ func (this *RedisDiscovery) UpdateInfo(nodeInfoByte []byte) error {
 	if err != nil {
 		logx.Info(err)
 	}
+	this.adminRedis.Expire(context.Background(), node.NodeAddress, time.Duration(this.timeout*int64(time.Second)))
 	return nil
 }
 
