@@ -73,7 +73,6 @@ func (this *TcpProtocol) handleClient(connect net.Conn) {
 	}()
 }
 func (this *TcpProtocol) ServeConn(conn protocol.Connection, f func(conn protocol.Connection, p []byte)) error {
-	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
 	defer func() {
 		if conn != nil {
 			conn.Close()

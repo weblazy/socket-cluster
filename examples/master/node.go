@@ -164,8 +164,7 @@ func onMsg(context *node.Context) {
 			obj := map[string]interface{}{
 				"username":     v1.Username,
 				"avatar":       v1.Avatar,
-				"send_uid":     v1.SendUid,
-				"group_id":     groupId,
+				"send_uid":     cast.ToInt64(v1.SendUid),
 				"group_msg_id": v1.Id,
 				"content":      v1.Content,
 				"created_at":   v1.CreatedAt.Unix(),
@@ -175,6 +174,7 @@ func onMsg(context *node.Context) {
 		msgBytes, err := json.Marshal(map[string]interface{}{
 			"msg_type": "pull_group_msg",
 			"data": map[string]interface{}{
+				"group_id":       groupId,
 				"group_msg_list": chatGroupMsgList,
 			},
 		})
@@ -458,6 +458,16 @@ func onMsg(context *node.Context) {
 			return
 		}
 		common.NodeInfo.SendToClientIds(uids, msgBytes)
+	case "ping":
+		if context.ClientId == "" {
+			return
+		}
+
+		err := common.NodeInfo.OnClientPing(cast.ToInt64(context.ClientId))
+		if err != nil {
+			logx.Info(err)
+			return
+		}
 	default:
 		logx.Info(string(context.Msg))
 	}

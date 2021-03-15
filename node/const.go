@@ -17,4 +17,5 @@ const (
 const (
 	AuthMsgType   int32 = 1
 	ClientMsgType int32 = 2
+	PingMsgType   int32 = 3
 )
