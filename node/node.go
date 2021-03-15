@@ -192,6 +192,10 @@ func (this *Node) IsOnline(clientId int64) bool {
 	return false
 }
 
+func (this *Node) OnClientPing(clientId int64) error {
+	return this.nodeConf.sessionStorageHandler.OnClientPing(clientId)
+}
+
 // OnClientMsg deal client message
 func (this *Node) OnClientMsg(conn protocol.Connection, msg []byte) {
 	addr := conn.Addr()
