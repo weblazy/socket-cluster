@@ -33,7 +33,7 @@ func Node() {
 	err = auth.InitAuth(auth.NewAuthConf([]*auth.RedisNode{
 		&auth.RedisNode{
 			RedisConf: &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0},
-			Position:  10000,
+			Position:  1,
 		}}))
 	if err != nil {
 		panic(err)
@@ -41,7 +41,7 @@ func Node() {
 	protocolHandler := &ws_protocol.WsProtocol{}
 	sessionStorageHandler := redis_storage.NewRedisStorage([]*redis_storage.RedisNode{&redis_storage.RedisNode{
 		RedisConf: &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0},
-		Position:  1,
+		Position:  10000,
 	}})
 
 	discoveryHandler := redis_discovery.NewRedisDiscovery(&redis.Options{Addr: redisHost, Password: redisPassword, DB: 0})
@@ -164,7 +164,7 @@ func onMsg(context *node.Context) {
 			obj := map[string]interface{}{
 				"username":     v1.Username,
 				"avatar":       v1.Avatar,
-				"send_uid":     v1.SendUid,
+				"send_uid":     cast.ToInt64(v1.SendUid),
 				"group_msg_id": v1.Id,
 				"content":      v1.Content,
 				"created_at":   v1.CreatedAt.Unix(),
@@ -173,8 +173,8 @@ func onMsg(context *node.Context) {
 		}
 		msgBytes, err := json.Marshal(map[string]interface{}{
 			"msg_type": "pull_group_msg",
-			"group_id": groupId,
 			"data": map[string]interface{}{
+				"group_id":       groupId,
 				"group_msg_list": chatGroupMsgList,
 			},
 		})
