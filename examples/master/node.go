@@ -459,6 +459,11 @@ func onMsg(context *node.Context) {
 		}
 		common.NodeInfo.SendToClientIds(uids, msgBytes)
 	case "ping":
+		logx.Info(context.ClientId)
+		if context.ClientId == "" {
+			return
+		}
+
 		err := common.NodeInfo.OnClientPing(cast.ToInt64(context.ClientId))
 		if err != nil {
 			logx.Info(err)
