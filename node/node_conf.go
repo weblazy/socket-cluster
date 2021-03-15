@@ -18,7 +18,7 @@ type (
 	NodeConf struct {
 		HostList                []string // A list of IP or domain names for DNS resolution
 		Host                    string   // the ip or domain of the node
-		Key                     string   // the transport path
+		NodeId                  string   // Node unique identification
 		Port                    int64    // Node port
 		InternalPort            int64    // Node port
 		Password                string   // Password for auth when connect to other node
@@ -43,7 +43,7 @@ func NewNodeConf(host string, protocolHandler protocol.Protocol, sessionStorageH
 	return &NodeConf{
 		Host:                    host,
 		HostList:                []string{host},
-		Key:                     GetUUID(),
+		NodeId:                  GetUUID(),
 		Port:                    defaultPort,
 		Password:                defaultPassword,
 		ClientPingInterval:      defaultClientPingInterval,
