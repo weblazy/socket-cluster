@@ -32,7 +32,7 @@ func NewRedisStorage(redisNodeList []*RedisNode) *RedisStorage {
 
 	}
 
-	return &RedisStorage{segmentHash: segmentHash, clientTimeout: 180}
+	return &RedisStorage{segmentHash: segmentHash, clientTimeout: 360}
 }
 
 // SetNodeId set node id
