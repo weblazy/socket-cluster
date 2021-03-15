@@ -33,7 +33,7 @@ func Node() {
 	err = auth.InitAuth(auth.NewAuthConf([]*auth.RedisNode{
 		&auth.RedisNode{
 			RedisConf: &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0},
-			Position:  1,
+			Position:  10000,
 		}}))
 	if err != nil {
 		panic(err)
@@ -459,7 +459,6 @@ func onMsg(context *node.Context) {
 		}
 		common.NodeInfo.SendToClientIds(uids, msgBytes)
 	case "ping":
-		logx.Info(context.ClientId)
 		if context.ClientId == "" {
 			return
 		}
