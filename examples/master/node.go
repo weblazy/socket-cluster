@@ -165,7 +165,6 @@ func onMsg(context *node.Context) {
 				"username":     v1.Username,
 				"avatar":       v1.Avatar,
 				"send_uid":     v1.SendUid,
-				"group_id":     groupId,
 				"group_msg_id": v1.Id,
 				"content":      v1.Content,
 				"created_at":   v1.CreatedAt.Unix(),
@@ -174,6 +173,7 @@ func onMsg(context *node.Context) {
 		}
 		msgBytes, err := json.Marshal(map[string]interface{}{
 			"msg_type": "pull_group_msg",
+			"group_id": groupId,
 			"data": map[string]interface{}{
 				"group_msg_list": chatGroupMsgList,
 			},
