@@ -83,15 +83,15 @@ func (this *Node) OnConnect(connect protocol.Connection) {
 }
 
 func (this *Node) OnClose(connect protocol.Connection) {
-	key := connect.Addr()
-	v1, ok := this.clientConns.Load(key)
+	addr := connect.Addr()
+	v1, ok := this.clientConns.Load(addr)
 	if ok {
 		clientId := v1.(*Session).ClientId
 		if clientId != "" {
-			this.clientIdSessions.Delete(clientId, key)
+			this.clientIdSessions.Delete(clientId, addr)
 		}
 	}
-	this.clientConns.Delete(key)
+	this.clientConns.Delete(addr)
 }
 
 // SendPing send node Heartbeat
@@ -161,21 +161,6 @@ func (this *Node) Register() {
 	}
 }
 
-//Update clients num
-// func (this *Node) UpdateRedis() {
-// 	go func() {
-// 		for {
-// 			time.Sleep(redisInterval * time.Second)
-// 			err := this.adminRedis.ZAdd(context.Background(), NodeAddress, &redis.Z{
-// 				Score:  float64(this.clientConns.Len()),
-// 				Member: this.clientAddress}).Err()
-// 			if err != nil {
-// 				logx.Info(err) f
-// 			}
-// 		}
-// 	}()
-// }
-
 // IsOnline determine if a clientId is online
 func (this *Node) IsOnline(clientId int64) bool {
 	addrArr, err := this.nodeConf.sessionStorageHandler.GetIps(clientId)
@@ -191,8 +176,8 @@ func (this *Node) IsOnline(clientId int64) bool {
 
 // OnClientMsg deal client message
 func (this *Node) OnClientMsg(conn protocol.Connection, msg []byte) {
-	sid := conn.Addr()
-	session, ok := this.clientConns.Load(sid)
+	addr := conn.Addr()
+	session, ok := this.clientConns.Load(addr)
 	clientId := ""
 	if ok {
 		clientId = session.(*Session).ClientId

@@ -41,7 +41,7 @@ func Node() {
 	protocolHandler := &ws_protocol.WsProtocol{}
 	sessionStorageHandler := redis_storage.NewRedisStorage([]*redis_storage.RedisNode{&redis_storage.RedisNode{
 		RedisConf: &redis.Options{Addr: redisHost, Password: redisPassword, DB: 0},
-		Position:  1,
+		Position:  10000,
 	}})
 
 	discoveryHandler := redis_discovery.NewRedisDiscovery(&redis.Options{Addr: redisHost, Password: redisPassword, DB: 0})
