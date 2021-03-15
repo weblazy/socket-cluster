@@ -18,6 +18,7 @@ import (
 )
 
 type (
+
 	// Node communication node
 	Node struct {
 		protocol.Node
@@ -77,19 +78,21 @@ func NewNode(cfg *NodeConf) (*Node, error) {
 }
 
 func (this *Node) OnConnect(connect protocol.Connection) {
+	this.nodeConf.plugin.OnConnect(connect)
 	this.timer.SetTimer(connect.Addr(), connect, authTime)
 }
 
 func (this *Node) OnClose(connect protocol.Connection) {
-	key := connect.Addr()
-	v1, ok := this.clientConns.Load(key)
+	this.nodeConf.plugin.OnClose(connect)
+	addr := connect.Addr()
+	v1, ok := this.clientConns.Load(addr)
 	if ok {
 		clientId := v1.(*Session).ClientId
 		if clientId != "" {
-			this.clientIdSessions.Delete(clientId, key)
+			this.clientIdSessions.Delete(clientId, addr)
 		}
 	}
-	this.clientConns.Delete(key)
+	this.clientConns.Delete(addr)
 }
 
 // SendPing send node Heartbeat

@@ -29,6 +29,7 @@ type (
 		protocolHandler         protocol.Protocol
 		internalProtocolHandler protocol.Protocol
 		sessionStorageHandler   session_storage.SessionStorage
+		plugin                  Plugin
 	}
 	// Params of onMsg
 	Context struct {
@@ -54,6 +55,7 @@ func NewNodeConf(host string, protocolHandler protocol.Protocol, sessionStorageH
 		sessionStorageHandler:   sessionStorageHandler,
 		discoveryHandler:        discoveryHandler,
 		onMsg:                   onMsg,
+		plugin:                  defaultPlugin,
 	}
 
 }
@@ -91,5 +93,11 @@ func (conf *NodeConf) WithClientInterval(pingInterval int64) *NodeConf {
 // WithPort sets the port for websocket
 func (conf *NodeConf) WithHostList(hostList []string) *NodeConf {
 	conf.HostList = hostList
+	return conf
+}
+
+// WithPlugin sets the plugin
+func (conf *NodeConf) WithPlugin(plugin Plugin) *NodeConf {
+	conf.plugin = plugin
 	return conf
 }

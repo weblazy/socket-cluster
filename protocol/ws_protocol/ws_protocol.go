@@ -3,7 +3,6 @@ package ws_protocol
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -12,7 +11,6 @@ import (
 )
 
 var (
-	authTime = 10 * time.Second
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:    4096,
 		WriteBufferSize:   4096,
@@ -21,7 +19,6 @@ var (
 			return true
 		},
 	}
-	defaultMasterPort int64 = 9527
 )
 
 type WsProtocol struct {
