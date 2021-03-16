@@ -177,21 +177,6 @@ func (this *Node) Register() {
 	}
 }
 
-//Update clients num
-// func (this *Node) UpdateRedis() {
-// 	go func() {
-// 		for {
-// 			time.Sleep(redisInterval * time.Second)
-// 			err := this.adminRedis.ZAdd(context.Background(), NodeAddress, &redis.Z{
-// 				Score:  float64(this.clientConns.Len()),
-// 				Member: this.clientAddress}).Err()
-// 			if err != nil {
-// 				logx.Info(err) f
-// 			}
-// 		}
-// 	}()
-// }
-
 // IsOnline determine if a clientId is online
 func (this *Node) IsOnline(clientId int64) bool {
 	addrArr, err := this.nodeConf.sessionStorageHandler.GetIps(clientId)
