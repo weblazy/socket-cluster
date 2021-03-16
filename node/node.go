@@ -101,10 +101,23 @@ func (this *Node) SendPing() {
 		for {
 			time.Sleep(time.Duration(this.nodeConf.NodePingInterval) * time.Second)
 			// update node info
+			transClients := make([]interface{}, 0)
+			this.transClients.Range(func(k1, v1 interface{}) bool {
+				transClients = append(transClients, k1)
+				return true
+			})
+			transServices := make([]interface{}, 0)
+			this.transServices.Range(func(k1, v1 interface{}) bool {
+				transServices = append(transServices, k1)
+				return true
+			})
+
 			nodeInfo := map[string]interface{}{
-				"node_id":      this.nodeConf.NodeId,
-				"client_count": this.clientConns.Len(),
-				"timestamp":    time.Now().Unix(),
+				"node_id":        this.nodeConf.NodeId,
+				"trans_clients":  transClients,
+				"trans_services": transServices,
+				"client_count":   this.clientConns.Len(),
+				"timestamp":      time.Now().Unix(),
 			}
 			nodeInfoByte, err := json.Marshal(nodeInfo)
 			if err != nil {
@@ -255,12 +268,14 @@ func (this *Node) OnTransMsg(conn protocol.Connection, msg []byte) {
 func (this *Node) AuthTrans(conn protocol.Connection, authMsg *AuthMsg) error {
 	nodeId := authMsg.NodeId
 	this.timer.RemoveTimer(conn.Addr()) // Cancel timeingwheel task
+	logx.Info(authMsg)
 	if authMsg.Password != this.nodeConf.Password {
 		logx.Infof("Connect:%s,Wrong password:%s", nodeId, authMsg.Password)
 		conn.Close()
 		return fmt.Errorf("auth faild")
 	}
 	this.transClients.Store(nodeId, conn)
+	logx.Info(authMsg)
 	return nil
 }
 
