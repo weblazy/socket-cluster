@@ -75,7 +75,6 @@ func (this *WsProtocol) clientHandler(c echo.Context) error {
 			}
 			break
 		}
-		logx.Info(string(msg))
 		this.nodeHandler.OnClientMsg(conn, msg)
 	}
 	return nil
@@ -98,7 +97,6 @@ func (this *WsProtocol) ServeConn(conn protocol.Connection, OnTransMsg func(conn
 			}
 			return err
 		}
-		logx.Info(string(msg))
 		this.nodeHandler.OnClientMsg(conn, msg)
 	}
 }

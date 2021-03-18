@@ -14,15 +14,10 @@ type (
 type Protocol interface {
 	// ListenAndServe turns on the listening service.
 	ListenAndServe(port int64) error
-
 	// ListenAndServe turns on the listening service.
 	SetNodeHandler(nodeHandler Node)
 	// Dial connects with the socket of the destination address.
 	Dial(addr string) (Connection, error)
-	// ServeConn serves the connection and returns a session.
-	// NOTE:
-	//  Not support automatically redials after disconnection;
-	//  Not check TLS;
-	//  Execute the PostAcceptPlugin plugins.
+	// ServeConn serves the connection.
 	ServeConn(conn Connection, OnTransMsg func(conn Connection, msg []byte)) error
 }

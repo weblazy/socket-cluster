@@ -13,7 +13,7 @@ type QuicConnection struct {
 	protocol.FlowConnection
 }
 
-// WriteMsg send byte array message
+// WriteMsg sends byte array message
 func (conn *QuicConnection) WriteMsg(data []byte) error {
 	conn.Mutex.Lock()
 	defer conn.Mutex.Unlock()
@@ -21,6 +21,7 @@ func (conn *QuicConnection) WriteMsg(data []byte) error {
 	return err
 }
 
+// ReadMsg reads byte array message
 func (conn *QuicConnection) ReadMsg(data []byte) (int, error) {
 	return conn.Stream.Read(data)
 }

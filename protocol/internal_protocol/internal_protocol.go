@@ -51,10 +51,7 @@ func (this *TcpProtocol) ListenAndServe(port int64) error {
 }
 
 func (this *TcpProtocol) handleClient(connect net.Conn) {
-
 	conn := tcp_protocol.NewTcpConnection(connect)
-	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
-	// 缓存区设置最大为4G字节， 如果单个消息大于这个值就不能接受了
 	go func() {
 		defer func() {
 			if connect != nil {
@@ -64,7 +61,7 @@ func (this *TcpProtocol) handleClient(connect net.Conn) {
 		err := protocol.DefaultFlowProto.Read(conn, this.nodeHandler.OnTransMsg)
 		if err != nil {
 			if err.Error() == "EOF" {
-				// 对等方关闭了, 这里关闭chan, 通知接收消息的routine别等了，人家都关了
+				// connection to closed
 			} else {
 				logx.Info(err)
 			}

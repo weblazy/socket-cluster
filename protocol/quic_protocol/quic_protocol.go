@@ -54,7 +54,6 @@ func (this *QuicProtocol) ListenAndServe(port int64) error {
 }
 
 func (this *QuicProtocol) handleClient(sess quic.Session) {
-	// 缓存区设置最大为4G字节， 如果单个消息大于这个值就不能接受了
 	stream, err := sess.AcceptStream(context.Background())
 	if err != nil {
 		panic(err)
@@ -71,7 +70,7 @@ func (this *QuicProtocol) handleClient(sess quic.Session) {
 		err := protocol.DefaultFlowProto.Read(conn, this.nodeHandler.OnClientMsg)
 		if err != nil {
 			if err.Error() == "EOF" {
-				// 对等方关闭了, 这里关闭chan, 通知接收消息的routine别等了，人家都关了
+				// connection to closed
 			} else {
 				panic(err)
 			}

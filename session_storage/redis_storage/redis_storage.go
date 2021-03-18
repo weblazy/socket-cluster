@@ -141,7 +141,6 @@ func (this *RedisStorage) OnClientPing(clientId int64) error {
 
 // GetIps get ip list by clientId list
 func (this *RedisStorage) GetClientsIps(clientIds []string) ([]string, map[string][]string, error) {
-
 	nodes := make(map[string]*NodeMap)
 	rangeTime := cast.ToString(time.Now().Unix() - this.clientTimeout)
 	for k1 := range clientIds {
