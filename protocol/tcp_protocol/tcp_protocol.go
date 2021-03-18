@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/weblazy/core/logx"
+	"github.com/weblazy/easy/utils/logx"
 	"github.com/weblazy/socket-cluster/protocol"
 )
 

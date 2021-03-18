@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/weblazy/core/logx"
+	"github.com/weblazy/easy/utils/logx"
 	"github.com/weblazy/socket-cluster/protocol"
 	"github.com/weblazy/socket-cluster/protocol/tcp_protocol"
 )
@@ -40,7 +40,6 @@ func (this *TcpProtocol) ListenAndServe(port int64) error {
 	go func() {
 		for {
 			conn, err := listener.Accept()
-			logx.Error(conn.RemoteAddr().String())
 			if err != nil {
 				logx.Info(err)
 				break
@@ -67,7 +66,7 @@ func (this *TcpProtocol) handleClient(connect net.Conn) {
 			if err.Error() == "EOF" {
 				// 对等方关闭了, 这里关闭chan, 通知接收消息的routine别等了，人家都关了
 			} else {
-				panic(err)
+				logx.Info(err)
 			}
 		}
 	}()

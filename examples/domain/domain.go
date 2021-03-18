@@ -14,7 +14,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/spf13/cast"
-	"github.com/weblazy/core/logx"
+	"github.com/weblazy/easy/utils/logx"
 	"gopkg.in/gomail.v2"
 )
 

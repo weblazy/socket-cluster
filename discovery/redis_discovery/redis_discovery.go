@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/cast"
-	"github.com/weblazy/core/logx"
+	"github.com/weblazy/easy/utils/logx"
 	easy_sort "github.com/weblazy/easy/utils/sort"
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/node"

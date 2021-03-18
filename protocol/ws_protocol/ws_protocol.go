@@ -6,7 +6,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-	"github.com/weblazy/core/logx"
+	"github.com/weblazy/easy/utils/logx"
 	"github.com/weblazy/socket-cluster/protocol"
 )
 

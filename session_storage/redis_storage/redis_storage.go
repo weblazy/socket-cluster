@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/cast"
-	"github.com/weblazy/core/logx"
+	"github.com/weblazy/easy/utils/logx"
 	"github.com/weblazy/socket-cluster/session_storage"
 	"github.com/weblazy/socket-cluster/unsafehash"
 )
@@ -52,16 +52,15 @@ func (this *RedisStorage) GetIps(clientId int64) ([]string, error) {
 func (this *RedisStorage) BindClientId(clientId int64) error {
 	now := time.Now().Unix()
 	redisNode := this.segmentHash.Get(clientId)
-	logx.Error(clientId)
 	err := redisNode.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.nodeId}).Err()
 	if err != nil {
-		logx.Error(err.Error())
+		logx.Info(err.Error())
 		return err
 	}
 
 	err = redisNode.(*redis.Client).Expire(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), time.Duration(this.clientTimeout)*time.Second).Err()
 	if err != nil {
-		logx.Error(err.Error())
+		logx.Info(err.Error())
 		return err
 	}
 

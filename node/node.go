@@ -244,7 +244,7 @@ func (this *Node) OnTransMsg(conn protocol.Connection, msg []byte) {
 		}
 	// The heartbeat message
 	default:
-
+		logx.Info(transMsg)
 	}
 
 }
@@ -362,38 +362,38 @@ func (this *Node) SendToClientIds(clientIds []string, req []byte) error {
 		}
 	}, func(item interface{}) {
 		batchData := item.(*BatchData)
-		msg := Msg{
-			MsgType: ClientMsgType,
-			Data:    req,
-		}
-		msgBytes, err := proto.Marshal(&msg)
-		if err != nil {
-			logx.Info(err)
-		}
-		ids := make([]int64, 0)
-		for k1 := range batchData.clientIds {
-			ids = append(ids, cast.ToInt64(batchData.clientIds[k1]))
-		}
-		clientsMsg := ClientsMsg{
-			ReceiveClientIds: ids,
-			Data:             msgBytes,
-		}
 		connect, ok := this.transClients.Load(batchData.ip)
 		if ok {
 			conn, ok := connect.(protocol.Connection)
 			if !ok {
 				return
 			}
+			ids := make([]int64, 0)
+			for k1 := range batchData.clientIds {
+				ids = append(ids, cast.ToInt64(batchData.clientIds[k1]))
+			}
+			clientsMsg := ClientsMsg{
+				ReceiveClientIds: ids,
+				Data:             req,
+			}
 			clientsMsgBytes, err := proto.Marshal(&clientsMsg)
 			if err != nil {
 				logx.Info(err)
 			}
-			err = conn.WriteMsg(clientsMsgBytes)
+			msg := Msg{
+				MsgType: ClientMsgType,
+				Data:    clientsMsgBytes,
+			}
+			msgBytes, err := proto.Marshal(&msg)
+			if err != nil {
+				logx.Info(err)
+			}
+			err = conn.WriteMsg(msgBytes)
 			if err != nil {
 				logx.Info(err)
 			}
 		} else {
-			logx.Info(fmt.Printf("trans:%#v不在线", batchData.ip))
+			logx.Info(fmt.Sprintf("trans:%s不在线", batchData.ip))
 			return
 		}
 

@@ -164,6 +164,7 @@ func onMsg(context *node.Context) {
 			obj := map[string]interface{}{
 				"username":     v1.Username,
 				"avatar":       v1.Avatar,
+				"group_id":     groupId,
 				"send_uid":     cast.ToInt64(v1.SendUid),
 				"group_msg_id": v1.Id,
 				"content":      v1.Content,
