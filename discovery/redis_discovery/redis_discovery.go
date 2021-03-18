@@ -14,7 +14,7 @@ import (
 	"github.com/weblazy/socket-cluster/node"
 )
 
-//RedisDiscovery 服务发现
+// RedisDiscovery
 type RedisDiscovery struct {
 	discovery.ServiceDiscovery
 	nodeId     string
@@ -23,7 +23,7 @@ type RedisDiscovery struct {
 	timeout    int64
 }
 
-//NewRedisDiscovery 新建发现服务
+// NewRedisDiscovery return a RedisDiscovery
 func NewRedisDiscovery(conf *redis.Options) *RedisDiscovery {
 	rds := redis.NewClient(conf)
 	return &RedisDiscovery{
@@ -32,12 +32,12 @@ func NewRedisDiscovery(conf *redis.Options) *RedisDiscovery {
 	}
 }
 
-// Consumer pull message from other node
+// SetNodeId sets a nodeId
 func (this *RedisDiscovery) SetNodeId(nodeId string) {
 	this.nodeId = nodeId
 }
 
-// Consumer pull message from other node
+// WatchService Listens for a new node to start
 func (this *RedisDiscovery) WatchService(watchChan discovery.WatchChan) {
 	go func() {
 		pb := this.adminRedis.Subscribe(context.Background(), this.key)
@@ -53,12 +53,12 @@ func (this *RedisDiscovery) WatchService(watchChan discovery.WatchChan) {
 	}()
 }
 
-//Close 关闭服务
+// Close closes the redis
 func (s *RedisDiscovery) Close() error {
 	return s.adminRedis.Close()
 }
 
-//设置租约
+// Register registers the NodeID and notify other nodes
 func (this *RedisDiscovery) Register() error {
 	err := this.adminRedis.Publish(context.Background(), this.key, this.nodeId).Err()
 	if err != nil {
@@ -67,6 +67,7 @@ func (this *RedisDiscovery) Register() error {
 	return nil
 }
 
+// UpdateInfo Update the information for this node
 func (this *RedisDiscovery) UpdateInfo(nodeInfoByte []byte) error {
 	err := this.adminRedis.HSet(context.Background(), node.NodeAddress, this.nodeId, string(nodeInfoByte)).Err()
 	if err != nil {
@@ -76,7 +77,7 @@ func (this *RedisDiscovery) UpdateInfo(nodeInfoByte []byte) error {
 	return nil
 }
 
-// GetHosts get node address
+// GetInfo get node information
 func (this *RedisDiscovery) GetInfo() ([]string, error) {
 	list := make([]string, 0)
 	now := time.Now().Unix()

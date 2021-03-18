@@ -72,13 +72,13 @@ func (conf *NodeConf) WithPort(port int64) *NodeConf {
 	return conf
 }
 
-// WithPort sets the port for websocket
+// WithInternalPort sets the port for internal protocol
 func (conf *NodeConf) WithInternalPort(port int64) *NodeConf {
 	conf.InternalPort = port
 	return conf
 }
 
-// WithPort sets the port for websocket
+// WithInternalProtocolHandler sets the internal protocol for node
 func (conf *NodeConf) WithInternalProtocolHandler(internalProtocolHandler protocol.Protocol) *NodeConf {
 	conf.internalProtocolHandler = internalProtocolHandler
 	return conf
@@ -90,7 +90,7 @@ func (conf *NodeConf) WithClientInterval(pingInterval int64) *NodeConf {
 	return conf
 }
 
-// WithPort sets the port for websocket
+// WithHostList sets the host list for node cluster
 func (conf *NodeConf) WithHostList(hostList []string) *NodeConf {
 	conf.HostList = hostList
 	return conf

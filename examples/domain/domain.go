@@ -18,8 +18,6 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-type ()
-
 var avatarArr = []string{
 	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BN1Nj6vbYCqZz6kc31w%5Bnmt%5BT9zNEJxNUFyOz9zOkh4OUB5PW9yNUR1NEV2OEhxNECgNj6rdHd%3E.jpg?t=?w=300&h=551&webp=1",
 	"https://img.sucai999.com/bIS1dEpwM4CqZ%7BN%7BPT6vbYCqZz6kc31w%5Bnmt%5BT9zNEJxNUFxOz9%7BNkF5NUl2O29zNkF3NkByPUFxPESgNj6rdHd%3E.jpg?t=?w=300&h=551&webp=1",
@@ -151,13 +149,10 @@ func SendSmsCode(email string) (map[string]interface{}, error) {
 // SendEmail
 func SendEmail(email, subject, body string) error {
 	m := gomail.NewMessage()
-
 	m.SetHeader("From", "2276282419@qq.com")
 	m.SetHeader("To", email)
-	//m.SetAddressHeader("Cc", "dan@example.com", "Dan")
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
-	//m.Attach("/home/Alex/lolcat.jpg")
 	password := os.Getenv("EMAIL_PASSWORD")
 	client := gomail.NewDialer("smtp.qq.com", 587, "2276282419@qq.com", password)
 	if err := client.DialAndSend(m); err != nil {

@@ -9,14 +9,14 @@ const (
 
 type WatchChan chan EventType
 
-//ServiceDiscovery 服务发现
+// ServiceDiscovery
 type ServiceDiscovery interface {
-	//设置租约
-	// GetServices() ([]string, error)
+	// SetNodeId sets nodeId
 	SetNodeId(nodeId string)
+	// WatchService Listens for a new node to start
 	WatchService(watchChan WatchChan)
+	// UpdateInfo Updates the information for this node
 	UpdateInfo([]byte) error
+	// Register registers the NodeID and notify other nodes
 	Register() error
-	// func (s *ServiceDiscovery) Ping(value []byte)
-	// func (s *ServiceDiscovery) Close() error
 }

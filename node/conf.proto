@@ -1,10 +1,8 @@
-//指定版本
-//注意proto3与proto2的写法有些不同
+// protoc --go_out=. msg.proto 
 syntax = "proto3";
 
-//包名，通过protoc生成时go文件时
 package node;
-
+// nodeInfo
 message NodeInfo {
     string client_address = 1;
     int64 client_count = 2;

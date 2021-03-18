@@ -8,29 +8,25 @@ import (
 )
 
 func main() {
-	//初始化echo实例
 	e := echo.New()
-	//初始化模版引擎
-	t := &Template{
-		//模版引擎支持提前编译模版, 这里对views目录下以html结尾的模版文件进行预编译处理
-		//预编译处理的目的是为了优化后期渲染模版文件的速度
+	// Initialize the template engine
+	temp := &Template{
+		// The purpose of the precompilation process is to optimize the speed of later rendering of the template file
 		templates: template.Must(template.ParseGlob("html/*.html")),
 	}
-	//向echo实例注册模版引擎
-	e.Renderer = t
-	//初始化路由和控制器函数
+	e.Renderer = temp
 	e.GET("/index", Index)
-	e.Start(":80")
+	e.Start(":9529")
 }
 
-//自定义的模版引擎struct
+// Custom template engine
 type Template struct {
 	templates *template.Template
 }
 
-//实现接口，Render函数
+// Render Implement interface, Render function
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	//调用模版引擎渲染模版
+	// Invokes the template engine to render the template
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 

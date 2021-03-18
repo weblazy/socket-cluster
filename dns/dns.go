@@ -78,6 +78,7 @@ func ParseScheme(target string) (ret Target) {
 	return ret
 }
 
+// Resolve the DNS domain name
 func DnsParse(domain string) ([]string, string, error) {
 	target := ParseScheme(domain)
 	host, port, _ := ParsePort(target.Endpoint, "80")

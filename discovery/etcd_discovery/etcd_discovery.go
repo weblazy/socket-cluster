@@ -13,22 +13,21 @@ import (
 
 const defaultDialTimeout = 5 * time.Second
 
-//EtcdDiscovery 服务发现
+// EtcdDiscovery
 type EtcdDiscovery struct {
 	discovery.ServiceDiscovery
-	cli        *clientv3.Client  //etcd client
-	serverList map[string]string //服务列表
-	lock       sync.Mutex
-	lease      int64
-	nodeId     string
-	key        string
-	val        string           //value
-	leaseID    clientv3.LeaseID //租约ID
-	//租约keepalieve相应chan
-	keepAliveChan <-chan *clientv3.LeaseKeepAliveResponse
+	cli           *clientv3.Client  // etcd client
+	serverList    map[string]string // service list
+	lock          sync.Mutex
+	lease         int64
+	nodeId        string
+	key           string
+	val           string                                  // value
+	leaseID       clientv3.LeaseID                        // 租约ID
+	keepAliveChan <-chan *clientv3.LeaseKeepAliveResponse // chan for renewal of lease
 }
 
-//NewEtcdDiscovery  新建发现服务
+// NewEtcdDiscovery return a EtcdDiscovery
 func NewEtcdDiscovery(conf clientv3.Config) *EtcdDiscovery {
 	cli, err := clientv3.New(conf)
 	if err != nil {
@@ -40,12 +39,12 @@ func NewEtcdDiscovery(conf clientv3.Config) *EtcdDiscovery {
 	}
 }
 
-// Consumer pull message from other node
+// SetNodeId sets a nodeId
 func (this *EtcdDiscovery) SetNodeId(nodeId string) {
 	this.nodeId = nodeId
 }
 
-//WatchService 初始化服务列表和监视
+// GetServices gets all Node nodes
 func (s *EtcdDiscovery) GetServices(key string) error {
 	//根据前缀获取现有的key
 	// resp, err := s.cli.Get(context.Background(), key, clientv3.WithPrefix())
@@ -59,7 +58,7 @@ func (s *EtcdDiscovery) GetServices(key string) error {
 	return nil
 }
 
-//watcher 监听前缀
+// WatchService Listens for a new node to start
 func (s *EtcdDiscovery) WatchService(watchChan discovery.WatchChan) {
 	prefix := s.key
 	rch := s.cli.Watch(context.Background(), prefix, clientv3.WithPrefix())
@@ -67,21 +66,21 @@ func (s *EtcdDiscovery) WatchService(watchChan discovery.WatchChan) {
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			switch ev.Type {
-			case mvccpb.PUT: //修改或者新增
+			case mvccpb.PUT: // Modify or add
 				watchChan <- discovery.PUT
-			case mvccpb.DELETE: //删除
+			case mvccpb.DELETE: // delete
 
 			}
 		}
 	}
 }
 
-//Close 关闭服务
+//Close closes the etcd client
 func (s *EtcdDiscovery) Close() error {
 	return s.cli.Close()
 }
 
-//设置租约
+// Register registers the nodeId and notify other nodes
 func (s *EtcdDiscovery) Register() error {
 	//设置租约时间
 	resp, err := s.cli.Grant(context.Background(), s.lease)
@@ -107,7 +106,7 @@ func (s *EtcdDiscovery) Register() error {
 	return nil
 }
 
-//ListenLeaseRespChan 监听 续租情况
+// ListenLeaseRespChan 监听 续租情况
 func (s *EtcdDiscovery) ListenLeaseRespChan() {
 	for leaseKeepResp := range s.keepAliveChan {
 		log.Println("续约成功", leaseKeepResp)

@@ -10,7 +10,6 @@ const (
 	defaultInternalPort       = 9527
 	defaultPort               = 9528
 	NodeAddress               = "node_address"
-	TransAddress              = "trans_address"
 	authTime                  = 10 * time.Second
 )
 

@@ -8,7 +8,7 @@ import (
 
 // Login
 func Login(c echo.Context) error {
-	//参数验证绑定
+	// Argument parsing
 	req, response, err := ParseJson(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -24,7 +24,7 @@ func Login(c echo.Context) error {
 
 // Register
 func Register(c echo.Context) error {
-	//参数验证绑定
+	// Argument parsing
 	req, response, err := ParseJson(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -43,7 +43,7 @@ func Register(c echo.Context) error {
 
 // SendSmsCode
 func SendSmsCode(c echo.Context) error {
-	//参数验证绑定
+	// Argument parsing
 	req, response, err := ParseJson(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -58,6 +58,7 @@ func SendSmsCode(c echo.Context) error {
 
 // ChatInit
 func ChatInit(c echo.Context) error {
+	// Argument parsing
 	uid, _, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -71,6 +72,7 @@ func ChatInit(c echo.Context) error {
 
 // GetGroupMembers
 func GetGroupMembers(c echo.Context) error {
+	// Argument parsing
 	uid, _, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -84,6 +86,7 @@ func GetGroupMembers(c echo.Context) error {
 
 // Search
 func Search(c echo.Context) error {
+	// Argument parsing
 	_, req, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -99,6 +102,7 @@ func Search(c echo.Context) error {
 
 // AddFriend
 func AddFriend(c echo.Context) error {
+	// Argument parsing
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -114,6 +118,7 @@ func AddFriend(c echo.Context) error {
 
 // ManageSystemMsg
 func ManageSystemMsg(c echo.Context) error {
+	// Argument parsing
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -129,6 +134,7 @@ func ManageSystemMsg(c echo.Context) error {
 
 // ManageAddFriend
 func ManageAddFriend(c echo.Context) error {
+	// Argument parsing
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -144,6 +150,7 @@ func ManageAddFriend(c echo.Context) error {
 
 // JoinGroup
 func JoinGroup(c echo.Context) error {
+	// Argument parsing
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -159,6 +166,7 @@ func JoinGroup(c echo.Context) error {
 
 // ManageJoinGroup
 func ManageJoinGroup(c echo.Context) error {
+	// Argument parsing
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -174,6 +182,7 @@ func ManageJoinGroup(c echo.Context) error {
 
 // CreateGroup
 func CreateGroup(c echo.Context) error {
+	// Argument parsing
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
@@ -189,6 +198,7 @@ func CreateGroup(c echo.Context) error {
 
 // GetSystemMsg
 func GetSystemMsg(c echo.Context) error {
+	// Argument parsing
 	uid, req, response, err := ParseParams(c)
 	if err != nil {
 		return response.RetError(err, -1)
