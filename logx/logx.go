@@ -1,14 +1,5 @@
 package logx
 
-type LogLevel uint8
-
-const (
-	DEBUG LogLevel = 1 << iota
-	INFO
-	WARNING
-	ERROR
-)
-
 type Logx interface {
 	Debug(v ...interface{})
 	Debugf(format string, v ...interface{})
