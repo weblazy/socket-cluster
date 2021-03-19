@@ -17,20 +17,6 @@ func (this *TcpProtocol) SetNodeHandler(nodeHandler protocol.Node) {
 	this.nodeHandler = nodeHandler
 }
 
-func (this *TcpProtocol) Dial(addr string) (protocol.Connection, error) {
-	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
-	if err != nil {
-		log.Printf("Resolve tcp addr failed: %v\n", err)
-		return nil, err
-	}
-	conn, err := net.DialTCP("tcp", nil, tcpAddr)
-	if err != nil {
-		log.Printf("Dial to server failed: %v\n", err)
-		return nil, err
-	}
-	return NewTcpConnection(conn), err
-}
-
 func (this *TcpProtocol) ListenAndServe(port int64) error {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
@@ -70,11 +56,18 @@ func (this *TcpProtocol) handleClient(connect net.Conn) {
 	}()
 }
 
-func (this *TcpProtocol) ServeConn(conn protocol.Connection, f func(conn protocol.Connection, p []byte)) error {
-	defer func() {
-		if conn != nil {
-			conn.Close()
-		}
-	}()
-	return protocol.DefaultFlowProto.Read(conn.(*TcpConnection), this.nodeHandler.OnTransMsg)
+func (this *TcpProtocol) Dial(addr string) (protocol.Connection, error) {
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		return nil, err
+	}
+	return NewTcpConnection(conn), err
+}
+
+func (this *TcpProtocol) ServeConn(conn protocol.Connection, handler func(conn protocol.Connection, p []byte)) error {
+	return protocol.DefaultFlowProto.Read(conn.(*TcpConnection), handler)
 }

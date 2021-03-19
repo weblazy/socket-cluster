@@ -22,21 +22,6 @@ func (this *QuicProtocol) SetNodeHandler(nodeHandler protocol.Node) {
 	this.nodeHandler = nodeHandler
 }
 
-func (this *QuicProtocol) Dial(addr string) (*QuicConnection, error) {
-	tlsConf := &tls.Config{NextProtos: []string{"quic-echo-example"}, InsecureSkipVerify: true}
-	session, err := quic.DialAddr(addr, tlsConf, nil)
-	if err != nil {
-		fmt.Println("err" + err.Error())
-		return nil, err
-	}
-	stream, err := session.OpenStreamSync(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-	return &QuicConnection{Stream: stream}, err
-}
-
 func (this *QuicProtocol) ListenAndServe(port int64) error {
 	tlsConf := generateTLSConfig()
 	listener, err := quic.ListenAddr(fmt.Sprintf(":%d", port), tlsConf, nil)
@@ -102,12 +87,19 @@ func generateTLSConfig() *tls.Config {
 	return &tls.Config{NextProtos: []string{"quic-echo-example"}, Certificates: []tls.Certificate{tlsCert}}
 }
 
-func (this *QuicProtocol) ServeConn(conn protocol.Connection, f func(conn protocol.Connection, p []byte)) error {
-	// this.timer.SetTimer(connect.RemoteAddr().String(), conn, authTime)
-	defer func() {
-		if conn != nil {
-			conn.Close()
-		}
-	}()
-	return protocol.DefaultFlowProto.Read(conn.(*QuicConnection), this.nodeHandler.OnTransMsg)
+func (this *QuicProtocol) Dial(addr string) (*QuicConnection, error) {
+	tlsConf := &tls.Config{NextProtos: []string{"quic-echo-example"}, InsecureSkipVerify: true}
+	session, err := quic.DialAddr(addr, tlsConf, nil)
+	if err != nil {
+		return nil, err
+	}
+	stream, err := session.OpenStreamSync(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return &QuicConnection{Stream: stream}, err
+}
+
+func (this *QuicProtocol) ServeConn(conn protocol.Connection, handler func(conn protocol.Connection, p []byte)) error {
+	return protocol.DefaultFlowProto.Read(conn.(*QuicConnection), handler)
 }

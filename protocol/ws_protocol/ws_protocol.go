@@ -29,14 +29,6 @@ func (this *WsProtocol) SetNodeHandler(nodeHandler protocol.Node) {
 	this.nodeHandler = nodeHandler
 }
 
-func (this *WsProtocol) Dial(addr string) (protocol.Connection, error) {
-	connect, _, err := websocket.DefaultDialer.Dial(addr, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &WsConnection{Conn: connect}, nil
-}
-
 func (this *WsProtocol) ListenAndServe(port int64) error {
 	e := echo.New()
 	e.GET("/client", this.clientHandler)
@@ -80,15 +72,15 @@ func (this *WsProtocol) clientHandler(c echo.Context) error {
 	return nil
 }
 
-func (this *WsProtocol) ServeConn(conn protocol.Connection, OnTransMsg func(conn protocol.Connection, msg []byte)) error {
-	defer func() {
-		this.nodeHandler.OnClose(conn)
-		if conn != nil {
-			conn.Close()
-		}
-	}()
+func (this *WsProtocol) Dial(addr string) (protocol.Connection, error) {
+	connect, _, err := websocket.DefaultDialer.Dial(addr, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &WsConnection{Conn: connect}, nil
+}
 
-	this.nodeHandler.OnConnect(conn)
+func (this *WsProtocol) ServeConn(conn protocol.Connection, handler func(conn protocol.Connection, msg []byte)) error {
 	for {
 		_, msg, err := conn.(*WsConnection).Conn.ReadMessage()
 		if err != nil {
@@ -97,6 +89,6 @@ func (this *WsProtocol) ServeConn(conn protocol.Connection, OnTransMsg func(conn
 			}
 			return err
 		}
-		this.nodeHandler.OnClientMsg(conn, msg)
+		handler(conn, msg)
 	}
 }

@@ -18,20 +18,6 @@ func (this *TcpProtocol) SetNodeHandler(nodeHandler protocol.Node) {
 	this.nodeHandler = nodeHandler
 }
 
-func (this *TcpProtocol) Dial(addr string) (protocol.Connection, error) {
-	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
-	if err != nil {
-		log.Printf("Resolve tcp addr failed: %v\n", err)
-		return nil, err
-	}
-	conn, err := net.DialTCP("tcp", nil, tcpAddr)
-	if err != nil {
-		log.Printf("Dial to server failed: %v\n", err)
-		return nil, err
-	}
-	return tcp_protocol.NewTcpConnection(conn), err
-}
-
 func (this *TcpProtocol) ListenAndServe(port int64) error {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
@@ -44,13 +30,13 @@ func (this *TcpProtocol) ListenAndServe(port int64) error {
 				logx.Info(err)
 				break
 			}
-			go this.handleClient(conn)
+			go this.handleClient(conn, this.nodeHandler.OnTransMsg)
 		}
 	}()
 	return nil
 }
 
-func (this *TcpProtocol) handleClient(connect net.Conn) {
+func (this *TcpProtocol) handleClient(connect net.Conn, handler func(conn protocol.Connection, p []byte)) {
 	conn := tcp_protocol.NewTcpConnection(connect)
 	go func() {
 		defer func() {
@@ -58,7 +44,7 @@ func (this *TcpProtocol) handleClient(connect net.Conn) {
 				connect.Close()
 			}
 		}()
-		err := protocol.DefaultFlowProto.Read(conn, this.nodeHandler.OnTransMsg)
+		err := protocol.DefaultFlowProto.Read(conn, handler)
 		if err != nil {
 			if err.Error() == "EOF" {
 				// connection to closed
@@ -68,11 +54,19 @@ func (this *TcpProtocol) handleClient(connect net.Conn) {
 		}
 	}()
 }
-func (this *TcpProtocol) ServeConn(conn protocol.Connection, f func(conn protocol.Connection, p []byte)) error {
-	defer func() {
-		if conn != nil {
-			conn.Close()
-		}
-	}()
-	return protocol.DefaultFlowProto.Read(conn.(*tcp_protocol.TcpConnection), this.nodeHandler.OnTransMsg)
+
+func (this *TcpProtocol) Dial(addr string) (protocol.Connection, error) {
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		return nil, err
+	}
+	return tcp_protocol.NewTcpConnection(conn), err
+}
+
+func (this *TcpProtocol) ServeConn(conn protocol.Connection, handler func(conn protocol.Connection, p []byte)) error {
+	return protocol.DefaultFlowProto.Read(conn.(*tcp_protocol.TcpConnection), handler)
 }

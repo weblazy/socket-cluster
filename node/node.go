@@ -22,6 +22,7 @@ type (
 	// Node communication node
 	Node struct {
 		protocol.Node
+
 		nodeConf         *NodeConf
 		clientIdSessions *syncx.ConcurrentDoubleMap
 		// key: socket address
@@ -152,7 +153,6 @@ func (this *Node) Register() {
 	this.nodeConf.discoveryHandler.Register()
 	watchChan := make(chan discovery.EventType, 1)
 	go this.nodeConf.discoveryHandler.WatchService(watchChan)
-	// nodeMap, err := discoveryHandler.GetService()
 	go func() {
 		for {
 			select {
@@ -253,14 +253,12 @@ func (this *Node) OnTransMsg(conn protocol.Connection, msg []byte) {
 func (this *Node) AuthTrans(conn protocol.Connection, authMsg *AuthMsg) error {
 	nodeId := authMsg.NodeId
 	this.timer.RemoveTimer(conn.Addr()) // Cancel timeingwheel task
-	logx.Info(authMsg)
 	if authMsg.Password != this.nodeConf.Password {
 		logx.Infof("Connect:%s,Wrong password:%s", nodeId, authMsg.Password)
 		conn.Close()
 		return fmt.Errorf("auth faild")
 	}
 	this.transClients.Store(nodeId, conn)
-	logx.Info(authMsg)
 	return nil
 }
 
@@ -334,7 +332,9 @@ func (this *Node) UpdateNodeList() error {
 		go func(ipAddress string, conn protocol.Connection) {
 			defer func(addr string, conn protocol.Connection) {
 				this.transServices.Delete(addr)
-				conn.Close()
+				if conn != nil {
+					conn.Close()
+				}
 			}(addr, conn)
 			err := this.nodeConf.internalProtocolHandler.ServeConn(conn, this.OnTransMsg)
 			if err != nil {
