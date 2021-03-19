@@ -38,7 +38,7 @@ type (
 		level      logLevel // 输出level 不设置默认全部输出
 		output     *os.File
 	}
-	Record struct {
+	record struct {
 		TimeStamp string        `json:"timestamp"`         // 日志生成时间
 		Level     string        `json:"level"`             // 日志等级
 		Flow      string        `json:"flow,omitempty"`    // 操作流
@@ -52,6 +52,7 @@ func NewStdLogger() *logger {
 	return &logger{
 		dateFormat: defaultTimeTemp,
 		output:     os.Stdout,
+		level: DEBUG | INFO | WARNING | ERROR,
 	}
 }
 
@@ -63,6 +64,7 @@ func NewFileLogger() *logger {
 	return &logger{
 		dateFormat: defaultTimeTemp,
 		output:     file,
+		level: DEBUG | INFO | WARNING | ERROR,
 	}
 }
 
@@ -82,49 +84,49 @@ func (s *logger) ShowLevel(level logLevel) *logger {
 }
 
 func (s *logger) Debug(v ...interface{}) {
-	if s.level == 0 || (s.level&DEBUG != 0) {
+	if s.level & DEBUG != 0 {
 		s.printContent(DEBUG, v...)
 	}
 }
 
 func (s *logger) Debugf(format string, v ...interface{}) {
-	if s.level == 0 || (s.level&DEBUG != 0) {
+	if s.level & DEBUG != 0 {
 		s.printMsg(DEBUG, format, v...)
 	}
 }
 
 func (s *logger) Info(v ...interface{}) {
-	if s.level == 0 || (s.level&INFO != 0) {
+	if s.level & INFO != 0 {
 		s.printContent(INFO, v...)
 	}
 }
 
 func (s *logger) Infof(format string, v ...interface{}) {
-	if s.level == 0 || (s.level&INFO != 0) {
+	if s.level & INFO != 0 {
 		s.printMsg(INFO, format, v...)
 	}
 }
 
 func (s *logger) Warning(v ...interface{}) {
-	if s.level == 0 || (s.level&WARNING != 0) {
+	if s.level & WARNING != 0 {
 		s.printContent(WARNING, v...)
 	}
 }
 
 func (s *logger) Warningf(format string, v ...interface{}) {
-	if s.level == 0 || (s.level&WARNING != 0) {
+	if s.level & WARNING != 0 {
 		s.printMsg(WARNING, format, v...)
 	}
 }
 
 func (s *logger) Error(v ...interface{}) {
-	if s.level == 0 || (s.level&ERROR != 0) {
+	if s.level & ERROR != 0 {
 		s.printContent(ERROR, v...)
 	}
 }
 
 func (s *logger) Errorf(format string, v ...interface{}) {
-	if s.level == 0 || (s.level&ERROR != 0) {
+	if s.level & ERROR != 0 {
 		s.printMsg(ERROR, format, v...)
 	}
 }
@@ -132,7 +134,7 @@ func (s *logger) Errorf(format string, v ...interface{}) {
 func (s *logger) printContent(level logLevel, v ...interface{}) {
 	levelStr := levelToStr(level)
 	funcName, fileName, lineNo := getCaseLineInfo(3)
-	record := Record{
+	record := record{
 		TimeStamp: time.Now().Format(s.dateFormat),
 		Flow:      s.flow,
 		Loc:       fmt.Sprintf("%s:%d:%s", fileName, lineNo, funcName),
@@ -146,7 +148,7 @@ func (s *logger) printContent(level logLevel, v ...interface{}) {
 func (s *logger) printMsg(level logLevel, format string, v ...interface{}) {
 	levelStr := levelToStr(level)
 	funcName, fileName, lineNo := getCaseLineInfo(3)
-	record := Record{
+	record := record{
 		TimeStamp: time.Now().Format(s.dateFormat),
 		Flow:      s.flow,
 		Loc:       fmt.Sprintf("%s:%d:%s", fileName, lineNo, funcName),

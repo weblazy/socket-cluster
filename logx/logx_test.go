@@ -8,7 +8,7 @@ import (
 )
 
 func TestStdoutLog(t *testing.T) {
-	logger := logx.NewStdLogger().SetFlow("stdioLog").ShowLevel(logx.DEBUG | logx.ERROR)
+	logger := logx.NewStdLogger()
 	logger.Debug("this is a debug log")
 	logger.Info("this is a info log")
 	logger.Warning("this is a warning log")
