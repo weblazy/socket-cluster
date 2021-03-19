@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"github.com/weblazy/easy/utils/logx"
 	"github.com/weblazy/socket-cluster/protocol"
 )
 
@@ -14,19 +15,39 @@ type WsConnection struct {
 	protocol.Connection
 }
 
+func NewWsConnection(conn *websocket.Conn) *WsConnection {
+	return &WsConnection{
+		Conn: conn,
+	}
+}
+
 // WriteMsg send byte array message
-func (conn *WsConnection) WriteMsg(data []byte) error {
-	conn.Mutex.Lock()
-	defer conn.Mutex.Unlock()
-	return conn.Conn.WriteMessage(websocket.TextMessage, data)
+func (this *WsConnection) WriteMsg(data []byte) error {
+	this.Mutex.Lock()
+	defer this.Mutex.Unlock()
+	return this.Conn.WriteMessage(websocket.TextMessage, data)
 }
 
-func (conn *WsConnection) Addr() string {
-	return conn.Conn.RemoteAddr().String()
+func (this *WsConnection) ReadMsg() ([]byte, error) {
+	_, msg, err := this.Conn.ReadMessage()
+	if err != nil {
+		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			logx.Info(err)
+		}
+		return nil, err
+	}
+	return msg, err
 }
 
-func (conn *WsConnection) Close() error {
-	return conn.Conn.Close()
+func (this *WsConnection) Addr() string {
+	return this.Conn.RemoteAddr().String()
+}
+
+func (this *WsConnection) Close() error {
+	if this.Conn == nil {
+		return nil
+	}
+	return this.Conn.Close()
 }
 
 func OptionHandler(c echo.Context) error {

@@ -4,7 +4,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/protocol"
-	"github.com/weblazy/socket-cluster/protocol/internal_protocol"
+	"github.com/weblazy/socket-cluster/protocol/tcp_protocol"
 	"github.com/weblazy/socket-cluster/session_storage"
 )
 
@@ -16,14 +16,14 @@ type (
 	}
 	// NodeConf node config
 	NodeConf struct {
-		HostList                []string // A list of IP or domain names for DNS resolution
-		Host                    string   // the ip or domain of the node
-		NodeId                  string   // Node unique identification
-		Port                    int64    // Node port
-		InternalPort            int64    // Node port
-		Password                string   // Password for auth when connect to other node
-		ClientPingInterval      int64
-		NodePingInterval        int64                  // Heartbeat interval
+		hostList                []string // A list of IP or domain names for DNS resolution
+		host                    string   // the ip or domain of the node
+		nodeId                  string   // Node unique identification
+		port                    int64    // Node port
+		internalPort            int64    // Node port
+		password                string   // Password for auth when connect to other node
+		clientPingInterval      int64
+		nodePingInterval        int64                  // Heartbeat interval
 		onMsg                   func(context *Context) // callback function when receive client message
 		discoveryHandler        discovery.ServiceDiscovery
 		protocolHandler         protocol.Protocol
@@ -42,16 +42,16 @@ type (
 // NewNodeConf creates a new NodeConf.
 func NewNodeConf(host string, protocolHandler protocol.Protocol, sessionStorageHandler session_storage.SessionStorage, discoveryHandler discovery.ServiceDiscovery, onMsg func(context *Context)) *NodeConf {
 	return &NodeConf{
-		Host:                    host,
-		HostList:                []string{host},
-		NodeId:                  GetUUID(),
-		Port:                    defaultPort,
-		Password:                defaultPassword,
-		ClientPingInterval:      defaultClientPingInterval,
-		NodePingInterval:        defaultNodePingInterval,
+		host:                    host,
+		hostList:                []string{host},
+		nodeId:                  GetUUID(),
+		port:                    defaultPort,
+		password:                defaultPassword,
+		clientPingInterval:      defaultClientPingInterval,
+		nodePingInterval:        defaultNodePingInterval,
 		protocolHandler:         protocolHandler,
-		internalProtocolHandler: &internal_protocol.TcpProtocol{},
-		InternalPort:            defaultInternalPort,
+		internalProtocolHandler: &tcp_protocol.TcpProtocol{},
+		internalPort:            defaultInternalPort,
 		sessionStorageHandler:   sessionStorageHandler,
 		discoveryHandler:        discoveryHandler,
 		onMsg:                   onMsg,
@@ -62,19 +62,19 @@ func NewNodeConf(host string, protocolHandler protocol.Protocol, sessionStorageH
 
 // WithPassword sets the password for transport node
 func (conf *NodeConf) WithPassword(password string) *NodeConf {
-	conf.Password = password
+	conf.password = password
 	return conf
 }
 
 // WithPort sets the port for websocket
 func (conf *NodeConf) WithPort(port int64) *NodeConf {
-	conf.Port = port
+	conf.port = port
 	return conf
 }
 
 // WithInternalPort sets the port for internal protocol
 func (conf *NodeConf) WithInternalPort(port int64) *NodeConf {
-	conf.InternalPort = port
+	conf.internalPort = port
 	return conf
 }
 
@@ -86,13 +86,13 @@ func (conf *NodeConf) WithInternalProtocolHandler(internalProtocolHandler protoc
 
 // WithClientInterval sets the heartbeat interval
 func (conf *NodeConf) WithClientInterval(pingInterval int64) *NodeConf {
-	conf.ClientPingInterval = pingInterval
+	conf.clientPingInterval = pingInterval
 	return conf
 }
 
 // WithHostList sets the host list for node cluster
 func (conf *NodeConf) WithHostList(hostList []string) *NodeConf {
-	conf.HostList = hostList
+	conf.hostList = hostList
 	return conf
 }
 

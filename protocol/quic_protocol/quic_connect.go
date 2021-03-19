@@ -8,33 +8,46 @@ import (
 )
 
 type QuicConnection struct {
-	Stream quic.Stream
-	Mutex  sync.Mutex
-	protocol.FlowConnection
-	ProtoHandler protocol.Proto
+	Stream              quic.Stream
+	Mutex               sync.Mutex
+	flowProtocolHandler protocol.Proto
+}
+
+func NewQuicConnection(stream quic.Stream) *QuicConnection {
+	return &QuicConnection{
+		Stream:              stream,
+		flowProtocolHandler: protocol.NewFlowProtocol(protocol.HEADER, protocol.MAX_LENGTH),
+	}
 }
 
 // WriteMsg sends byte array message
-func (conn *QuicConnection) WriteMsg(data []byte) error {
-	data, err := conn.ProtoHandler.Pack(data)
+func (this *QuicConnection) WriteMsg(data []byte) error {
+	data, err := this.flowProtocolHandler.Pack(data)
 	if err != nil {
 		return err
 	}
-	conn.Mutex.Lock()
-	defer conn.Mutex.Unlock()
-	_, err = conn.Stream.Write(data)
+	this.Mutex.Lock()
+	defer this.Mutex.Unlock()
+	_, err = this.Stream.Write(data)
 	return err
 }
 
 // ReadMsg reads byte array message
-func (conn *QuicConnection) ReadMsg(data []byte) (int, error) {
-	return conn.Stream.Read(data)
+func (this *QuicConnection) ReadMsg() ([]byte, error) {
+	msg, err := this.flowProtocolHandler.ReadMsg(this.Stream)
+	if err != nil {
+		return nil, err
+	}
+	return msg, err
 }
 
-func (conn *QuicConnection) Addr() string {
-	return conn.Stream.StreamID().InitiatedBy().String()
+func (this *QuicConnection) Addr() string {
+	return this.Stream.StreamID().InitiatedBy().String()
 }
 
-func (conn *QuicConnection) Close() error {
-	return conn.Stream.Close()
+func (this *QuicConnection) Close() error {
+	if this.Stream == nil {
+		return nil
+	}
+	return this.Stream.Close()
 }

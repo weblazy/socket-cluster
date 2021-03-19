@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"io"
 
 	"github.com/weblazy/easy/utils/logx"
 )
@@ -18,73 +19,72 @@ const (
 var ExceededErr = errors.New("The maximum length of the packet is exceeded")
 var HeaderErr = errors.New("The message header is incorrect")
 
-var DefaultFlowProto = NewFlowProto(HEADER, MAX_LENGTH)
+var DefaultFlowProtocol = NewFlowProtocol(HEADER, MAX_LENGTH)
 
-type FlowProto struct {
+type FlowProtocol struct {
 	Proto
 	header     string
 	headLength int
 	bufLength  int
+	start      int
+	end        int
+	buf        []byte
 }
 
-func NewFlowProto(header string, bufLength int) *FlowProto {
-	return &FlowProto{
+func NewFlowProtocol(header string, bufLength int) *FlowProtocol {
+	return &FlowProtocol{
 		header:     header,
 		headLength: len(header) + HEAD_SIZE,
 		bufLength:  bufLength,
+		buf:        make([]byte, bufLength),
 	}
 }
 
 // Read Read and parse the received message
-func (this *FlowProto) Read(conn FlowConnection, onMsg func(conn Connection, msg []byte)) error {
-	var start, end int
-	buf := make([]byte, this.bufLength)
-	for {
-		// read header
-		for end-start < this.headLength {
-			// reset start
-			if start > 0 {
-				copy(buf, buf[start:end])
-				end -= start
-				start = 0
-			}
-			n, err := conn.ReadMsg(buf[end:])
-			if err != nil {
-				return err
-			}
-			end += n
+func (this *FlowProtocol) ReadMsg(conn io.Reader) ([]byte, error) {
+	// read header
+	for this.end-this.start < this.headLength {
+		// reset start
+		if this.start > 0 {
+			copy(this.buf, this.buf[this.start:this.end])
+			this.end -= this.start
+			this.start = 0
 		}
-
-		headBuf := buf[start : start+this.headLength]
-		// Verify that the message header is correct
-		if string(headBuf[:len(this.header)]) != this.header {
-			logx.Info(string(headBuf[:len(this.header)]))
-			return HeaderErr
+		n, err := conn.Read(this.buf[this.end:])
+		if err != nil {
+			return nil, err
 		}
-
-		// read content
-		contentSize := int(binary.BigEndian.Uint32(headBuf[len(this.header):]))
-		totalLenth := this.headLength + contentSize
-		if totalLenth > this.bufLength {
-			return ExceededErr
-		}
-		for end-start < totalLenth {
-			n, err := conn.ReadMsg(buf[end:])
-			if err != nil {
-				return err
-			}
-			end += n
-		}
-		start += this.headLength
-		contentBuf := buf[start : start+contentSize]
-		start += contentSize
-		onMsg(conn, contentBuf)
+		this.end += n
 	}
 
+	headBuf := this.buf[this.start : this.start+this.headLength]
+	// Verify that the message header is correct
+	if string(headBuf[:len(this.header)]) != this.header {
+		logx.Info(string(headBuf[:len(this.header)]))
+		return nil, HeaderErr
+	}
+
+	// read content
+	contentSize := int(binary.BigEndian.Uint32(headBuf[len(this.header):]))
+	totalLenth := this.headLength + contentSize
+	if totalLenth > this.bufLength {
+		return nil, ExceededErr
+	}
+	for this.end-this.start < totalLenth {
+		n, err := conn.Read(this.buf[this.end:])
+		if err != nil {
+			return nil, err
+		}
+		this.end += n
+	}
+	this.start += this.headLength
+	contentBuf := this.buf[this.start : this.start+contentSize]
+	this.start += contentSize
+	return contentBuf, nil
 }
 
 // Pack Package raw data
-func (this *FlowProto) Pack(data []byte) ([]byte, error) {
+func (this *FlowProtocol) Pack(data []byte) ([]byte, error) {
 	headSize := len(data)
 	if headSize+this.headLength > this.bufLength {
 		return nil, ExceededErr

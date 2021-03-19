@@ -15,14 +15,9 @@ import (
 )
 
 type QuicProtocol struct {
-	nodeHandler protocol.Node
 }
 
-func (this *QuicProtocol) SetNodeHandler(nodeHandler protocol.Node) {
-	this.nodeHandler = nodeHandler
-}
-
-func (this *QuicProtocol) ListenAndServe(port int64) error {
+func (this *QuicProtocol) ListenAndServe(port int64, onConnect func(conn protocol.Connection)) error {
 	tlsConf := generateTLSConfig()
 	listener, err := quic.ListenAddr(fmt.Sprintf(":%d", port), tlsConf, nil)
 	if err != nil {
@@ -33,36 +28,16 @@ func (this *QuicProtocol) ListenAndServe(port int64) error {
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			go this.handleClient(sess)
+			go func(sess quic.Session) {
+				stream, err := sess.AcceptStream(context.Background())
+				if err != nil {
+					panic(err)
+				}
+				conn := NewQuicConnection(stream)
+				onConnect(conn)
+			}(sess)
 		}
 	}
-}
-
-func (this *QuicProtocol) handleClient(sess quic.Session) {
-	stream, err := sess.AcceptStream(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	conn := &QuicConnection{Stream: stream}
-	this.nodeHandler.OnConnect(conn)
-	go func() {
-		defer func() {
-			this.nodeHandler.OnClose(conn)
-			if conn != nil {
-				conn.Close()
-			}
-		}()
-		err := protocol.DefaultFlowProto.Read(conn, this.nodeHandler.OnClientMsg)
-		if err != nil {
-			if err.Error() == "EOF" {
-				// connection to closed
-			} else {
-				panic(err)
-			}
-		}
-
-	}()
-
 }
 
 // Setup a bare-bones TLS config for the server
@@ -97,9 +72,5 @@ func (this *QuicProtocol) Dial(addr string) (*QuicConnection, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &QuicConnection{Stream: stream}, err
-}
-
-func (this *QuicProtocol) ServeConn(conn protocol.Connection, handler func(conn protocol.Connection, p []byte)) error {
-	return protocol.DefaultFlowProto.Read(conn.(*QuicConnection), handler)
+	return NewQuicConnection(stream), err
 }

@@ -8,39 +8,42 @@ import (
 )
 
 type TcpConnection struct {
-	Conn  net.Conn
-	Mutex sync.Mutex
-	protocol.FlowConnection
-	ProtoHandler protocol.Proto
+	Conn                net.Conn
+	Mutex               sync.Mutex
+	flowProtocolHandler protocol.Proto
 }
 
 func NewTcpConnection(conn net.Conn) *TcpConnection {
 	return &TcpConnection{
-		Conn:         conn,
-		ProtoHandler: protocol.DefaultFlowProto,
+		Conn:                conn,
+		flowProtocolHandler: protocol.NewFlowProtocol(protocol.HEADER, protocol.MAX_LENGTH),
 	}
 }
 
 // WriteMsg send byte array message
-func (conn *TcpConnection) WriteMsg(data []byte) error {
-	data, err := conn.ProtoHandler.Pack(data)
+func (this *TcpConnection) WriteMsg(data []byte) error {
+	data, err := this.flowProtocolHandler.Pack(data)
 	if err != nil {
 		return err
 	}
-	conn.Mutex.Lock()
-	defer conn.Mutex.Unlock()
-	_, err = conn.Conn.Write(data)
+	this.Mutex.Lock()
+	defer this.Mutex.Unlock()
+	_, err = this.Conn.Write(data)
 	return err
 }
 
-func (conn *TcpConnection) ReadMsg(data []byte) (int, error) {
-	return conn.Conn.Read(data)
+func (this *TcpConnection) ReadMsg() ([]byte, error) {
+	msg, err := this.flowProtocolHandler.ReadMsg(this.Conn)
+	if err != nil {
+		return nil, err
+	}
+	return msg, err
 }
 
-func (conn *TcpConnection) Addr() string {
-	return conn.Conn.RemoteAddr().String()
+func (this *TcpConnection) Addr() string {
+	return this.Conn.RemoteAddr().String()
 }
 
-func (conn *TcpConnection) Close() error {
-	return conn.Conn.Close()
+func (this *TcpConnection) Close() error {
+	return this.Conn.Close()
 }

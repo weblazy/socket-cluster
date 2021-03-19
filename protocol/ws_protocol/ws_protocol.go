@@ -22,16 +22,22 @@ var (
 )
 
 type WsProtocol struct {
-	nodeHandler protocol.Node
 }
 
-func (this *WsProtocol) SetNodeHandler(nodeHandler protocol.Node) {
-	this.nodeHandler = nodeHandler
-}
-
-func (this *WsProtocol) ListenAndServe(port int64) error {
+func (this *WsProtocol) ListenAndServe(port int64, onConnect func(conn protocol.Connection)) error {
 	e := echo.New()
-	e.GET("/client", this.clientHandler)
+	e.GET("/client", func(c echo.Context) error {
+		connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+		if err != nil {
+			if _, ok := err.(websocket.HandshakeError); !ok {
+				logx.Info(err)
+			}
+			return err
+		}
+		conn := NewWsConnection(connect)
+		onConnect(conn)
+		return nil
+	})
 	go func() {
 		err := e.Start(fmt.Sprintf(":%d", port))
 		if err != nil {
@@ -41,54 +47,10 @@ func (this *WsProtocol) ListenAndServe(port int64) error {
 	return nil
 }
 
-// clientHandler deal client connection
-func (this *WsProtocol) clientHandler(c echo.Context) error {
-	connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		if _, ok := err.(websocket.HandshakeError); !ok {
-			logx.Info(err)
-		}
-		return err
-	}
-	conn := &WsConnection{Conn: connect}
-	defer func() {
-		this.nodeHandler.OnClose(conn)
-		if connect != nil {
-			connect.Close()
-		}
-	}()
-
-	this.nodeHandler.OnConnect(conn)
-	for {
-		_, msg, err := connect.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logx.Info(err)
-			}
-			break
-		}
-		this.nodeHandler.OnClientMsg(conn, msg)
-	}
-	return nil
-}
-
 func (this *WsProtocol) Dial(addr string) (protocol.Connection, error) {
 	connect, _, err := websocket.DefaultDialer.Dial(addr, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &WsConnection{Conn: connect}, nil
-}
-
-func (this *WsProtocol) ServeConn(conn protocol.Connection, handler func(conn protocol.Connection, msg []byte)) error {
-	for {
-		_, msg, err := conn.(*WsConnection).Conn.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logx.Info(err)
-			}
-			return err
-		}
-		handler(conn, msg)
-	}
+	return NewWsConnection(connect), nil
 }

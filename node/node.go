@@ -18,11 +18,17 @@ import (
 )
 
 type (
+	Node interface {
+		AuthClient(conn protocol.Connection, clientId string) error
+		OnClientPing(clientId int64) error
+		IsOnline(clientId int64) bool
+		SendToClientIds(clientIds []string, req []byte) error
+		SendToClientId(clientId string, req []byte) error
+	}
 
 	// Node communication node
-	Node struct {
-		protocol.Node
-
+	node struct {
+		Node
 		nodeConf         *NodeConf
 		clientIdSessions *syncx.ConcurrentDoubleMap
 		// key: socket address
@@ -42,7 +48,7 @@ type (
 )
 
 // NewNode
-func NewNode(cfg *NodeConf) (*Node, error) {
+func NewNode(cfg *NodeConf) (Node, error) {
 	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
 		logx.Infof("%s auth timeout", k)
 		if v.(protocol.Connection) != nil {
@@ -56,7 +62,7 @@ func NewNode(cfg *NodeConf) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	node := &Node{
+	nodeObj := &node{
 		nodeConf:         cfg,
 		clientIdSessions: syncx.NewConcurrentDoubleMap(32),
 		startTime:        time.Now(),
@@ -64,121 +70,46 @@ func NewNode(cfg *NodeConf) (*Node, error) {
 		clientConns:      goutil.AtomicMap(),
 		transClients:     goutil.AtomicMap(),
 		transServices:    goutil.AtomicMap(),
-		nodeTimeout:      cfg.NodePingInterval * 3,
-		clientTimeout:    cfg.ClientPingInterval * 3,
+		nodeTimeout:      cfg.nodePingInterval * 3,
+		clientTimeout:    cfg.clientPingInterval * 3,
 	}
-	node.nodeConf.discoveryHandler.SetNodeId(cfg.NodeId)
-	node.nodeConf.sessionStorageHandler.SetNodeId(cfg.NodeId)
-	cfg.internalProtocolHandler.SetNodeHandler(node)
-	cfg.internalProtocolHandler.ListenAndServe(cfg.InternalPort)
-	cfg.protocolHandler.SetNodeHandler(node)
-	cfg.protocolHandler.ListenAndServe(cfg.Port)
-	node.SendPing()
-	node.Register()
-	return node, nil
+	nodeObj.nodeConf.discoveryHandler.SetNodeId(cfg.nodeId)
+	nodeObj.nodeConf.sessionStorageHandler.SetNodeId(cfg.nodeId)
+	cfg.internalProtocolHandler.ListenAndServe(cfg.internalPort, nodeObj.onTransConnect)
+	cfg.protocolHandler.ListenAndServe(cfg.port, nodeObj.onClientConnect)
+	nodeObj.sendPing()
+	nodeObj.register()
+	return nodeObj, nil
 }
 
-func (this *Node) OnConnect(connect protocol.Connection) {
-	this.nodeConf.plugin.OnConnect(connect)
-	this.timer.SetTimer(connect.Addr(), connect, authTime)
+// AuthClient Auth the node
+func (this *node) AuthClient(conn protocol.Connection, clientId string) error {
+	addr := conn.Addr()
+	this.timer.RemoveTimer(addr) // Cancel timeingwheel task
+	session := &Session{Conn: conn, ClientId: clientId}
+	this.clientConns.Store(addr, session)
+	return this.bindClientId(cast.ToInt64(clientId), session)
 }
 
-func (this *Node) OnClose(connect protocol.Connection) {
-	this.nodeConf.plugin.OnClose(connect)
-	addr := connect.Addr()
-	v1, ok := this.clientConns.Load(addr)
-	if ok {
-		clientId := v1.(*Session).ClientId
-		if clientId != "" {
-			this.clientIdSessions.Delete(clientId, addr)
+// BindClientId bind clientId with session
+func (this *node) bindClientId(clientId int64, se *Session) error {
+	addr := se.Conn.Addr()
+	this.clientIdSessions.StoreWithPlugin(cast.ToString(clientId), addr, se, func() {
+		oldClientId := se.CasClientId(cast.ToString(clientId))
+		oldClientIdInt := cast.ToInt64(oldClientId)
+		if oldClientId != "" && oldClientIdInt != clientId {
+			this.clientIdSessions.DeleteWithoutLock(oldClientId, addr)
 		}
-	}
-	this.clientConns.Delete(addr)
+	})
+	return this.nodeConf.sessionStorageHandler.BindClientId(clientId)
 }
 
-// SendPing send node Heartbeat
-func (this *Node) SendPing() {
-	go func() {
-		for {
-			time.Sleep(time.Duration(this.nodeConf.NodePingInterval) * time.Second)
-			// update node info
-			transClients := make([]interface{}, 0)
-			this.transClients.Range(func(k1, v1 interface{}) bool {
-				transClients = append(transClients, k1)
-				return true
-			})
-			transServices := make([]interface{}, 0)
-			this.transServices.Range(func(k1, v1 interface{}) bool {
-				transServices = append(transServices, k1)
-				return true
-			})
-
-			nodeInfo := map[string]interface{}{
-				"node_id":        this.nodeConf.NodeId,
-				"trans_clients":  transClients,
-				"trans_services": transServices,
-				"client_count":   this.clientConns.Len(),
-				"timestamp":      time.Now().Unix(),
-			}
-			nodeInfoByte, err := json.Marshal(nodeInfo)
-			if err != nil {
-				logx.Info(err)
-			}
-			err = this.nodeConf.discoveryHandler.UpdateInfo(nodeInfoByte)
-			if err != nil {
-				logx.Info(err)
-			}
-			err = this.UpdateNodeList()
-			if err != nil {
-				logx.Info(err)
-			}
-			// send to other node
-			this.transServices.Range(func(k, v interface{}) bool {
-				conn, ok := v.(protocol.Connection)
-				if !ok {
-					return true
-				}
-				err := conn.WriteMsg([]byte{})
-				if err != nil {
-					logx.Info(err)
-				}
-				return true
-			})
-		}
-	}()
-}
-
-// Register
-func (this *Node) Register() {
-	this.nodeConf.discoveryHandler.Register()
-	watchChan := make(chan discovery.EventType, 1)
-	go this.nodeConf.discoveryHandler.WatchService(watchChan)
-	go func() {
-		for {
-			select {
-			case value, ok := <-watchChan:
-				fmt.Printf("%#v\n", value)
-				fmt.Printf("%#v\n", ok)
-				if !ok {
-					fmt.Printf("channel关闭退出\n")
-					return
-				}
-				err := this.UpdateNodeList()
-				if err != nil {
-					logx.Info(err)
-				}
-			}
-		}
-	}()
-	// init
-	err := this.UpdateNodeList()
-	if err != nil {
-		logx.Info(err)
-	}
+func (this *node) OnClientPing(clientId int64) error {
+	return this.nodeConf.sessionStorageHandler.OnClientPing(clientId)
 }
 
 // IsOnline determine if a clientId is online
-func (this *Node) IsOnline(clientId int64) bool {
+func (this *node) IsOnline(clientId int64) bool {
 	addrArr, err := this.nodeConf.sessionStorageHandler.GetIps(clientId)
 	if err != nil {
 		logx.Info(err)
@@ -190,164 +121,65 @@ func (this *Node) IsOnline(clientId int64) bool {
 	return false
 }
 
-func (this *Node) OnClientPing(clientId int64) error {
-	return this.nodeConf.sessionStorageHandler.OnClientPing(clientId)
-}
-
-// OnClientMsg deal client message
-func (this *Node) OnClientMsg(conn protocol.Connection, msg []byte) {
-	addr := conn.Addr()
-	session, ok := this.clientConns.Load(addr)
-	clientId := ""
-	if ok {
-		clientId = session.(*Session).ClientId
+// SendToClientId Send message to a clientId
+func (this *node) SendToClientId(clientId string, req []byte) error {
+	if req == nil {
+		return fmt.Errorf("message is nil")
 	}
-	this.nodeConf.onMsg(&Context{Conn: conn, Msg: msg, ClientId: clientId})
-}
-
-// OnTransMsg handle internal communication node messages
-func (this *Node) OnTransMsg(conn protocol.Connection, msg []byte) {
-	var transMsg Msg
-	err := proto.Unmarshal(msg, &transMsg)
-	if err != nil {
-		logx.Info(err)
-		return
-	}
-	switch transMsg.MsgType {
-	// Authentication message
-	case AuthMsgType:
-		var authMsg AuthMsg
-		err = proto.Unmarshal(transMsg.Data, &authMsg)
-		if err != nil {
-			logx.Info(err)
-		}
-		err = this.AuthTrans(conn, &authMsg)
-		if err != nil {
-			logx.Info(err)
-		}
-	// Message forwarded to the client
-	case ClientMsgType:
-		var clientsMsg ClientsMsg
-		err = proto.Unmarshal(transMsg.Data, &clientsMsg)
-		if err != nil {
-			logx.Info(err)
-		}
-		for k1 := range clientsMsg.ReceiveClientIds {
-			receiveClientId := clientsMsg.ReceiveClientIds[k1]
-			this.clientIdSessions.RangeNextMap(cast.ToString(receiveClientId), func(k1, k2 string, se interface{}) bool {
-				err = se.(*Session).Conn.WriteMsg(clientsMsg.Data)
-				if err != nil {
-					logx.Info(err)
-				}
-				return true
-			})
-		}
-	// The heartbeat message
-	default:
-		logx.Info(transMsg)
-	}
-
-}
-
-// AuthTrans Auth the node
-func (this *Node) AuthTrans(conn protocol.Connection, authMsg *AuthMsg) error {
-	nodeId := authMsg.NodeId
-	this.timer.RemoveTimer(conn.Addr()) // Cancel timeingwheel task
-	if authMsg.Password != this.nodeConf.Password {
-		logx.Infof("Connect:%s,Wrong password:%s", nodeId, authMsg.Password)
-		conn.Close()
-		return fmt.Errorf("auth faild")
-	}
-	this.transClients.Store(nodeId, conn)
-	return nil
-}
-
-// AuthClient Auth the node
-func (this *Node) AuthClient(conn protocol.Connection, clientId string) error {
-	addr := conn.Addr()
-	this.timer.RemoveTimer(addr) // Cancel timeingwheel task
-	session := &Session{Conn: conn, ClientId: clientId}
-	this.clientConns.Store(addr, session)
-	return this.BindClientId(cast.ToInt64(clientId), session)
-}
-
-// UpdateNodeList Add handles addition request
-func (this *Node) UpdateNodeList() error {
-	nodeMap := make(map[string]int)
-	for k1 := range this.nodeConf.HostList {
-		nodeList, port, err := dns.DnsParse(this.nodeConf.HostList[k1])
-		if err != nil {
-			logx.Info(err)
-			return err
-		}
-		for k2 := range nodeList {
-			nodeMap[nodeList[k2]+":"+port] = 1
-		}
-	}
-
-	// now := time.Now().Unix()
-	for k1 := range nodeMap {
-		addr := k1
-		if addr == this.nodeConf.NodeId {
-			continue
-		}
-
-		// 数字小的连接数字大的
-		// if strings.Compare(this.transAddress, transAddress) >= 0 {
-		// 	continue
-		// }
-		//已经建立连接
-		_, ok := this.transServices.LoadOrStore(addr, "")
-		if ok {
-			continue
-		}
-		conn, err := this.nodeConf.internalProtocolHandler.Dial(addr)
-		if err != nil {
-			logx.Info("dial:", err)
-			this.transServices.Delete(addr)
-			continue
-		}
-
-		auth := AuthMsg{
-			Password: this.nodeConf.Password,
-			NodeId:   this.nodeConf.NodeId,
-		}
-		authBytes, err := proto.Marshal(&auth)
-		if err != nil {
-			logx.Info(err)
-		}
-		data := Msg{
-			MsgType: AuthMsgType,
-			Data:    authBytes,
-		}
-		reqBytes, err := proto.Marshal(&data)
-		if err != nil {
-			logx.Info(err)
-		}
-		err = conn.WriteMsg(reqBytes)
-		if err != nil {
-			logx.Info(err)
-		}
-		this.transServices.Store(addr, conn)
-		go func(ipAddress string, conn protocol.Connection) {
-			defer func(addr string, conn protocol.Connection) {
-				this.transServices.Delete(addr)
-				if conn != nil {
-					conn.Close()
-				}
-			}(addr, conn)
-			err := this.nodeConf.internalProtocolHandler.ServeConn(conn, this.OnTransMsg)
-			if err != nil {
-				return
+	ipArr, err := this.nodeConf.sessionStorageHandler.GetIps(cast.ToInt64(clientId))
+	if err == nil {
+		mapreduce.MapVoid(func(source chan<- interface{}) {
+			for key := range ipArr {
+				source <- ipArr[key]
 			}
-
-		}(addr, conn)
+		}, func(item interface{}) {
+			ip := item.(string)
+			if ip == this.nodeConf.nodeId {
+				this.clientIdSessions.RangeNextMap(clientId, func(k1, k2 string, se interface{}) bool {
+					err = se.(*Session).Conn.WriteMsg(req)
+					if err != nil {
+						logx.Info(err)
+					}
+					return true
+				})
+			} else {
+				connect, ok := this.transClients.Load(ip)
+				if ok {
+					conn, ok := connect.(protocol.Connection)
+					if !ok {
+						return
+					}
+					clientsMsg := ClientsMsg{
+						ReceiveClientIds: []int64{cast.ToInt64(clientId)},
+						Data:             req,
+					}
+					clientsMsgBytes, err := proto.Marshal(&clientsMsg)
+					transReq := Msg{
+						MsgType: ClientMsgType,
+						Data:    clientsMsgBytes,
+					}
+					reqBytes, err := proto.Marshal(&transReq)
+					err = conn.WriteMsg(reqBytes)
+					if err != nil {
+						logx.Info(err)
+					}
+				} else {
+					logx.Info(fmt.Printf("trans:%#v不在线", ip))
+					return
+				}
+			}
+		})
 	}
 	return nil
+}
+
+type BatchData struct {
+	ip        string
+	clientIds []string
 }
 
 // SendToClientIds Sending messages to multiple clients
-func (this *Node) SendToClientIds(clientIds []string, req []byte) error {
+func (this *node) SendToClientIds(clientIds []string, req []byte) error {
 	if req == nil {
 		return fmt.Errorf("message is nil")
 	}
@@ -416,86 +248,274 @@ func (this *Node) SendToClientIds(clientIds []string, req []byte) error {
 	return nil
 }
 
-type BatchData struct {
-	ip        string
-	clientIds []string
-}
-
-// GetSessionsByClientIds Get online users in the group
-func (this *Node) GetSessionsByClientIds(clientIds []string) []*Session {
-	sessions := make([]*Session, 0)
-	for k1 := range clientIds {
-		this.clientIdSessions.RangeNextMap(clientIds[k1], func(key1, key2 string, value interface{}) bool {
-			sessions = append(sessions, value.(*Session))
-			return true
-		})
-	}
-	return sessions
-}
-
-// BindClientId bind clientId with session
-func (this *Node) BindClientId(clientId int64, se *Session) error {
-	addr := se.Conn.Addr()
-	this.clientIdSessions.StoreWithPlugin(cast.ToString(clientId), addr, se, func() {
-		oldClientId := se.CasClientId(cast.ToString(clientId))
-		oldClientIdInt := cast.ToInt64(oldClientId)
-		if oldClientId != "" && oldClientIdInt != clientId {
-			this.clientIdSessions.DeleteWithoutLock(oldClientId, addr)
+func (this *node) onClientConnect(connect protocol.Connection) {
+	defer func() {
+		this.onClientClose(connect)
+		if connect != nil {
+			connect.Close()
 		}
-	})
+	}()
+	this.nodeConf.plugin.OnConnect(connect)
+	this.timer.SetTimer(connect.Addr(), connect, authTime)
+	for {
+		msg, err := connect.ReadMsg()
+		if err != nil {
+			break
+		}
+		this.onClientMsg(connect, msg)
+	}
+}
 
-	return this.nodeConf.sessionStorageHandler.BindClientId(clientId)
+// OnClientMsg deal client message
+func (this *node) onClientMsg(conn protocol.Connection, msg []byte) {
+	addr := conn.Addr()
+	session, ok := this.clientConns.Load(addr)
+	clientId := ""
+	if ok {
+		clientId = session.(*Session).ClientId
+	}
+	this.nodeConf.onMsg(&Context{Conn: conn, Msg: msg, ClientId: clientId})
+}
+
+func (this *node) onClientClose(connect protocol.Connection) {
+	this.nodeConf.plugin.OnClose(connect)
+	addr := connect.Addr()
+	v1, ok := this.clientConns.Load(addr)
+	if ok {
+		clientId := v1.(*Session).ClientId
+		if clientId != "" {
+			this.clientIdSessions.Delete(clientId, addr)
+		}
+	}
+	this.clientConns.Delete(addr)
+}
+
+func (this *node) onTransConnect(connect protocol.Connection) {
+	defer func() {
+		if connect != nil {
+			connect.Close()
+		}
+	}()
+	for {
+		msg, err := connect.ReadMsg()
+		if err != nil {
+			break
+		}
+		this.onTransMsg(connect, msg)
+	}
+}
+
+// OnTransMsg handle internal communication node messages
+func (this *node) onTransMsg(conn protocol.Connection, msg []byte) {
+	var transMsg Msg
+	err := proto.Unmarshal(msg, &transMsg)
+	if err != nil {
+		logx.Info(err)
+		return
+	}
+	switch transMsg.MsgType {
+	// Authentication message
+	case AuthMsgType:
+		var authMsg AuthMsg
+		err = proto.Unmarshal(transMsg.Data, &authMsg)
+		if err != nil {
+			logx.Info(err)
+		}
+		err = this.authTrans(conn, &authMsg)
+		if err != nil {
+			logx.Info(err)
+		}
+	// Message forwarded to the client
+	case ClientMsgType:
+		var clientsMsg ClientsMsg
+		err = proto.Unmarshal(transMsg.Data, &clientsMsg)
+		if err != nil {
+			logx.Info(err)
+		}
+		for k1 := range clientsMsg.ReceiveClientIds {
+			receiveClientId := clientsMsg.ReceiveClientIds[k1]
+			this.clientIdSessions.RangeNextMap(cast.ToString(receiveClientId), func(k1, k2 string, se interface{}) bool {
+				err = se.(*Session).Conn.WriteMsg(clientsMsg.Data)
+				if err != nil {
+					logx.Info(err)
+				}
+				return true
+			})
+		}
+	// The heartbeat message
+	default:
+		logx.Info(transMsg)
+	}
 
 }
 
-// SendToClientId Send message to a clientId
-func (this *Node) SendToClientId(clientId string, req []byte) error {
-	if req == nil {
-		return fmt.Errorf("message is nil")
+// AuthTrans Auth the node
+func (this *node) authTrans(conn protocol.Connection, authMsg *AuthMsg) error {
+	nodeId := authMsg.NodeId
+	this.timer.RemoveTimer(conn.Addr()) // Cancel timeingwheel task
+	if authMsg.Password != this.nodeConf.password {
+		logx.Infof("Connect:%s,Wrong password:%s", nodeId, authMsg.Password)
+		conn.Close()
+		return fmt.Errorf("auth faild")
 	}
-	ipArr, err := this.nodeConf.sessionStorageHandler.GetIps(cast.ToInt64(clientId))
-	if err == nil {
-		mapreduce.MapVoid(func(source chan<- interface{}) {
-			for key := range ipArr {
-				source <- ipArr[key]
+	this.transClients.Store(nodeId, conn)
+	return nil
+}
+
+// SendPing send node Heartbeat
+func (this *node) sendPing() {
+	go func() {
+		for {
+			time.Sleep(time.Duration(this.nodeConf.nodePingInterval) * time.Second)
+			// update node info
+			transClients := make([]interface{}, 0)
+			this.transClients.Range(func(k1, v1 interface{}) bool {
+				transClients = append(transClients, k1)
+				return true
+			})
+			transServices := make([]interface{}, 0)
+			this.transServices.Range(func(k1, v1 interface{}) bool {
+				transServices = append(transServices, k1)
+				return true
+			})
+
+			nodeInfo := map[string]interface{}{
+				"node_id":        this.nodeConf.nodeId,
+				"trans_clients":  transClients,
+				"trans_services": transServices,
+				"client_count":   this.clientConns.Len(),
+				"timestamp":      time.Now().Unix(),
 			}
-		}, func(item interface{}) {
-			ip := item.(string)
-			if ip == this.nodeConf.NodeId {
-				this.clientIdSessions.RangeNextMap(clientId, func(k1, k2 string, se interface{}) bool {
-					err = se.(*Session).Conn.WriteMsg(req)
-					if err != nil {
-						logx.Info(err)
-					}
+			nodeInfoByte, err := json.Marshal(nodeInfo)
+			if err != nil {
+				logx.Info(err)
+			}
+			err = this.nodeConf.discoveryHandler.UpdateInfo(nodeInfoByte)
+			if err != nil {
+				logx.Info(err)
+			}
+			err = this.updateNodeList()
+			if err != nil {
+				logx.Info(err)
+			}
+			// send to other node
+			this.transServices.Range(func(k, v interface{}) bool {
+				conn, ok := v.(protocol.Connection)
+				if !ok {
 					return true
-				})
-			} else {
-				connect, ok := this.transClients.Load(ip)
-				if ok {
-					conn, ok := connect.(protocol.Connection)
-					if !ok {
-						return
-					}
-					clientsMsg := ClientsMsg{
-						ReceiveClientIds: []int64{cast.ToInt64(clientId)},
-						Data:             req,
-					}
-					clientsMsgBytes, err := proto.Marshal(&clientsMsg)
-					transReq := Msg{
-						MsgType: ClientMsgType,
-						Data:    clientsMsgBytes,
-					}
-					reqBytes, err := proto.Marshal(&transReq)
-					err = conn.WriteMsg(reqBytes)
-					if err != nil {
-						logx.Info(err)
-					}
-				} else {
-					logx.Info(fmt.Printf("trans:%#v不在线", ip))
+				}
+				err := conn.WriteMsg([]byte{})
+				if err != nil {
+					logx.Info(err)
+				}
+				return true
+			})
+		}
+	}()
+}
+
+// Register
+func (this *node) register() {
+	this.nodeConf.discoveryHandler.Register()
+	watchChan := make(chan discovery.EventType, 1)
+	go this.nodeConf.discoveryHandler.WatchService(watchChan)
+	go func() {
+		for {
+			select {
+			case value, ok := <-watchChan:
+				fmt.Printf("%#v\n", value)
+				fmt.Printf("%#v\n", ok)
+				if !ok {
+					fmt.Printf("channel关闭退出\n")
 					return
 				}
+				err := this.updateNodeList()
+				if err != nil {
+					logx.Info(err)
+				}
 			}
-		})
+		}
+	}()
+	// init
+	err := this.updateNodeList()
+	if err != nil {
+		logx.Info(err)
+	}
+}
+
+// UpdateNodeList Add handles addition request
+func (this *node) updateNodeList() error {
+	nodeMap := make(map[string]int)
+	for k1 := range this.nodeConf.hostList {
+		nodeList, port, err := dns.DnsParse(this.nodeConf.hostList[k1])
+		if err != nil {
+			logx.Info(err)
+			return err
+		}
+		for k2 := range nodeList {
+			nodeMap[nodeList[k2]+":"+port] = 1
+		}
+	}
+
+	// now := time.Now().Unix()
+	for k1 := range nodeMap {
+		addr := k1
+		if addr == this.nodeConf.nodeId {
+			continue
+		}
+
+		// 数字小的连接数字大的
+		// if strings.Compare(this.transAddress, transAddress) >= 0 {
+		// 	continue
+		// }
+		//已经建立连接
+		_, ok := this.transServices.LoadOrStore(addr, "")
+		if ok {
+			continue
+		}
+		conn, err := this.nodeConf.internalProtocolHandler.Dial(addr)
+		if err != nil {
+			logx.Info("dial:", err)
+			this.transServices.Delete(addr)
+			continue
+		}
+
+		auth := AuthMsg{
+			Password: this.nodeConf.password,
+			NodeId:   this.nodeConf.nodeId,
+		}
+		authBytes, err := proto.Marshal(&auth)
+		if err != nil {
+			logx.Info(err)
+		}
+		data := Msg{
+			MsgType: AuthMsgType,
+			Data:    authBytes,
+		}
+		reqBytes, err := proto.Marshal(&data)
+		if err != nil {
+			logx.Info(err)
+		}
+		err = conn.WriteMsg(reqBytes)
+		if err != nil {
+			logx.Info(err)
+		}
+		this.transServices.Store(addr, conn)
+		go func(ipAddress string, conn protocol.Connection) {
+			defer func(addr string, conn protocol.Connection) {
+				this.transServices.Delete(addr)
+				if conn != nil {
+					conn.Close()
+				}
+			}(addr, conn)
+			for {
+				msg, err := conn.ReadMsg()
+				if err != nil {
+					break
+				}
+				this.onTransMsg(conn, msg)
+			}
+		}(addr, conn)
 	}
 	return nil
 }

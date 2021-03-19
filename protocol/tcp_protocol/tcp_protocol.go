@@ -2,7 +2,6 @@ package tcp_protocol
 
 import (
 	"fmt"
-	"log"
 	"net"
 
 	"github.com/weblazy/easy/utils/logx"
@@ -10,50 +9,27 @@ import (
 )
 
 type TcpProtocol struct {
-	nodeHandler protocol.Node
 }
 
-func (this *TcpProtocol) SetNodeHandler(nodeHandler protocol.Node) {
-	this.nodeHandler = nodeHandler
-}
-
-func (this *TcpProtocol) ListenAndServe(port int64) error {
+func (this *TcpProtocol) ListenAndServe(port int64, onConnect func(conn protocol.Connection)) error {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	go func() {
 		for {
-			conn, err := listener.Accept()
+			connect, err := listener.Accept()
 			if err != nil {
 				logx.Info(err)
 				break
 			}
-			go this.handleClient(conn)
+			go func(connect net.Conn) {
+				conn := NewTcpConnection(connect)
+				onConnect(conn)
+			}(connect)
 		}
 	}()
 	return nil
-}
-
-func (this *TcpProtocol) handleClient(connect net.Conn) {
-	conn := NewTcpConnection(connect)
-	this.nodeHandler.OnConnect(conn)
-	go func() {
-		defer func() {
-			this.nodeHandler.OnClose(conn)
-			if conn != nil {
-				conn.Close()
-			}
-		}()
-		err := protocol.DefaultFlowProto.Read(conn, this.nodeHandler.OnClientMsg)
-		if err != nil {
-			if err.Error() == "EOF" {
-				// connection to closed
-			} else {
-				panic(err)
-			}
-		}
-	}()
 }
 
 func (this *TcpProtocol) Dial(addr string) (protocol.Connection, error) {
@@ -66,8 +42,4 @@ func (this *TcpProtocol) Dial(addr string) (protocol.Connection, error) {
 		return nil, err
 	}
 	return NewTcpConnection(conn), err
-}
-
-func (this *TcpProtocol) ServeConn(conn protocol.Connection, handler func(conn protocol.Connection, p []byte)) error {
-	return protocol.DefaultFlowProto.Read(conn.(*TcpConnection), handler)
 }

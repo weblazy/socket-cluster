@@ -5,21 +5,11 @@ import (
 	"unsafe"
 )
 
-type FlowConnection interface {
-	Connection
-	ReadMsg(p []byte) (int, error)
-}
 type Connection interface {
+	ReadMsg() ([]byte, error)
 	WriteMsg(data []byte) error
 	Close() error
 	Addr() string
-}
-
-type Node interface {
-	OnTransMsg(conn Connection, msg []byte)
-	OnClientMsg(conn Connection, msg []byte)
-	OnConnect(conn Connection)
-	OnClose(conn Connection)
 }
 
 type Session struct {
