@@ -19,8 +19,6 @@ const (
 var ExceededErr = errors.New("The maximum length of the packet is exceeded")
 var HeaderErr = errors.New("The message header is incorrect")
 
-var DefaultFlowProtocol = NewFlowProtocol(HEADER, MAX_LENGTH)
-
 type FlowProtocol struct {
 	Proto
 	header     string
@@ -29,19 +27,21 @@ type FlowProtocol struct {
 	start      int
 	end        int
 	buf        []byte
+	conn       io.Reader
 }
 
-func NewFlowProtocol(header string, bufLength int) *FlowProtocol {
+func NewFlowProtocol(header string, bufLength int, conn io.Reader) *FlowProtocol {
 	return &FlowProtocol{
 		header:     header,
 		headLength: len(header) + HEAD_SIZE,
 		bufLength:  bufLength,
 		buf:        make([]byte, bufLength),
+		conn:       conn,
 	}
 }
 
 // Read Read and parse the received message
-func (this *FlowProtocol) ReadMsg(conn io.Reader) ([]byte, error) {
+func (this *FlowProtocol) ReadMsg() ([]byte, error) {
 	// read header
 	for this.end-this.start < this.headLength {
 		// reset start
@@ -50,7 +50,7 @@ func (this *FlowProtocol) ReadMsg(conn io.Reader) ([]byte, error) {
 			this.end -= this.start
 			this.start = 0
 		}
-		n, err := conn.Read(this.buf[this.end:])
+		n, err := this.conn.Read(this.buf[this.end:])
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +71,7 @@ func (this *FlowProtocol) ReadMsg(conn io.Reader) ([]byte, error) {
 		return nil, ExceededErr
 	}
 	for this.end-this.start < totalLenth {
-		n, err := conn.Read(this.buf[this.end:])
+		n, err := this.conn.Read(this.buf[this.end:])
 		if err != nil {
 			return nil, err
 		}

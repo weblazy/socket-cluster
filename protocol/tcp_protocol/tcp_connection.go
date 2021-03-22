@@ -16,7 +16,7 @@ type TcpConnection struct {
 func NewTcpConnection(conn net.Conn) *TcpConnection {
 	return &TcpConnection{
 		Conn:                conn,
-		flowProtocolHandler: protocol.NewFlowProtocol(protocol.HEADER, protocol.MAX_LENGTH),
+		flowProtocolHandler: protocol.NewFlowProtocol(protocol.HEADER, protocol.MAX_LENGTH, conn),
 	}
 }
 
@@ -33,7 +33,7 @@ func (this *TcpConnection) WriteMsg(data []byte) error {
 }
 
 func (this *TcpConnection) ReadMsg() ([]byte, error) {
-	msg, err := this.flowProtocolHandler.ReadMsg(this.Conn)
+	msg, err := this.flowProtocolHandler.ReadMsg()
 	if err != nil {
 		return nil, err
 	}

@@ -16,7 +16,7 @@ type QuicConnection struct {
 func NewQuicConnection(stream quic.Stream) *QuicConnection {
 	return &QuicConnection{
 		Stream:              stream,
-		flowProtocolHandler: protocol.NewFlowProtocol(protocol.HEADER, protocol.MAX_LENGTH),
+		flowProtocolHandler: protocol.NewFlowProtocol(protocol.HEADER, protocol.MAX_LENGTH, stream),
 	}
 }
 
@@ -34,7 +34,7 @@ func (this *QuicConnection) WriteMsg(data []byte) error {
 
 // ReadMsg reads byte array message
 func (this *QuicConnection) ReadMsg() ([]byte, error) {
-	msg, err := this.flowProtocolHandler.ReadMsg(this.Stream)
+	msg, err := this.flowProtocolHandler.ReadMsg()
 	if err != nil {
 		return nil, err
 	}

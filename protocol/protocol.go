@@ -1,7 +1,5 @@
 package protocol
 
-import "io"
-
 type (
 	// Proto pack/read protocol scheme of socket message.
 	Proto interface {
@@ -9,7 +7,7 @@ type (
 		// NOTE: Make sure to write only once or there will be package contamination!
 		Pack([]byte) ([]byte, error)
 		// Read bytes from the connection.
-		ReadMsg(conn io.Reader) ([]byte, error)
+		ReadMsg() ([]byte, error)
 	}
 )
 
