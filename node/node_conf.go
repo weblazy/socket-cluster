@@ -9,27 +9,27 @@ import (
 )
 
 type (
-	// RedisNode the consistent hash redis node config
+	// RedisNode the hash redis node config
 	RedisNode struct {
 		RedisConf *redis.Options
-		Position  uint32 //the position of hash ring
+		Position  uint32 // The position of hash
 	}
 	// NodeConf node config
 	NodeConf struct {
-		hostList                []string // A list of IP or domain names for DNS resolution
-		host                    string   // the ip or domain of the node
-		nodeId                  string   // Node unique identification
-		port                    int64    // Node port
-		internalPort            int64    // Node port
-		password                string   // Password for auth when connect to other node
-		clientPingInterval      int64
-		nodePingInterval        int64                  // Heartbeat interval
-		onMsg                   func(context *Context) // callback function when receive client message
-		discoveryHandler        discovery.ServiceDiscovery
-		protocolHandler         protocol.Protocol
-		internalProtocolHandler protocol.Protocol
-		sessionStorageHandler   session_storage.SessionStorage
-		plugin                  Plugin
+		hostList                []string                       // A list of IP or domain names for DNS resolution
+		host                    string                         // The ip or domain of the node
+		nodeId                  string                         // Node unique identification
+		port                    int64                          // Node clientPort
+		internalPort            int64                          // Node internalPort
+		password                string                         // Password for auth when connect to other node
+		clientPingInterval      int64                          // Node with client heartbeat interval
+		nodePingInterval        int64                          // Node with node Heartbeat interval
+		onMsg                   func(context *Context)         // Callback function when receive client message
+		discoveryHandler        discovery.ServiceDiscovery     // Discover service
+		protocolHandler         protocol.Protocol              // Direct protocol between node and client
+		internalProtocolHandler protocol.Protocol              // Direct protocol between node and node
+		sessionStorageHandler   session_storage.SessionStorage // On-line state storage components
+		plugin                  Plugin                         // The interface that the client connects to or closes
 	}
 	// Params of onMsg
 	Context struct {
@@ -66,7 +66,7 @@ func (conf *NodeConf) WithPassword(password string) *NodeConf {
 	return conf
 }
 
-// WithPort sets the port for websocket
+// WithPort sets the port
 func (conf *NodeConf) WithPort(port int64) *NodeConf {
 	conf.port = port
 	return conf
