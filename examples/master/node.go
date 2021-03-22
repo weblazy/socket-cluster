@@ -84,7 +84,7 @@ func onMsg(context *node.Context) {
 			logx.Info(err)
 			return
 		}
-		common.NodeInfo.AuthClient(context.Conn, uidStr)
+		common.NodeInfo.SetClientIdOnline(context.Conn, uidStr)
 		maxUserMsgId, err := model.UserMsgModel(userIndex).Max("notify_uid = ?", obj.Id)
 		if err != nil {
 			logx.Info(err)

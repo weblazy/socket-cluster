@@ -19,37 +19,47 @@ import (
 
 type (
 	Node interface {
-		AuthClient(conn protocol.Connection, clientId string) error
+		// SetClientIdOnline binds the client ID to the connection
+		SetClientIdOnline(conn protocol.Connection, clientId string) error
+		// OnClientPing updates the client heartbeat status
 		OnClientPing(clientId int64) error
+		// IsOnline gets the online status of the clientId
 		IsOnline(clientId int64) bool
-		SendToClientIds(clientIds []string, req []byte) error
+		// SendToClientId sends a message to a clientId
 		SendToClientId(clientId string, req []byte) error
+		//  SendToClientId sends a message to multiple clientIds
+		SendToClientIds(clientIds []string, req []byte) error
 	}
 
 	// Node communication node
 	node struct {
 		Node
-		nodeConf         *NodeConf
+		nodeConf *NodeConf
+		// clientIdSessions map[key1]map[key2]value
+		// Key1: clientId
+		// Key2: socket address
+		// Value: *Session
 		clientIdSessions *syncx.ConcurrentDoubleMap
-		// key: socket address
-		// value: *session
+		// Key: socket address
+		// Value: *Session
 		clientConns goutil.Map
 		timer       *timingwheel.TimingWheel // Timingwheel Close connects that timeout without authentication
 		startTime   time.Time                // Start time
-		// key: nodeId
-		// value: *session
+		// Key: nodeId
+		// Value: *Session
 		transClients goutil.Map // Forward the message to another node
-		// key: nodeId
-		// value: *session
+		// Key: socket address
+		// Value: protocol.Connection
 		transServices goutil.Map // Receive messages forwarded by other nodes
-		nodeTimeout   int64      // node heartbeat timeout time
-		clientTimeout int64      // client heartbeat timeout time
+		nodeTimeout   int64      // Node heartbeat timeout time
+		clientTimeout int64      // Client heartbeat timeout time
 	}
 )
 
-// NewNode
+// NewNode return a Node
 func NewNode(cfg *NodeConf) (Node, error) {
 	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
+		// TODO Count the number of unauthenticated connections
 		logx.Infof("%s auth timeout", k)
 		if v.(protocol.Connection) != nil {
 			err := v.(protocol.Connection).Close()
@@ -70,8 +80,8 @@ func NewNode(cfg *NodeConf) (Node, error) {
 		clientConns:      goutil.AtomicMap(),
 		transClients:     goutil.AtomicMap(),
 		transServices:    goutil.AtomicMap(),
-		nodeTimeout:      cfg.nodePingInterval * 3,
-		clientTimeout:    cfg.clientPingInterval * 3,
+		nodeTimeout:      cfg.nodePingInterval * 3,   // The timeout is three times as long as the interval between heartbeats
+		clientTimeout:    cfg.clientPingInterval * 3, // The timeout is three times as long as the interval between heartbeats
 	}
 	nodeObj.nodeConf.discoveryHandler.SetNodeId(cfg.nodeId)
 	nodeObj.nodeConf.sessionStorageHandler.SetNodeId(cfg.nodeId)
@@ -82,28 +92,23 @@ func NewNode(cfg *NodeConf) (Node, error) {
 	return nodeObj, nil
 }
 
-// AuthClient Auth the node
-func (this *node) AuthClient(conn protocol.Connection, clientId string) error {
+// SetOnline sets the clientId to online
+func (this *node) SetClientIdOnline(conn protocol.Connection, clientId string) error {
 	addr := conn.Addr()
 	this.timer.RemoveTimer(addr) // Cancel timeingwheel task
 	session := &Session{Conn: conn, ClientId: clientId}
 	this.clientConns.Store(addr, session)
-	return this.bindClientId(cast.ToInt64(clientId), session)
-}
-
-// BindClientId bind clientId with session
-func (this *node) bindClientId(clientId int64, se *Session) error {
-	addr := se.Conn.Addr()
-	this.clientIdSessions.StoreWithPlugin(cast.ToString(clientId), addr, se, func() {
-		oldClientId := se.CasClientId(cast.ToString(clientId))
+	this.clientIdSessions.StoreWithPlugin(cast.ToString(clientId), addr, session, func() {
+		oldClientId := session.CasClientId(cast.ToString(clientId))
 		oldClientIdInt := cast.ToInt64(oldClientId)
-		if oldClientId != "" && oldClientIdInt != clientId {
+		if oldClientId != "" && oldClientIdInt != cast.ToInt64(clientId) {
 			this.clientIdSessions.DeleteWithoutLock(oldClientId, addr)
 		}
 	})
-	return this.nodeConf.sessionStorageHandler.BindClientId(clientId)
+	return this.nodeConf.sessionStorageHandler.BindClientId(cast.ToInt64(clientId))
 }
 
+// OnClientPing updates the client heartbeat status
 func (this *node) OnClientPing(clientId int64) error {
 	return this.nodeConf.sessionStorageHandler.OnClientPing(clientId)
 }
@@ -164,7 +169,7 @@ func (this *node) SendToClientId(clientId string, req []byte) error {
 						logx.Info(err)
 					}
 				} else {
-					logx.Info(fmt.Printf("trans:%#v不在线", ip))
+					logx.Infof("node:%s not online", ip)
 					return
 				}
 			}
@@ -225,7 +230,7 @@ func (this *node) SendToClientIds(clientIds []string, req []byte) error {
 				logx.Info(err)
 			}
 		} else {
-			logx.Info(fmt.Sprintf("trans:%s不在线", batchData.ip))
+			logx.Infof("node:%s not online", batchData.ip)
 			return
 		}
 
@@ -256,6 +261,7 @@ func (this *node) onClientConnect(connect protocol.Connection) {
 		}
 	}()
 	this.nodeConf.plugin.OnConnect(connect)
+	// The timeout unbound clientId connect will be closed
 	this.timer.SetTimer(connect.Addr(), connect, authTime)
 	for {
 		msg, err := connect.ReadMsg()
@@ -296,6 +302,7 @@ func (this *node) onTransConnect(connect protocol.Connection) {
 			connect.Close()
 		}
 	}()
+	this.timer.SetTimer(connect.Addr(), connect, authTime)
 	for {
 		msg, err := connect.ReadMsg()
 		if err != nil {
@@ -314,8 +321,7 @@ func (this *node) onTransMsg(conn protocol.Connection, msg []byte) {
 		return
 	}
 	switch transMsg.MsgType {
-	// Authentication message
-	case AuthMsgType:
+	case AuthMsgType: // Authentication message
 		var authMsg AuthMsg
 		err = proto.Unmarshal(transMsg.Data, &authMsg)
 		if err != nil {
@@ -325,8 +331,8 @@ func (this *node) onTransMsg(conn protocol.Connection, msg []byte) {
 		if err != nil {
 			logx.Info(err)
 		}
-	// Message forwarded to the client
-	case ClientMsgType:
+
+	case ClientMsgType: // Message forwarded to the client
 		var clientsMsg ClientsMsg
 		err = proto.Unmarshal(transMsg.Data, &clientsMsg)
 		if err != nil {
@@ -342,8 +348,9 @@ func (this *node) onTransMsg(conn protocol.Connection, msg []byte) {
 				return true
 			})
 		}
-	// The heartbeat message
-	default:
+
+	case PingMsgType: // The heartbeat message
+	default: // The unknow message
 		logx.Info(transMsg)
 	}
 
@@ -422,11 +429,9 @@ func (this *node) register() {
 	go func() {
 		for {
 			select {
-			case value, ok := <-watchChan:
-				fmt.Printf("%#v\n", value)
-				fmt.Printf("%#v\n", ok)
+			case _, ok := <-watchChan:
 				if !ok {
-					fmt.Printf("channel关闭退出\n")
+					fmt.Printf("channel close\n")
 					return
 				}
 				err := this.updateNodeList()
@@ -457,18 +462,13 @@ func (this *node) updateNodeList() error {
 		}
 	}
 
-	// now := time.Now().Unix()
 	for k1 := range nodeMap {
 		addr := k1
 		if addr == this.nodeConf.nodeId {
 			continue
 		}
 
-		// 数字小的连接数字大的
-		// if strings.Compare(this.transAddress, transAddress) >= 0 {
-		// 	continue
-		// }
-		//已经建立连接
+		// Connection already exists
 		_, ok := this.transServices.LoadOrStore(addr, "")
 		if ok {
 			continue
