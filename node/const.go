@@ -1,6 +1,10 @@
 package node
 
-import "time"
+import (
+	"time"
+
+	proto "github.com/golang/protobuf/proto"
+)
 
 const (
 	clientPrefix              = "client#"
@@ -18,3 +22,10 @@ const (
 	ClientMsgType int32 = 2
 	PingMsgType   int32 = 3
 )
+
+var PingMsg []byte
+
+func init() {
+	msg := Msg{MsgType: PingMsgType}
+	PingMsg, _ = proto.Marshal(&msg)
+}

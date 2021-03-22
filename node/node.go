@@ -411,7 +411,8 @@ func (this *node) sendPing() {
 				if !ok {
 					return true
 				}
-				err := conn.WriteMsg([]byte{})
+
+				err := conn.WriteMsg(PingMsg)
 				if err != nil {
 					logx.Info(err)
 				}

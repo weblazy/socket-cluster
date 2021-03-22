@@ -74,7 +74,6 @@ type NodeMap struct {
 
 // ClientIdsOnline Get online users in the group
 func (this *RedisStorage) ClientIdsOnline(clientIds []int64) []int64 {
-	// now := time.Now().Unix()
 	onlineClientIds := make([]int64, 0)
 	nodes := make(map[string]*NodeMap)
 	for k1 := range clientIds {
