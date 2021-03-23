@@ -94,23 +94,4 @@ func levelToStr(level logLevel) (levelStr string) {
 	return levelStr
 }
 
-//func (s *logger) print(log string) {
-//	if s.output == os.Stdout {
-//		fmt.Fprintln(s.output, log)
-//	} else {
-//		now := time.Now().Format(defaultDateTemp)
-//		filename := s.output.Name()
-//		if filename[:10] == now {
-//			fmt.Fprintln(s.output, log)
-//		} else {
-//			s.output.Close()
-//			file := makeLogFile()
-//			if file != nil {
-//				s.output = file
-//			} else {
-//				s.output = os.Stdout
-//			}
-//		}
-//	}
-//}
 
