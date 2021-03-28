@@ -15,7 +15,6 @@ type QuicConnection struct {
 }
 
 func NewQuicConnection(stream quic.Stream, session quic.Session) *QuicConnection {
-
 	return &QuicConnection{
 		session:             session,
 		stream:              stream,

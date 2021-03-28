@@ -20,7 +20,10 @@ func NewTLSConfigFromFile(tlsCertFile, tlsKeyFile string, insecureSkipVerifyForC
 
 // GenerateTLSConfigForClient setup a bare-bones(skip verify) TLS config for client.
 func GenerateTLSConfigForClient() *tls.Config {
-	return &tls.Config{InsecureSkipVerify: true}
+	return &tls.Config{
+		NextProtos:         []string{"http/1.1", "h2"},
+		InsecureSkipVerify: true,
+	}
 }
 
 // GenerateTLSConfigForServer setup a bare-bones TLS config for server.
