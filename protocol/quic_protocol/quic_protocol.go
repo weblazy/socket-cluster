@@ -24,18 +24,19 @@ func (this *QuicProtocol) ListenAndServe(port int64, onConnect func(conn protoco
 		fmt.Println(err)
 	}
 	for {
-		sess, err := listener.Accept(context.Background())
+		session, err := listener.Accept(context.Background())
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			go func(sess quic.Session) {
-				stream, err := sess.AcceptStream(context.Background())
+			go func(session quic.Session) {
+				// Use only the first stream
+				stream, err := session.AcceptStream(context.Background())
 				if err != nil {
 					panic(err)
 				}
-				conn := NewQuicConnection(stream)
+				conn := NewQuicConnection(stream, session)
 				onConnect(conn)
-			}(sess)
+			}(session)
 		}
 	}
 }
@@ -68,9 +69,10 @@ func (this *QuicProtocol) Dial(addr string) (*QuicConnection, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Use only the first stream
 	stream, err := session.OpenStreamSync(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	return NewQuicConnection(stream), err
+	return NewQuicConnection(stream, session), err
 }

@@ -8,14 +8,17 @@ import (
 )
 
 type QuicConnection struct {
-	Stream              quic.Stream
-	Mutex               sync.Mutex
+	stream              quic.Stream
+	session             quic.Session
+	mutex               sync.Mutex
 	flowProtocolHandler protocol.Proto
 }
 
-func NewQuicConnection(stream quic.Stream) *QuicConnection {
+func NewQuicConnection(stream quic.Stream, session quic.Session) *QuicConnection {
+
 	return &QuicConnection{
-		Stream:              stream,
+		session:             session,
+		stream:              stream,
 		flowProtocolHandler: protocol.NewFlowProtocol(protocol.HEADER, protocol.MAX_LENGTH, stream),
 	}
 }
@@ -26,9 +29,9 @@ func (this *QuicConnection) WriteMsg(data []byte) error {
 	if err != nil {
 		return err
 	}
-	this.Mutex.Lock()
-	defer this.Mutex.Unlock()
-	_, err = this.Stream.Write(data)
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+	_, err = this.stream.Write(data)
 	return err
 }
 
@@ -42,12 +45,12 @@ func (this *QuicConnection) ReadMsg() ([]byte, error) {
 }
 
 func (this *QuicConnection) Addr() string {
-	return this.Stream.StreamID().InitiatedBy().String()
+	return this.session.RemoteAddr().String()
 }
 
 func (this *QuicConnection) Close() error {
-	if this.Stream == nil {
+	if this.stream == nil {
 		return nil
 	}
-	return this.Stream.Close()
+	return this.stream.Close()
 }
