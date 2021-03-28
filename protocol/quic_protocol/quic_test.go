@@ -8,7 +8,7 @@ import (
 	"github.com/weblazy/socket-cluster/protocol"
 )
 
-func TestFileLog(t *testing.T) {
+func TestQuic(t *testing.T) {
 	quic := &QuicProtocol{}
 	wait := sync.WaitGroup{}
 	wait.Add(1)
