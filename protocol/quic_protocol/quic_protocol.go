@@ -36,7 +36,7 @@ func (this *QuicProtocol) ListenAndServe(port int64, onConnect func(conn protoco
 	}
 }
 
-func (this *QuicProtocol) Dial(addr string) (*QuicConnection, error) {
+func (this *QuicProtocol) Dial(addr string) (protocol.Connection, error) {
 	// Setup a bare-bones TLS config for the client
 	tlsConf := protocol.GenerateTLSConfigForClient()
 	session, err := quic.DialAddr(addr, tlsConf, nil)
