@@ -8,9 +8,9 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/cast"
-	"github.com/weblazy/easy/utils/logx"
 	easy_sort "github.com/weblazy/easy/utils/sort"
 	"github.com/weblazy/socket-cluster/discovery"
+	"github.com/weblazy/socket-cluster/logx"
 	"github.com/weblazy/socket-cluster/node"
 )
 
@@ -45,7 +45,7 @@ func (this *RedisDiscovery) WatchService(watchChan discovery.WatchChan) {
 			data := make(map[string]interface{})
 			err := json.Unmarshal([]byte(mg.Payload), &data)
 			if err != nil {
-				logx.Info(err)
+				logx.LogHandler.Error(err)
 				return
 			}
 			watchChan <- discovery.PUT
@@ -62,7 +62,7 @@ func (s *RedisDiscovery) Close() error {
 func (this *RedisDiscovery) Register() error {
 	err := this.adminRedis.Publish(context.Background(), this.key, this.nodeId).Err()
 	if err != nil {
-		logx.Info(err)
+		return err
 	}
 	return nil
 }
@@ -71,9 +71,12 @@ func (this *RedisDiscovery) Register() error {
 func (this *RedisDiscovery) UpdateInfo(nodeInfoByte []byte) error {
 	err := this.adminRedis.HSet(context.Background(), node.NodeAddress, this.nodeId, string(nodeInfoByte)).Err()
 	if err != nil {
-		logx.Info(err)
+		return err
 	}
-	this.adminRedis.Expire(context.Background(), node.NodeAddress, time.Duration(this.timeout*int64(time.Second)))
+	err = this.adminRedis.Expire(context.Background(), node.NodeAddress, time.Duration(this.timeout*int64(time.Second))).Err()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

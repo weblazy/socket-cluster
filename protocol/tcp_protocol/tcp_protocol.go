@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/weblazy/easy/utils/logx"
+	"github.com/weblazy/socket-cluster/logx"
 	"github.com/weblazy/socket-cluster/protocol"
 )
 
@@ -20,7 +20,7 @@ func (this *TcpProtocol) ListenAndServe(port int64, onConnect func(conn protocol
 		for {
 			connect, err := listener.Accept()
 			if err != nil {
-				logx.Info(err)
+				logx.LogHandler.Error(err)
 				break
 			}
 			go func(connect net.Conn) {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/cast"
-	"github.com/weblazy/easy/utils/logx"
+	"github.com/weblazy/socket-cluster/logx"
 	"github.com/weblazy/socket-cluster/session_storage"
 	"github.com/weblazy/socket-cluster/unsafehash"
 )
@@ -54,13 +54,11 @@ func (this *RedisStorage) BindClientId(clientId int64) error {
 	redisNode := this.segmentHash.Get(clientId)
 	err := redisNode.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.nodeId}).Err()
 	if err != nil {
-		logx.Info(err.Error())
 		return err
 	}
 
 	err = redisNode.(*redis.Client).Expire(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), time.Duration(this.clientTimeout)*time.Second).Err()
 	if err != nil {
-		logx.Info(err.Error())
 		return err
 	}
 
@@ -96,13 +94,14 @@ func (this *RedisStorage) ClientIdsOnline(clientIds []int64) []int64 {
 		}
 		cmders, err := pipe.Exec(context.Background())
 		if err != nil {
-			logx.Info(err)
+			logx.LogHandler.Error(err)
 		}
 		for k3, cmder := range cmders {
 			cmd := cmder.(*redis.StringSliceCmd)
 			err := cmd.Err()
 			if err != nil {
-				logx.Info(err)
+
+				logx.LogHandler.Error(err)
 			} else {
 				onlineClientIds = append(onlineClientIds, nodeMap.clientIds[k3])
 			}
@@ -117,7 +116,7 @@ func (this *RedisStorage) IsOnline(clientId int64) bool {
 	redisNode := this.segmentHash.Get(clientId)
 	addrArr, err := redisNode.(*redis.Client).ZRangeByScore(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.ZRangeBy{Min: cast.ToString(now - this.clientTimeout), Max: "+inf"}).Result()
 	if err != nil {
-		logx.Info(err)
+		logx.LogHandler.Error(err)
 		return false
 	}
 	if len(addrArr) > 0 {
@@ -163,13 +162,13 @@ func (this *RedisStorage) GetClientsIps(clientIds []string) ([]string, map[strin
 		}
 		cmders, err := pipe.Exec(context.Background())
 		if err != nil {
-			logx.Info(cmders, err)
+			logx.LogHandler.Error(cmders, err)
 		}
 		for k3, cmder := range cmders {
 			cmd := cmder.(*redis.StringSliceCmd)
 			strMap, err := cmd.Result()
 			if err != nil {
-				logx.Info(err)
+				logx.LogHandler.Error(err)
 			} else {
 				for k4 := range strMap {
 					if strMap[k4] == this.nodeId {

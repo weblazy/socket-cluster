@@ -6,7 +6,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-	"github.com/weblazy/easy/utils/logx"
 	"github.com/weblazy/socket-cluster/protocol"
 )
 
@@ -30,7 +29,7 @@ func (this *WsProtocol) ListenAndServe(port int64, onConnect func(conn protocol.
 		connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 		if err != nil {
 			if _, ok := err.(websocket.HandshakeError); !ok {
-				logx.Info(err)
+
 			}
 			return err
 		}

@@ -14,7 +14,7 @@ const (
 	WARNING
 	ERROR
 
-	defaultTimeTemp = "2006-01-02 15:04:05.000"
+	defaultTimeTemp = "2006-01-02 15:04:05"
 	defaultDateTemp = "2006-01-02"
 )
 
@@ -93,5 +93,3 @@ func levelToStr(level logLevel) (levelStr string) {
 	}
 	return levelStr
 }
-
-

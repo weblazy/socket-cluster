@@ -8,12 +8,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/spf13/cast"
 	"github.com/weblazy/core/mapreduce"
-	"github.com/weblazy/easy/utils/logx"
 	"github.com/weblazy/easy/utils/syncx"
 	"github.com/weblazy/easy/utils/timingwheel"
 	"github.com/weblazy/goutil"
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/dns"
+	"github.com/weblazy/socket-cluster/logx"
 	"github.com/weblazy/socket-cluster/protocol"
 )
 
@@ -60,11 +60,11 @@ type (
 func NewNode(cfg *NodeConf) (Node, error) {
 	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
 		// TODO Count the number of unauthenticated connections
-		logx.Infof("%s auth timeout", k)
+		logx.LogHandler.Infof("%s auth timeout", k)
 		if v.(protocol.Connection) != nil {
 			err := v.(protocol.Connection).Close()
 			if err != nil {
-				logx.Info(err)
+				logx.LogHandler.Error(err)
 			}
 		}
 	})
@@ -117,7 +117,7 @@ func (this *node) OnClientPing(clientId int64) error {
 func (this *node) IsOnline(clientId int64) bool {
 	addrArr, err := this.nodeConf.sessionStorageHandler.GetIps(clientId)
 	if err != nil {
-		logx.Info(err)
+		logx.LogHandler.Error(err)
 		return false
 	}
 	if len(addrArr) > 0 {
@@ -143,7 +143,7 @@ func (this *node) SendToClientId(clientId string, req []byte) error {
 				this.clientIdSessions.RangeNextMap(clientId, func(k1, k2 string, se interface{}) bool {
 					err = se.(*Session).Conn.WriteMsg(req)
 					if err != nil {
-						logx.Info(err)
+						logx.LogHandler.Error(err)
 					}
 					return true
 				})
@@ -166,10 +166,10 @@ func (this *node) SendToClientId(clientId string, req []byte) error {
 					reqBytes, err := proto.Marshal(&transReq)
 					err = conn.WriteMsg(reqBytes)
 					if err != nil {
-						logx.Info(err)
+						logx.LogHandler.Error(err)
 					}
 				} else {
-					logx.Infof("node:%s not online", ip)
+					logx.LogHandler.Errorf("node:%s not online", ip)
 					return
 				}
 			}
@@ -215,7 +215,7 @@ func (this *node) SendToClientIds(clientIds []string, req []byte) error {
 			}
 			clientsMsgBytes, err := proto.Marshal(&clientsMsg)
 			if err != nil {
-				logx.Info(err)
+				logx.LogHandler.Error(err)
 			}
 			msg := Msg{
 				MsgType: ClientMsgType,
@@ -223,14 +223,14 @@ func (this *node) SendToClientIds(clientIds []string, req []byte) error {
 			}
 			msgBytes, err := proto.Marshal(&msg)
 			if err != nil {
-				logx.Info(err)
+				logx.LogHandler.Error(err)
 			}
 			err = conn.WriteMsg(msgBytes)
 			if err != nil {
-				logx.Info(err)
+				logx.LogHandler.Error(err)
 			}
 		} else {
-			logx.Infof("node:%s not online", batchData.ip)
+			logx.LogHandler.Error("node:%s not online", batchData.ip)
 			return
 		}
 
@@ -247,7 +247,7 @@ func (this *node) SendToClientIds(clientIds []string, req []byte) error {
 		se := item.(*Session)
 		err := se.Conn.WriteMsg(req)
 		if err != nil {
-			logx.Info(err)
+			logx.LogHandler.Error(err)
 		}
 	})
 	return nil
@@ -266,6 +266,7 @@ func (this *node) onClientConnect(connect protocol.Connection) {
 	for {
 		msg, err := connect.ReadMsg()
 		if err != nil {
+			logx.LogHandler.Error(err)
 			break
 		}
 		this.onClientMsg(connect, msg)
@@ -306,6 +307,7 @@ func (this *node) onTransConnect(connect protocol.Connection) {
 	for {
 		msg, err := connect.ReadMsg()
 		if err != nil {
+			logx.LogHandler.Error(err)
 			break
 		}
 		this.onTransMsg(connect, msg)
@@ -317,7 +319,7 @@ func (this *node) onTransMsg(conn protocol.Connection, msg []byte) {
 	var transMsg Msg
 	err := proto.Unmarshal(msg, &transMsg)
 	if err != nil {
-		logx.Info(err)
+		logx.LogHandler.Error(err)
 		return
 	}
 	switch transMsg.MsgType {
@@ -325,25 +327,25 @@ func (this *node) onTransMsg(conn protocol.Connection, msg []byte) {
 		var authMsg AuthMsg
 		err = proto.Unmarshal(transMsg.Data, &authMsg)
 		if err != nil {
-			logx.Info(err)
+			logx.LogHandler.Error(err)
 		}
 		err = this.authTrans(conn, &authMsg)
 		if err != nil {
-			logx.Info(err)
+			logx.LogHandler.Error(err)
 		}
 
 	case ClientMsgType: // Message forwarded to the client
 		var clientsMsg ClientsMsg
 		err = proto.Unmarshal(transMsg.Data, &clientsMsg)
 		if err != nil {
-			logx.Info(err)
+			logx.LogHandler.Error(err)
 		}
 		for k1 := range clientsMsg.ReceiveClientIds {
 			receiveClientId := clientsMsg.ReceiveClientIds[k1]
 			this.clientIdSessions.RangeNextMap(cast.ToString(receiveClientId), func(k1, k2 string, se interface{}) bool {
 				err = se.(*Session).Conn.WriteMsg(clientsMsg.Data)
 				if err != nil {
-					logx.Info(err)
+					logx.LogHandler.Error(err)
 				}
 				return true
 			})
@@ -351,7 +353,7 @@ func (this *node) onTransMsg(conn protocol.Connection, msg []byte) {
 
 	case PingMsgType: // The heartbeat message
 	default: // The unknow message
-		logx.Info(transMsg)
+		logx.LogHandler.Info(transMsg)
 	}
 
 }
@@ -361,7 +363,7 @@ func (this *node) authTrans(conn protocol.Connection, authMsg *AuthMsg) error {
 	nodeId := authMsg.NodeId
 	this.timer.RemoveTimer(conn.Addr()) // Cancel timeingwheel task
 	if authMsg.Password != this.nodeConf.password {
-		logx.Infof("Connect:%s,Wrong password:%s", nodeId, authMsg.Password)
+		logx.LogHandler.Infof("Connect:%s,Wrong password:%s", nodeId, authMsg.Password)
 		conn.Close()
 		return fmt.Errorf("auth faild")
 	}
@@ -395,15 +397,15 @@ func (this *node) sendPing() {
 			}
 			nodeInfoByte, err := json.Marshal(nodeInfo)
 			if err != nil {
-				logx.Info(err)
+				logx.LogHandler.Error(err)
 			}
 			err = this.nodeConf.discoveryHandler.UpdateInfo(nodeInfoByte)
 			if err != nil {
-				logx.Info(err)
+				logx.LogHandler.Error(err)
 			}
 			err = this.updateNodeList()
 			if err != nil {
-				logx.Info(err)
+				logx.LogHandler.Error(err)
 			}
 			// send to other node
 			this.transServices.Range(func(k, v interface{}) bool {
@@ -414,7 +416,7 @@ func (this *node) sendPing() {
 
 				err := conn.WriteMsg(PingMsg)
 				if err != nil {
-					logx.Info(err)
+					logx.LogHandler.Error(err)
 				}
 				return true
 			})
@@ -432,12 +434,12 @@ func (this *node) register() {
 			select {
 			case _, ok := <-watchChan:
 				if !ok {
-					fmt.Printf("channel close\n")
+					logx.LogHandler.Infof("channel close\n")
 					return
 				}
 				err := this.updateNodeList()
 				if err != nil {
-					logx.Info(err)
+					logx.LogHandler.Error(err)
 				}
 			}
 		}
@@ -445,7 +447,7 @@ func (this *node) register() {
 	// init
 	err := this.updateNodeList()
 	if err != nil {
-		logx.Info(err)
+		logx.LogHandler.Error(err)
 	}
 }
 
@@ -455,7 +457,7 @@ func (this *node) updateNodeList() error {
 	for k1 := range this.nodeConf.hostList {
 		nodeList, port, err := dns.DnsParse(this.nodeConf.hostList[k1])
 		if err != nil {
-			logx.Info(err)
+			logx.LogHandler.Error(err)
 			return err
 		}
 		for k2 := range nodeList {
@@ -476,7 +478,7 @@ func (this *node) updateNodeList() error {
 		}
 		conn, err := this.nodeConf.internalProtocolHandler.Dial(addr)
 		if err != nil {
-			logx.Info("dial:", err)
+			logx.LogHandler.Errorf("dial:%s", err.Error())
 			this.transServices.Delete(addr)
 			continue
 		}
@@ -487,7 +489,7 @@ func (this *node) updateNodeList() error {
 		}
 		authBytes, err := proto.Marshal(&auth)
 		if err != nil {
-			logx.Info(err)
+			logx.LogHandler.Error(err)
 		}
 		data := Msg{
 			MsgType: AuthMsgType,
@@ -495,11 +497,11 @@ func (this *node) updateNodeList() error {
 		}
 		reqBytes, err := proto.Marshal(&data)
 		if err != nil {
-			logx.Info(err)
+			logx.LogHandler.Error(err)
 		}
 		err = conn.WriteMsg(reqBytes)
 		if err != nil {
-			logx.Info(err)
+			logx.LogHandler.Info(err)
 		}
 		this.transServices.Store(addr, conn)
 		go func(ipAddress string, conn protocol.Connection) {

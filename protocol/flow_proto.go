@@ -5,8 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-
-	"github.com/weblazy/easy/utils/logx"
 )
 
 const (
@@ -60,7 +58,6 @@ func (this *FlowProtocol) ReadMsg() ([]byte, error) {
 	headBuf := this.buf[this.start : this.start+this.headLength]
 	// Verify that the message header is correct
 	if string(headBuf[:len(this.header)]) != this.header {
-		logx.Info(string(headBuf[:len(this.header)]))
 		return nil, HeaderErr
 	}
 

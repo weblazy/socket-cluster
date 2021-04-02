@@ -5,7 +5,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-	"github.com/weblazy/easy/utils/logx"
 	"github.com/weblazy/socket-cluster/protocol"
 )
 
@@ -32,7 +31,7 @@ func (this *WsConnection) ReadMsg() ([]byte, error) {
 	_, msg, err := this.Conn.ReadMessage()
 	if err != nil {
 		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-			logx.Info(err)
+
 		}
 		return nil, err
 	}

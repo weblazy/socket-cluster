@@ -9,6 +9,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/weblazy/socket-cluster/discovery"
+	"github.com/weblazy/socket-cluster/logx"
 )
 
 const defaultDialTimeout = 5 * time.Second
@@ -84,17 +85,15 @@ func (s *EtcdDiscovery) Register() error {
 		return err
 	}
 	s.leaseID = resp.ID
-	log.Println(s.leaseID)
 	s.keepAliveChan = leaseRespChan
 	go s.ListenLeaseRespChan()
-	log.Printf("Put key:%s  val:%s  success!", s.key, s.val)
 	return nil
 }
 
 // ListenLeaseRespChan Monitor lease renewals
 func (s *EtcdDiscovery) ListenLeaseRespChan() {
 	for leaseKeepResp := range s.keepAliveChan {
-		log.Println("续约成功", leaseKeepResp)
+		logx.LogHandler.Info("续约成功", leaseKeepResp)
 	}
-	log.Println("关闭续租")
+	logx.LogHandler.Infof("关闭续租")
 }
