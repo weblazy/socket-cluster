@@ -35,7 +35,7 @@ type (
 		TimeStamp string        `json:"timestamp"`         // 日志生成时间
 		Level     string        `json:"level"`             // 日志等级
 		Flow      string        `json:"flow,omitempty"`    // 操作流
-		Loc       string        `json:"loc"`               // 发生位置
+		Loc       string        `json:"location"`          // 发生位置
 		Content   []interface{} `json:"content,omitempty"` // 日志内容
 		Msg       string        `json:"msg,omitempty"`     // 日志内容
 	}
@@ -83,13 +83,13 @@ func getCaseLineInfo(skip int) (funcName, fileName string, lineNo int) {
 func levelToStr(level logLevel) (levelStr string) {
 	switch level {
 	case DEBUG:
-		levelStr = "DEBUG"
+		levelStr = "debug"
 	case INFO:
-		levelStr = "INFO"
+		levelStr = "info"
 	case WARNING:
-		levelStr = "WARNING"
+		levelStr = "warning"
 	case ERROR:
-		levelStr = "ERROR"
+		levelStr = "error"
 	}
 	return levelStr
 }
