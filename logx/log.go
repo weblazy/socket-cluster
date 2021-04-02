@@ -1,3 +1,3 @@
 package logx
 
-var LogHandler = NewStdLogger()
+var LogHandler = NewFileLogger()
