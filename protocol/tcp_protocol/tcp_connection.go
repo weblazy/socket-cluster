@@ -47,3 +47,7 @@ func (this *TcpConnection) Addr() string {
 func (this *TcpConnection) Close() error {
 	return this.Conn.Close()
 }
+
+func (this *TcpConnection) SetFlowProtocolHandler(flowProtocolHandler protocol.Proto) {
+	this.flowProtocolHandler = flowProtocolHandler
+}

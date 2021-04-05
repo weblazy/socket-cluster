@@ -53,3 +53,7 @@ func (this *QuicConnection) Close() error {
 	}
 	return this.stream.Close()
 }
+
+func (this *QuicConnection) SetFlowProtocolHandler(flowProtocolHandler protocol.Proto) {
+	this.flowProtocolHandler = flowProtocolHandler
+}
