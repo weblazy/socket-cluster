@@ -110,6 +110,12 @@ func (this *RedisStorage) ClientIdsOnline(clientIds []int64) []int64 {
 	return onlineClientIds
 }
 
+// ClientIdsOnlineWithLua Get online users in the group
+func (this *RedisStorage) ClientIdsOnlineWithLua(clientIds []int64) []int64 {
+	onlineClientIds := make([]int64, 0)
+	return onlineClientIds
+}
+
 // IsOnline determine if a clientId is online
 func (this *RedisStorage) IsOnline(clientId int64) bool {
 	now := time.Now().Unix()
