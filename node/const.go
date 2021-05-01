@@ -8,9 +8,9 @@ import (
 
 const (
 	clientPrefix              = "client#"
-	defaultPassword           = "password"
+	DefaultPassword           = "password"
 	defaultClientPingInterval = 120
-	defaultNodePingInterval   = 10
+	DefaultNodePingInterval   = 10
 	defaultInternalPort       = 9527
 	defaultPort               = 9528
 	NodeAddress               = "node_address"
