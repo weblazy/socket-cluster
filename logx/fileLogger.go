@@ -7,24 +7,53 @@ import (
 	"time"
 )
 
+const defaultDir = "log"
+
 type fileLogger struct {
-	dateFormat 		string   		// 时间格式 默认：2006-01-05 15:04:05.000
-	flow       		string   		// 操作流 用于标记日志信息 不设置无输出
-	level      		logLevel 		// 输出level 不设置默认全部输出
-	output			*os.File		
-	expiredTime 	int				// 清理时间 <0 不清理 单位：天 默认：7
+	dateFormat  string   // 时间格式 默认：2006-01-05 15:04:05.000
+	flow        string   // 操作流 用于标记日志信息 不设置无输出
+	level       logLevel // 输出level 不设置默认全部输出
+	output      *os.File
+	expiredTime int // 清理时间 <0 不清理 单位：天 默认：7
 }
+
+// 判断文件目录否存在
+func IsDirExists(path string) bool {
+	fi, err := os.Stat(path)
+
+	if err != nil {
+		return os.IsExist(err)
+	} else {
+		return fi.IsDir()
+	}
+}
+
+// 创建文件
+func MkdirFile(path string) error {
+	err := os.Mkdir(path, os.ModePerm) //在当前目录下生成md目录
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func NewFileLogger() *fileLogger {
+	if !IsDirExists(defaultDir) {
+		if mkdirerr := MkdirFile(defaultDir); mkdirerr != nil {
+			fmt.Println(mkdirerr)
+		}
+	}
+
 	file, err := makeLogFile()
 	if err != nil {
 		file = os.Stdout
 		fmt.Println("file logger create failed, redirect to stdlogger.")
 	}
 	return &fileLogger{
-		dateFormat: defaultTimeTemp,
-		level: DEBUG | INFO | WARNING | ERROR,
+		dateFormat:  defaultTimeTemp,
+		level:       DEBUG | INFO | WARNING | ERROR,
 		expiredTime: 7,
-		output: file,
+		output:      file,
 	}
 }
 func (l *fileLogger) SetDateFormat(temp string) *fileLogger {
@@ -47,59 +76,57 @@ func (l *fileLogger) SetExpiredTimeTime(expiredTime int) *fileLogger {
 	return l
 }
 
-
-
 func (l *fileLogger) Debug(v ...interface{}) {
-	if l.level & DEBUG != 0 {
+	if l.level&DEBUG != 0 {
 		content := makeContent(l.dateFormat, l.flow, DEBUG, v...)
 		l.print(content)
 	}
 }
 
 func (l *fileLogger) Debugf(format string, v ...interface{}) {
-	if l.level & DEBUG != 0 {
+	if l.level&DEBUG != 0 {
 		msg := makeMsg(l.dateFormat, l.flow, DEBUG, format, v...)
 		l.print(msg)
 	}
 }
 
 func (l *fileLogger) Info(v ...interface{}) {
-	if l.level & INFO != 0 {
+	if l.level&INFO != 0 {
 		content := makeContent(l.dateFormat, l.flow, INFO, v...)
 		l.print(content)
 	}
 }
 
 func (l *fileLogger) Infof(format string, v ...interface{}) {
-	if l.level & INFO != 0 {
+	if l.level&INFO != 0 {
 		msg := makeMsg(l.dateFormat, l.flow, INFO, format, v...)
 		l.print(msg)
 	}
 }
 
 func (l *fileLogger) Warning(v ...interface{}) {
-	if l.level & WARNING != 0 {
+	if l.level&WARNING != 0 {
 		content := makeContent(l.dateFormat, l.flow, WARNING, v...)
 		l.print(content)
 	}
 }
 
 func (l *fileLogger) Warningf(format string, v ...interface{}) {
-	if l.level & WARNING != 0 {
+	if l.level&WARNING != 0 {
 		msg := makeMsg(l.dateFormat, l.flow, WARNING, format, v...)
 		l.print(msg)
 	}
 }
 
 func (l *fileLogger) Error(v ...interface{}) {
-	if l.level & ERROR != 0 {
+	if l.level&ERROR != 0 {
 		content := makeContent(l.dateFormat, l.flow, ERROR, v...)
 		l.print(content)
 	}
 }
 
 func (l *fileLogger) Errorf(format string, v ...interface{}) {
-	if l.level & ERROR != 0 {
+	if l.level&ERROR != 0 {
 		msg := makeMsg(l.dateFormat, l.flow, ERROR, format, v...)
 		l.print(msg)
 	}
@@ -107,9 +134,9 @@ func (l *fileLogger) Errorf(format string, v ...interface{}) {
 
 func makeLogFile() (*os.File, error) {
 	now := time.Now().Format(defaultDateTemp)
-	fileName := now + ".log"
+	fileName := defaultDir + "/" + now + ".log"
 	fmt.Println(fileName)
-	file, err := os.OpenFile(fileName,os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0644)
+	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("log file open failed, err = %v", err)
 	}
@@ -146,7 +173,7 @@ func (s *fileLogger) changeOutput() {
 }
 
 func (s *fileLogger) removeExpiredLogs() {
-	files, err := filepath.Glob("*.log")
+	files, err := filepath.Glob(defaultDir + "/*.log")
 	if err != nil {
 		fmt.Printf("failed to remove expired log files, error: %s", err)
 		return
