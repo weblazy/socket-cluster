@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -45,6 +46,9 @@ type (
 		clientConns goutil.Map
 		timer       *timingwheel.TimingWheel // Timingwheel Close connects that timeout without authentication
 		startTime   time.Time                // Start time
+		// Key: socket address
+		// Value: *Session
+		businessClients goutil.Map // Send the message to client
 		// Key: nodeId
 		// Value: *Session
 		transClients goutil.Map // Forward the message to another node
@@ -84,7 +88,6 @@ func NewNode(cfg *NodeConf) (Node, error) {
 		clientTimeout:    cfg.clientPingInterval * 3, // The timeout is three times as long as the interval between heartbeats
 	}
 	nodeObj.nodeConf.discoveryHandler.SetNodeId(cfg.nodeId)
-	nodeObj.nodeConf.sessionStorageHandler.SetNodeId(cfg.nodeId)
 	cfg.internalProtocolHandler.ListenAndServe(cfg.internalPort, nodeObj.onTransConnect)
 	cfg.protocolHandler.ListenAndServe(cfg.port, nodeObj.onClientConnect)
 	nodeObj.sendPing()
@@ -105,12 +108,12 @@ func (this *node) SetClientIdOnline(conn protocol.Connection, clientId string) e
 			this.clientIdSessions.DeleteWithoutLock(oldClientId, addr)
 		}
 	})
-	return this.nodeConf.sessionStorageHandler.BindClientId(cast.ToInt64(clientId))
+	return this.nodeConf.sessionStorageHandler.BindClientId(this.nodeConf.nodeId, cast.ToInt64(clientId))
 }
 
 // OnClientPing updates the client heartbeat status
 func (this *node) OnClientPing(clientId int64) error {
-	return this.nodeConf.sessionStorageHandler.OnClientPing(clientId)
+	return this.nodeConf.sessionStorageHandler.OnClientPing(this.nodeConf.nodeId, clientId)
 }
 
 // IsOnline determine if a clientId is online
@@ -188,13 +191,16 @@ func (this *node) SendToClientIds(clientIds []string, req []byte) error {
 	if req == nil {
 		return fmt.Errorf("message is nil")
 	}
-	localClientIds, clientMap, err := this.nodeConf.sessionStorageHandler.GetClientsIps(clientIds)
+	clientMap, err := this.nodeConf.sessionStorageHandler.GetClientsIps(clientIds)
 	if err != nil {
 		return err
 	}
+	localClientIds, _ := clientMap[this.nodeConf.nodeId]
+	delete(clientMap, this.nodeConf.nodeId)
 	// Concurrent sends to other nodes
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		for k1 := range clientMap {
+
 			source <- &BatchData{ip: k1, clientIds: clientMap[k1]}
 		}
 	}, func(item interface{}) {
@@ -310,12 +316,12 @@ func (this *node) onTransConnect(connect protocol.Connection) {
 			logx.LogHandler.Error(err)
 			break
 		}
-		this.onTransMsg(connect, msg)
+		this.onTransClientMsg(connect, msg)
 	}
 }
 
 // OnTransMsg handle internal communication node messages
-func (this *node) onTransMsg(conn protocol.Connection, msg []byte) {
+func (this *node) onTransServerMsg(conn protocol.Connection, msg []byte) {
 	var transMsg Msg
 	err := proto.Unmarshal(msg, &transMsg)
 	if err != nil {
@@ -323,16 +329,6 @@ func (this *node) onTransMsg(conn protocol.Connection, msg []byte) {
 		return
 	}
 	switch transMsg.MsgType {
-	case AuthMsgType: // Authentication message
-		var authMsg AuthMsg
-		err = proto.Unmarshal(transMsg.Data, &authMsg)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
-		err = this.authTrans(conn, &authMsg)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
 
 	case ClientMsgType: // Message forwarded to the client
 		var clientsMsg ClientsMsg
@@ -352,6 +348,67 @@ func (this *node) onTransMsg(conn protocol.Connection, msg []byte) {
 		}
 
 	case PingMsgType: // The heartbeat message
+
+	default: // The unknow message
+		logx.LogHandler.Info(transMsg)
+	}
+
+}
+
+// OnTransMsg handle internal communication node messages
+func (this *node) onTransClientMsg(conn protocol.Connection, msg []byte) {
+	var transMsg Msg
+	err := proto.Unmarshal(msg, &transMsg)
+	if err != nil {
+		logx.LogHandler.Error(err)
+		return
+	}
+	switch transMsg.MsgType {
+	case AuthNodeMsgType: // Authentication message
+		var authMsg AuthMsg
+		err = proto.Unmarshal(transMsg.Data, &authMsg)
+		if err != nil {
+			logx.LogHandler.Error(err)
+		}
+		err = this.authTrans(conn, &authMsg)
+		if err != nil {
+			logx.LogHandler.Error(err)
+		}
+
+	case PingMsgType: // The heartbeat message
+	case AuthBusinessClientMsgType: // Authentication message
+		var authMsg AuthMsg
+		err = proto.Unmarshal(transMsg.Data, &authMsg)
+		if err != nil {
+			logx.LogHandler.Error(err)
+		}
+		err = this.authTrans(conn, &authMsg)
+		if err != nil {
+			logx.LogHandler.Error(err)
+		}
+	case ClientMsgType: // Message forwarded to the client
+		addr := conn.Addr()
+		_, ok := this.businessClients.Load(addr)
+		if !ok {
+			logx.LogHandler.Error(errors.New("un auth connect"))
+			return
+		}
+		var clientsMsg ClientsMsg
+		err = proto.Unmarshal(transMsg.Data, &clientsMsg)
+		if err != nil {
+			logx.LogHandler.Error(err)
+		}
+		for k1 := range clientsMsg.ReceiveClientIds {
+			receiveClientId := clientsMsg.ReceiveClientIds[k1]
+			this.clientIdSessions.RangeNextMap(cast.ToString(receiveClientId), func(k1, k2 string, se interface{}) bool {
+				err = se.(*Session).Conn.WriteMsg(clientsMsg.Data)
+				if err != nil {
+					logx.LogHandler.Error(err)
+				}
+				return true
+			})
+		}
+
 	default: // The unknow message
 		logx.LogHandler.Info(transMsg)
 	}
@@ -368,6 +425,19 @@ func (this *node) authTrans(conn protocol.Connection, authMsg *AuthMsg) error {
 		return fmt.Errorf("auth faild")
 	}
 	this.transClients.Store(nodeId, conn)
+	return nil
+}
+
+// AuthTrans Auth the node
+func (this *node) authBusinessClient(conn protocol.Connection, authMsg *AuthMsg) error {
+	addr := conn.Addr()
+	this.timer.RemoveTimer(addr) // Cancel timeingwheel task
+	if authMsg.Password != this.nodeConf.password {
+		logx.LogHandler.Infof("Connect:%s,Wrong password:%s", addr, authMsg.Password)
+		conn.Close()
+		return fmt.Errorf("auth faild")
+	}
+	this.businessClients.Store(addr, conn)
 	return nil
 }
 
@@ -492,7 +562,7 @@ func (this *node) updateNodeList() error {
 			logx.LogHandler.Error(err)
 		}
 		data := Msg{
-			MsgType: AuthMsgType,
+			MsgType: AuthNodeMsgType,
 			Data:    authBytes,
 		}
 		reqBytes, err := proto.Marshal(&data)
@@ -516,7 +586,7 @@ func (this *node) updateNodeList() error {
 				if err != nil {
 					break
 				}
-				this.onTransMsg(conn, msg)
+				this.onTransServerMsg(conn, msg)
 			}
 		}(addr, conn)
 	}

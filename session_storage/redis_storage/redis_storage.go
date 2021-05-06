@@ -15,7 +15,6 @@ type RedisStorage struct {
 	session_storage.SessionStorage
 	clientTimeout int64 // client heartbeat timeout time
 	segmentHash   *unsafehash.SegmentHash
-	nodeId        string
 }
 
 type RedisNode struct {
@@ -35,11 +34,6 @@ func NewRedisStorage(redisNodeList []*RedisNode) *RedisStorage {
 	return &RedisStorage{segmentHash: segmentHash, clientTimeout: 360}
 }
 
-// SetNodeId set node id
-func (this *RedisStorage) SetNodeId(nodeId string) {
-	this.nodeId = nodeId
-}
-
 // GetIps get ip list by clientId
 func (this *RedisStorage) GetIps(clientId int64) ([]string, error) {
 	redisNode := this.segmentHash.Get(clientId)
@@ -49,10 +43,10 @@ func (this *RedisStorage) GetIps(clientId int64) ([]string, error) {
 }
 
 // BindClientId set online with clientId
-func (this *RedisStorage) BindClientId(clientId int64) error {
+func (this *RedisStorage) BindClientId(nodeId string, clientId int64) error {
 	now := time.Now().Unix()
 	redisNode := this.segmentHash.Get(clientId)
-	err := redisNode.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.nodeId}).Err()
+	err := redisNode.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: nodeId}).Err()
 	if err != nil {
 		return err
 	}
@@ -132,10 +126,10 @@ func (this *RedisStorage) IsOnline(clientId int64) bool {
 }
 
 // OnClientPing receive client heartbeat
-func (this *RedisStorage) OnClientPing(clientId int64) error {
+func (this *RedisStorage) OnClientPing(nodeId string, clientId int64) error {
 	redisNode := this.segmentHash.Get(clientId)
 	now := time.Now().Unix()
-	err := redisNode.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: this.nodeId}).Err()
+	err := redisNode.(*redis.Client).ZAdd(context.Background(), session_storage.ClientPrefix+cast.ToString(clientId), &redis.Z{Score: cast.ToFloat64(now), Member: nodeId}).Err()
 	if err != nil {
 		return err
 	}
@@ -144,7 +138,7 @@ func (this *RedisStorage) OnClientPing(clientId int64) error {
 }
 
 // GetIps get ip list by clientId list
-func (this *RedisStorage) GetClientsIps(clientIds []string) ([]string, map[string][]string, error) {
+func (this *RedisStorage) GetClientsIps(clientIds []string) (map[string][]string, error) {
 	nodes := make(map[string]*NodeMap)
 	rangeTime := cast.ToString(time.Now().Unix() - this.clientTimeout)
 	for k1 := range clientIds {
@@ -159,7 +153,6 @@ func (this *RedisStorage) GetClientsIps(clientIds []string) ([]string, map[strin
 		}
 	}
 	otherMap := make(map[string][]string)
-	localClientIds := make([]string, 0)
 	for k1 := range nodes {
 		nodeMap := nodes[k1]
 		pipe := nodeMap.node.Pipeline()
@@ -177,19 +170,17 @@ func (this *RedisStorage) GetClientsIps(clientIds []string) ([]string, map[strin
 				logx.LogHandler.Error(err)
 			} else {
 				for k4 := range strMap {
-					if strMap[k4] == this.nodeId {
-						localClientIds = append(localClientIds, cast.ToString(nodeMap.clientIds[k3]))
+
+					if _, ok := otherMap[strMap[k4]]; ok {
+						otherMap[strMap[k4]] = append(otherMap[strMap[k4]], cast.ToString(nodeMap.clientIds[k3]))
 					} else {
-						if _, ok := otherMap[strMap[k4]]; ok {
-							otherMap[strMap[k4]] = append(otherMap[strMap[k4]], cast.ToString(nodeMap.clientIds[k3]))
-						} else {
-							otherMap[strMap[k4]] = []string{cast.ToString(nodeMap.clientIds[k3])}
-						}
+						otherMap[strMap[k4]] = []string{cast.ToString(nodeMap.clientIds[k3])}
 					}
+
 				}
 
 			}
 		}
 	}
-	return localClientIds, otherMap, nil
+	return otherMap, nil
 }

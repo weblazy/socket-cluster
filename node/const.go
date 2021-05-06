@@ -18,9 +18,10 @@ const (
 )
 
 const (
-	AuthMsgType   int32 = 1
-	ClientMsgType int32 = 2
-	PingMsgType   int32 = 3
+	AuthNodeMsgType           int32 = 1
+	ClientMsgType             int32 = 2
+	PingMsgType               int32 = 3
+	AuthBusinessClientMsgType int32 = 4
 )
 
 var PingMsg []byte

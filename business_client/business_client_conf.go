@@ -22,7 +22,7 @@ type (
 )
 
 // NewNodeConf creates a new NodeConf.
-func NewBusinessClientConf(hostList []string, discoveryHandler discovery.ServiceDiscovery, onMsg func(context *node.Context)) *BusinessClientConf {
+func NewBusinessClientConf(hostList []string, discoveryHandler discovery.ServiceDiscovery, sessionStorageHandler session_storage.SessionStorage, onMsg func(context *node.Context)) *BusinessClientConf {
 	return &BusinessClientConf{
 		hostList:                hostList,
 		password:                node.DefaultPassword,
@@ -30,6 +30,7 @@ func NewBusinessClientConf(hostList []string, discoveryHandler discovery.Service
 		internalProtocolHandler: &tcp_protocol.TcpProtocol{},
 		discoveryHandler:        discoveryHandler,
 		onMsg:                   onMsg,
+		sessionStorageHandler:   sessionStorageHandler,
 	}
 
 }
