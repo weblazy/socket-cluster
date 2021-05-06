@@ -65,7 +65,7 @@ func NewBusinessClient(cfg *BusinessClientConf) (BusinessClient, error) {
 		nodeServices:       goutil.AtomicMap(),
 		nodeTimeout:        cfg.nodePingInterval * 3,
 	}
-
+	go businessClientObj.watchService()
 	return businessClientObj, nil
 }
 
@@ -111,117 +111,6 @@ func (this *businessClient) SendToClientId(clientId string, req []byte) error {
 		})
 	}
 	return nil
-}
-
-// UpdateNodeList Add handles addition request
-func (this *businessClient) updateNodeList() error {
-	nodeMap := make(map[string]int)
-	for k1 := range this.businessClientConf.hostList {
-		nodeList, port, err := dns.DnsParse(this.businessClientConf.hostList[k1])
-		if err != nil {
-			logx.LogHandler.Error(err)
-			return err
-		}
-		for k2 := range nodeList {
-			nodeMap[nodeList[k2]+":"+port] = 1
-		}
-	}
-
-	for k1 := range nodeMap {
-		addr := k1
-		// Connection already exists
-		_, ok := this.nodeServices.LoadOrStore(addr, "")
-		if ok {
-			continue
-		}
-		conn, err := this.businessClientConf.internalProtocolHandler.Dial(addr)
-		if err != nil {
-			logx.LogHandler.Errorf("dial:%s", err.Error())
-			this.nodeServices.Delete(addr)
-			continue
-		}
-
-		auth := node.AuthMsg{
-			Password: this.businessClientConf.password,
-		}
-		authBytes, err := proto.Marshal(&auth)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
-		data := node.Msg{
-			MsgType: node.AuthBusinessClientMsgType,
-			Data:    authBytes,
-		}
-		reqBytes, err := proto.Marshal(&data)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
-		err = conn.WriteMsg(reqBytes)
-		if err != nil {
-			logx.LogHandler.Info(err)
-		}
-		this.nodeServices.Store(addr, conn)
-		go func(ipAddress string, conn protocol.Connection) {
-			defer func(addr string, conn protocol.Connection) {
-				this.nodeServices.Delete(addr)
-				if conn != nil {
-					conn.Close()
-				}
-			}(addr, conn)
-			for {
-				msg, err := conn.ReadMsg()
-				if err != nil {
-					break
-				}
-				this.onTransServerMsg(conn, msg)
-			}
-		}(addr, conn)
-	}
-	return nil
-}
-
-// Register
-func (this *businessClient) register() {
-	watchChan := make(chan discovery.EventType, 1)
-	go this.businessClientConf.discoveryHandler.WatchService(watchChan)
-	go func() {
-		for {
-			select {
-			case _, ok := <-watchChan:
-				if !ok {
-					logx.LogHandler.Infof("channel close\n")
-					return
-				}
-				err := this.updateNodeList()
-				if err != nil {
-					logx.LogHandler.Error(err)
-				}
-			}
-		}
-	}()
-	// init
-	err := this.updateNodeList()
-	if err != nil {
-		logx.LogHandler.Error(err)
-	}
-}
-
-// OnTransMsg handle internal communication node messages
-func (this *businessClient) onTransServerMsg(conn protocol.Connection, msg []byte) {
-	var transMsg node.Msg
-	err := proto.Unmarshal(msg, &transMsg)
-	if err != nil {
-		logx.LogHandler.Error(err)
-		return
-	}
-	switch transMsg.MsgType {
-
-	case node.PingMsgType: // The heartbeat message
-
-	default: // The unknow message
-		logx.LogHandler.Info(transMsg)
-	}
-
 }
 
 type BatchData struct {
@@ -296,4 +185,138 @@ func (this *businessClient) IsOnline(clientId int64) bool {
 		return true
 	}
 	return false
+}
+
+// watchService
+func (this *businessClient) watchService() {
+	watchChan := make(chan discovery.EventType, 1)
+	go this.businessClientConf.discoveryHandler.WatchService(watchChan)
+	go func() {
+		for {
+			select {
+			case _, ok := <-watchChan:
+				if !ok {
+					logx.LogHandler.Infof("channel close\n")
+					return
+				}
+				err := this.updateNodeList()
+				if err != nil {
+					logx.LogHandler.Error(err)
+				}
+			}
+		}
+	}()
+	// init
+	err := this.updateNodeList()
+	if err != nil {
+		logx.LogHandler.Error(err)
+	}
+}
+
+// UpdateNodeList Add handles addition request
+func (this *businessClient) updateNodeList() error {
+	nodeMap := make(map[string]int)
+	for k1 := range this.businessClientConf.hostList {
+		nodeList, port, err := dns.DnsParse(this.businessClientConf.hostList[k1])
+		if err != nil {
+			logx.LogHandler.Error(err)
+			return err
+		}
+		for k2 := range nodeList {
+			nodeMap[nodeList[k2]+":"+port] = 1
+		}
+	}
+
+	for k1 := range nodeMap {
+		addr := k1
+		// Connection already exists
+		_, ok := this.nodeServices.LoadOrStore(addr, "")
+		if ok {
+			continue
+		}
+		conn, err := this.businessClientConf.internalProtocolHandler.Dial(addr)
+		if err != nil {
+			logx.LogHandler.Errorf("dial:%s", err.Error())
+			this.nodeServices.Delete(addr)
+			continue
+		}
+
+		auth := node.AuthMsg{
+			Password: this.businessClientConf.password,
+		}
+		authBytes, err := proto.Marshal(&auth)
+		if err != nil {
+			logx.LogHandler.Error(err)
+		}
+		data := node.Msg{
+			MsgType: node.AuthBusinessClientMsgType,
+			Data:    authBytes,
+		}
+		reqBytes, err := proto.Marshal(&data)
+		if err != nil {
+			logx.LogHandler.Error(err)
+		}
+		err = conn.WriteMsg(reqBytes)
+		if err != nil {
+			logx.LogHandler.Info(err)
+		}
+		this.nodeServices.Store(addr, conn)
+		go func(ipAddress string, conn protocol.Connection) {
+			defer func(addr string, conn protocol.Connection) {
+				this.nodeServices.Delete(addr)
+				if conn != nil {
+					conn.Close()
+				}
+			}(addr, conn)
+			for {
+				msg, err := conn.ReadMsg()
+				if err != nil {
+					break
+				}
+				this.onTransServerMsg(conn, msg)
+			}
+		}(addr, conn)
+	}
+	return nil
+}
+
+// OnTransMsg handle internal communication node messages
+func (this *businessClient) onTransServerMsg(conn protocol.Connection, msg []byte) {
+	var transMsg node.Msg
+	err := proto.Unmarshal(msg, &transMsg)
+	if err != nil {
+		logx.LogHandler.Error(err)
+		return
+	}
+	switch transMsg.MsgType {
+
+	case node.PingMsgType: // The heartbeat message
+
+	default: // The unknow message
+		logx.LogHandler.Info(transMsg)
+	}
+
+}
+
+// SendPing send node Heartbeat
+func (this *businessClient) sendPing() {
+	go func() {
+		for {
+			time.Sleep(time.Duration(this.businessClientConf.nodePingInterval) * time.Second)
+
+			// send to other node
+			this.nodeServices.Range(func(k, v interface{}) bool {
+				conn, ok := v.(protocol.Connection)
+				if !ok {
+					return true
+				}
+
+				err := conn.WriteMsg(node.PingMsg)
+				if err != nil {
+					logx.LogHandler.Error(err)
+				}
+				return true
+			})
+		}
+	}()
 }

@@ -325,7 +325,7 @@ func (this *node) onTransServerMsg(conn protocol.Connection, msg []byte) {
 	var transMsg Msg
 	err := proto.Unmarshal(msg, &transMsg)
 	if err != nil {
-		logx.LogHandler.Error(err)
+		logx.LogHandler.Error(err, string(msg))
 		return
 	}
 	switch transMsg.MsgType {
@@ -360,7 +360,7 @@ func (this *node) onTransClientMsg(conn protocol.Connection, msg []byte) {
 	var transMsg Msg
 	err := proto.Unmarshal(msg, &transMsg)
 	if err != nil {
-		logx.LogHandler.Error(err)
+		logx.LogHandler.Error(err, string(msg))
 		return
 	}
 	switch transMsg.MsgType {
