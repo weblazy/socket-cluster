@@ -17,3 +17,7 @@ message AuthMsg {
     string node_id = 1;
     string password = 2;
 }
+
+message BindNodeIdMsg {
+    string node_id = 1;
+}

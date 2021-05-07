@@ -7,7 +7,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/spf13/cast"
 	"github.com/weblazy/core/mapreduce"
-	"github.com/weblazy/core/timingwheel"
 	"github.com/weblazy/goutil"
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/dns"
@@ -30,11 +29,10 @@ type (
 	businessClient struct {
 		BusinessClient
 		businessClientConf *BusinessClientConf
-		timer              *timingwheel.TimingWheel // Timingwheel Close connects that timeout without authentication
-		startTime          time.Time                // Start time
 		// Key: socket address
 		// Value: protocol.Connection
-		nodeServices  goutil.Map // Receive messages forwarded by other nodes
+		nodeIpMap     goutil.Map // Receive messages forwarded by other nodes
+		nodeIdMap     goutil.Map // Receive messages forwarded by other nodes
 		nodeTimeout   int64      // Node heartbeat timeout time
 		clientTimeout int64      // Client heartbeat timeout time
 
@@ -44,25 +42,10 @@ type (
 
 // NewNode return a Node
 func NewBusinessClient(cfg *BusinessClientConf) (BusinessClient, error) {
-	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
-		// TODO Count the number of unauthenticated connections
-		logx.LogHandler.Infof("%s auth timeout", k)
-		if v.(protocol.Connection) != nil {
-			err := v.(protocol.Connection).Close()
-			if err != nil {
-				logx.LogHandler.Error(err)
-			}
-		}
-	})
-
-	if err != nil {
-		return nil, err
-	}
 	businessClientObj := &businessClient{
 		businessClientConf: cfg,
-		startTime:          time.Now(),
-		timer:              timer,
-		nodeServices:       goutil.AtomicMap(),
+		nodeIpMap:          goutil.AtomicMap(),
+		nodeIdMap:          goutil.AtomicMap(),
 		nodeTimeout:        cfg.nodePingInterval * 3,
 	}
 	go businessClientObj.watchService()
@@ -83,7 +66,7 @@ func (this *businessClient) SendToClientId(clientId string, req []byte) error {
 		}, func(item interface{}) {
 			ip := item.(string)
 
-			connect, ok := this.nodeServices.Load(ip)
+			connect, ok := this.nodeIdMap.Load(ip)
 			if ok {
 				conn, ok := connect.(protocol.Connection)
 				if !ok {
@@ -134,7 +117,7 @@ func (this *businessClient) SendToClientIds(clientIds []string, req []byte) erro
 		}
 	}, func(item interface{}) {
 		batchData := item.(*BatchData)
-		connect, ok := this.nodeServices.Load(batchData.ip)
+		connect, ok := this.nodeIdMap.Load(batchData.ip)
 		if ok {
 			conn, ok := connect.(protocol.Connection)
 			if !ok {
@@ -230,14 +213,14 @@ func (this *businessClient) updateNodeList() error {
 	for k1 := range nodeMap {
 		addr := k1
 		// Connection already exists
-		_, ok := this.nodeServices.LoadOrStore(addr, "")
+		_, ok := this.nodeIpMap.LoadOrStore(addr, "")
 		if ok {
 			continue
 		}
 		conn, err := this.businessClientConf.internalProtocolHandler.Dial(addr)
 		if err != nil {
 			logx.LogHandler.Errorf("dial:%s", err.Error())
-			this.nodeServices.Delete(addr)
+			this.nodeIpMap.Delete(addr)
 			continue
 		}
 
@@ -260,10 +243,14 @@ func (this *businessClient) updateNodeList() error {
 		if err != nil {
 			logx.LogHandler.Info(err)
 		}
-		this.nodeServices.Store(addr, conn)
-		go func(ipAddress string, conn protocol.Connection) {
+		this.nodeIpMap.Store(addr, conn)
+		go func(addr string, conn protocol.Connection) {
 			defer func(addr string, conn protocol.Connection) {
-				this.nodeServices.Delete(addr)
+				nodeId, _ := this.nodeIpMap.Load(addr)
+				if nodeId != "" {
+					this.nodeIdMap.Delete(nodeId)
+				}
+				this.nodeIpMap.Delete(addr)
 				if conn != nil {
 					conn.Close()
 				}
@@ -273,7 +260,7 @@ func (this *businessClient) updateNodeList() error {
 				if err != nil {
 					break
 				}
-				this.onTransServerMsg(conn, msg)
+				this.onTransServerMsg(addr, conn, msg)
 			}
 		}(addr, conn)
 	}
@@ -281,7 +268,7 @@ func (this *businessClient) updateNodeList() error {
 }
 
 // OnTransMsg handle internal communication node messages
-func (this *businessClient) onTransServerMsg(conn protocol.Connection, msg []byte) {
+func (this *businessClient) onTransServerMsg(addr string, conn protocol.Connection, msg []byte) {
 	var transMsg node.Msg
 	err := proto.Unmarshal(msg, &transMsg)
 	if err != nil {
@@ -291,7 +278,14 @@ func (this *businessClient) onTransServerMsg(conn protocol.Connection, msg []byt
 	switch transMsg.MsgType {
 
 	case node.PingMsgType: // The heartbeat message
-
+	case node.BindNodeIdMsgType:
+		var bindNodeIdMsg node.BindNodeIdMsg
+		err = proto.Unmarshal(transMsg.Data, &bindNodeIdMsg)
+		if err != nil {
+			logx.LogHandler.Error(err)
+		}
+		this.nodeIdMap.Store(bindNodeIdMsg.NodeId, conn)
+		this.nodeIpMap.Store(addr, bindNodeIdMsg.NodeId)
 	default: // The unknow message
 		logx.LogHandler.Info(transMsg)
 	}
@@ -305,7 +299,7 @@ func (this *businessClient) sendPing() {
 			time.Sleep(time.Duration(this.businessClientConf.nodePingInterval) * time.Second)
 
 			// send to other node
-			this.nodeServices.Range(func(k, v interface{}) bool {
+			this.nodeIpMap.Range(func(k, v interface{}) bool {
 				conn, ok := v.(protocol.Connection)
 				if !ok {
 					return true

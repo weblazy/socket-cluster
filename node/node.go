@@ -162,6 +162,9 @@ func (this *node) SendToClientId(clientId string, req []byte) error {
 						Data:             req,
 					}
 					clientsMsgBytes, err := proto.Marshal(&clientsMsg)
+					if err != nil {
+						logx.LogHandler.Error(err)
+					}
 					transReq := Msg{
 						MsgType: ClientMsgType,
 						Data:    clientsMsgBytes,
@@ -385,6 +388,23 @@ func (this *node) onTransClientMsg(conn protocol.Connection, msg []byte) {
 		err = this.authTrans(conn, &authMsg)
 		if err != nil {
 			logx.LogHandler.Error(err)
+			return
+		}
+		bindNodeIdMsg := BindNodeIdMsg{NodeId: this.nodeConf.nodeId}
+
+		bindNodeIdMsgBytes, err := proto.Marshal(&bindNodeIdMsg)
+		if err != nil {
+			logx.LogHandler.Error(err)
+		}
+		bindNodeIdReq := Msg{
+			MsgType: BindNodeIdMsgType,
+			Data:    bindNodeIdMsgBytes,
+		}
+		reqBytes, err := proto.Marshal(&bindNodeIdReq)
+
+		err = conn.WriteMsg(reqBytes)
+		if err != nil {
+			logx.LogHandler.Error(err)
 		}
 	case ClientMsgType: // Message forwarded to the client
 		addr := conn.Addr()
@@ -574,7 +594,7 @@ func (this *node) updateNodeList() error {
 			logx.LogHandler.Info(err)
 		}
 		this.transServices.Store(addr, conn)
-		go func(ipAddress string, conn protocol.Connection) {
+		go func(addr string, conn protocol.Connection) {
 			defer func(addr string, conn protocol.Connection) {
 				this.transServices.Delete(addr)
 				if conn != nil {
