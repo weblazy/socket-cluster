@@ -386,7 +386,7 @@ func (this *node) onTransClientMsg(conn protocol.Connection, msg []byte) {
 		if err != nil {
 			logx.LogHandler.Error(err)
 		}
-		err = this.authTrans(conn, &authMsg)
+		err = this.authBusinessClient(conn, &authMsg)
 		if err != nil {
 			logx.LogHandler.Error(err)
 			return
