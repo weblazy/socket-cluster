@@ -84,6 +84,7 @@ func NewNode(cfg *NodeConf) (Node, error) {
 		clientConns:      goutil.AtomicMap(),
 		transClients:     goutil.AtomicMap(),
 		transServices:    goutil.AtomicMap(),
+		businessClients:  goutil.AtomicMap(),
 		nodeTimeout:      cfg.nodePingInterval * 3,   // The timeout is three times as long as the interval between heartbeats
 		clientTimeout:    cfg.clientPingInterval * 3, // The timeout is three times as long as the interval between heartbeats
 	}
