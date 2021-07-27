@@ -37,6 +37,9 @@ func onMsg(context *node.Context) {
 # 架构框图
 ![scheme 1](pic/websocket.png)
 
+- 使用business_client将业务和节点分离部署
+![scheme 1](pic/business_client.png)
+
 # 联系我们
 - 技术支持/合作/咨询请联系作者QQ: 2276282419
 - 作者邮箱: 2276282419@qq.com
