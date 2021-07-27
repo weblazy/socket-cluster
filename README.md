@@ -35,7 +35,7 @@ func onMsg(context *node.Context) {
 ```
 
 # 架构框图
-![scheme 1](pic/websocket.png)
+![scheme 1](pic/socket_cluster.png)
 
 - 使用business_client将业务和节点分离部署
 ![scheme 1](pic/business_client.png)
