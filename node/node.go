@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/spf13/cast"
 	"github.com/weblazy/core/mapreduce"
 	"github.com/weblazy/easy/utils/syncx"
 	"github.com/weblazy/easy/utils/timingwheel"
@@ -23,9 +22,9 @@ type (
 		// SetClientIdOnline binds the client ID to the connection
 		SetClientIdOnline(conn protocol.Connection, clientId string) error
 		// OnClientPing updates the client heartbeat status
-		OnClientPing(clientId int64) error
+		OnClientPing(clientId string) error
 		// IsOnline gets the online status of the clientId
-		IsOnline(clientId int64) bool
+		IsOnline(clientId string) bool
 		// SendToClientId sends a message to a clientId
 		SendToClientId(clientId string, req []byte) error
 		//  SendToClientId sends a message to multiple clientIds
@@ -102,23 +101,22 @@ func (this *node) SetClientIdOnline(conn protocol.Connection, clientId string) e
 	this.timer.RemoveTimer(addr) // Cancel timeingwheel task
 	session := &Session{Conn: conn, ClientId: clientId}
 	this.clientConns.Store(addr, session)
-	this.clientIdSessions.StoreWithPlugin(cast.ToString(clientId), addr, session, func() {
-		oldClientId := session.CasClientId(cast.ToString(clientId))
-		oldClientIdInt := cast.ToInt64(oldClientId)
-		if oldClientId != "" && oldClientIdInt != cast.ToInt64(clientId) {
+	this.clientIdSessions.StoreWithPlugin(clientId, addr, session, func() {
+		oldClientId := session.CasClientId(clientId)
+		if oldClientId != "" && oldClientId != clientId {
 			this.clientIdSessions.DeleteWithoutLock(oldClientId, addr)
 		}
 	})
-	return this.nodeConf.sessionStorageHandler.BindClientId(this.nodeConf.nodeId, cast.ToInt64(clientId))
+	return this.nodeConf.sessionStorageHandler.BindClientId(this.nodeConf.nodeId, clientId)
 }
 
 // OnClientPing updates the client heartbeat status
-func (this *node) OnClientPing(clientId int64) error {
+func (this *node) OnClientPing(clientId string) error {
 	return this.nodeConf.sessionStorageHandler.OnClientPing(this.nodeConf.nodeId, clientId)
 }
 
 // IsOnline determine if a clientId is online
-func (this *node) IsOnline(clientId int64) bool {
+func (this *node) IsOnline(clientId string) bool {
 	addrArr, err := this.nodeConf.sessionStorageHandler.GetIps(clientId)
 	if err != nil {
 		logx.LogHandler.Error(err)
@@ -135,7 +133,7 @@ func (this *node) SendToClientId(clientId string, req []byte) error {
 	if req == nil {
 		return fmt.Errorf("message is nil")
 	}
-	ipArr, err := this.nodeConf.sessionStorageHandler.GetIps(cast.ToInt64(clientId))
+	ipArr, err := this.nodeConf.sessionStorageHandler.GetIps(clientId)
 	if err == nil {
 		mapreduce.MapVoid(func(source chan<- interface{}) {
 			for key := range ipArr {
@@ -159,7 +157,7 @@ func (this *node) SendToClientId(clientId string, req []byte) error {
 						return
 					}
 					clientsMsg := ClientsMsg{
-						ReceiveClientIds: []int64{cast.ToInt64(clientId)},
+						ReceiveClientIds: []string{clientId},
 						Data:             req,
 					}
 					clientsMsgBytes, err := proto.Marshal(&clientsMsg)
@@ -215,9 +213,9 @@ func (this *node) SendToClientIds(clientIds []string, req []byte) error {
 			if !ok {
 				return
 			}
-			ids := make([]int64, 0)
+			ids := make([]string, 0)
 			for k1 := range batchData.clientIds {
-				ids = append(ids, cast.ToInt64(batchData.clientIds[k1]))
+				ids = append(ids, batchData.clientIds[k1])
 			}
 			clientsMsg := ClientsMsg{
 				ReceiveClientIds: ids,
@@ -342,7 +340,7 @@ func (this *node) onTransServerMsg(conn protocol.Connection, msg []byte) {
 		}
 		for k1 := range clientsMsg.ReceiveClientIds {
 			receiveClientId := clientsMsg.ReceiveClientIds[k1]
-			this.clientIdSessions.RangeNextMap(cast.ToString(receiveClientId), func(k1, k2 string, se interface{}) bool {
+			this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
 				err = se.(*Session).Conn.WriteMsg(clientsMsg.Data)
 				if err != nil {
 					logx.LogHandler.Error(err)
@@ -421,7 +419,7 @@ func (this *node) onTransClientMsg(conn protocol.Connection, msg []byte) {
 		}
 		for k1 := range clientsMsg.ReceiveClientIds {
 			receiveClientId := clientsMsg.ReceiveClientIds[k1]
-			this.clientIdSessions.RangeNextMap(cast.ToString(receiveClientId), func(k1, k2 string, se interface{}) bool {
+			this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
 				err = se.(*Session).Conn.WriteMsg(clientsMsg.Data)
 				if err != nil {
 					logx.LogHandler.Error(err)

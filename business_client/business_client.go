@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/spf13/cast"
 	"github.com/weblazy/core/mapreduce"
 	"github.com/weblazy/goutil"
 	"github.com/weblazy/socket-cluster/discovery"
@@ -18,7 +17,7 @@ import (
 type (
 	BusinessClient interface {
 		// IsOnline gets the online status of the clientId
-		IsOnline(clientId int64) bool
+		IsOnline(clientId string) bool
 		// SendToClientId sends a message to a clientId
 		SendToClientId(clientId string, req []byte) error
 		//  SendToClientId sends a message to multiple clientIds
@@ -57,7 +56,7 @@ func (this *businessClient) SendToClientId(clientId string, req []byte) error {
 	if req == nil {
 		return fmt.Errorf("message is nil")
 	}
-	ipArr, err := this.businessClientConf.sessionStorageHandler.GetIps(cast.ToInt64(clientId))
+	ipArr, err := this.businessClientConf.sessionStorageHandler.GetIps(clientId)
 	if err == nil {
 		mapreduce.MapVoid(func(source chan<- interface{}) {
 			for key := range ipArr {
@@ -73,7 +72,7 @@ func (this *businessClient) SendToClientId(clientId string, req []byte) error {
 					return
 				}
 				clientsMsg := node.ClientsMsg{
-					ReceiveClientIds: []int64{cast.ToInt64(clientId)},
+					ReceiveClientIds: []string{clientId},
 					Data:             req,
 				}
 				clientsMsgBytes, err := proto.Marshal(&clientsMsg)
@@ -123,9 +122,9 @@ func (this *businessClient) SendToClientIds(clientIds []string, req []byte) erro
 			if !ok {
 				return
 			}
-			ids := make([]int64, 0)
+			ids := make([]string, 0)
 			for k1 := range batchData.clientIds {
-				ids = append(ids, cast.ToInt64(batchData.clientIds[k1]))
+				ids = append(ids, batchData.clientIds[k1])
 			}
 			clientsMsg := node.ClientsMsg{
 				ReceiveClientIds: ids,
@@ -158,7 +157,7 @@ func (this *businessClient) SendToClientIds(clientIds []string, req []byte) erro
 }
 
 // IsOnline determine if a clientId is online
-func (this *businessClient) IsOnline(clientId int64) bool {
+func (this *businessClient) IsOnline(clientId string) bool {
 	addrArr, err := this.businessClientConf.sessionStorageHandler.GetIps(clientId)
 	if err != nil {
 		logx.LogHandler.Error(err)

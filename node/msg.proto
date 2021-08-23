@@ -9,7 +9,7 @@ message Msg {
 }
 
 message ClientsMsg {
-    repeated int64 receive_client_ids = 1;
+    repeated string receive_client_ids = 1;
     bytes data = 2;
 }
 
