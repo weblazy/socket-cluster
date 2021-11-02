@@ -1,4 +1,5 @@
 - 入门
+  - [目录结构](zh-cn/dir.md)
   - [快速开始](zh-cn/quickstart.md)
   - [下载](zh-cn/downloads.md)
 
