@@ -1,11 +1,8 @@
 ![logo](../media/logo.png)
 
-# KtConnect<small>0.2.0</small>
+# GoCore<small>v2</small>
 
-> 面向Kubernetes的本地开发者辅助工具
+> 微服务开发框架
 
-- **本地** ⇋ **集群**
--（使用KT双向通道）
-
-[Github](https://github.com/alibaba/kt-connect)
+[Github](https://github.com/sunmi-OS/gocore)
 [快速开始](zh-cn/quickstart)
