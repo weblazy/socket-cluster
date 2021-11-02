@@ -5,5 +5,4 @@
   * KtConnect (当前项目)
   * [KtEnv](https://alibaba.github.io/virtual-environment/#/zh-cn/)
 * 语言
-  * [English](/en-us/)
   * 中文
