@@ -135,7 +135,6 @@ func (l *fileLogger) Errorf(format string, v ...interface{}) {
 func makeLogFile() (*os.File, error) {
 	now := time.Now().Format(defaultDateTemp)
 	fileName := defaultDir + "/" + now + ".log"
-	fmt.Println(fileName)
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("log file open failed, err = %v", err)
