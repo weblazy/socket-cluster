@@ -5,16 +5,20 @@ import (
 
 	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/logic/gateway_logic"
 	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/proto/gateway"
+	"github.com/weblazy/socket-cluster/node"
 
 	"github.com/weblazy/easy/code_err"
 )
 
 type GatewayService struct {
 	gateway.UnimplementedGatewayServiceServer
+	Node node.Node
 }
 
-func NewGatewayService() *GatewayService {
-	return &GatewayService{}
+func NewGatewayService(n node.Node) *GatewayService {
+	return &GatewayService{
+		Node: n,
+	}
 }
 
 func (h *GatewayService) IsOnline(ctx context.Context, req *gateway.IsOnlineRequest) (*gateway.IsOnlineResponse, error) {
@@ -32,29 +36,21 @@ func (h *GatewayService) IsOnline(ctx context.Context, req *gateway.IsOnlineRequ
 }
 
 func (h *GatewayService) SendToClientId(ctx context.Context, req *gateway.SendToClientIdRequest) (*gateway.SendToClientIdResponse, error) {
-	svcCtx := &gateway_logic.SendToClientIdCtx{
-		Log: code_err.NewLog(ctx),
-		Req: req,
-		Res: new(gateway.SendToClientIdResponse),
-	}
-	err := gateway_logic.SendToClientId(svcCtx)
+	resp := gateway.SendToClientIdResponse{}
+	err := h.Node.SendToClientId(req.ClientId, req.Data)
 	if err != nil {
-		svcCtx.Res.Code = err.Code
-		svcCtx.Res.Msg = err.Msg
+		resp.Code = -1
+		resp.Msg = err.Error()
 	}
-	return svcCtx.Res, nil
+	return &resp, nil
 }
 
 func (h *GatewayService) SendToClientIds(ctx context.Context, req *gateway.SendToClientIdsRequest) (*gateway.SendToClientIdsResponse, error) {
-	svcCtx := &gateway_logic.SendToClientIdsCtx{
-		Log: code_err.NewLog(ctx),
-		Req: req,
-		Res: new(gateway.SendToClientIdsResponse),
-	}
-	err := gateway_logic.SendToClientIds(svcCtx)
+	resp := gateway.SendToClientIdsResponse{}
+	err := h.Node.SendToClientIds(req.ClientIds, req.Data)
 	if err != nil {
-		svcCtx.Res.Code = err.Code
-		svcCtx.Res.Msg = err.Msg
+		resp.Code = -1
+		resp.Msg = err.Error()
 	}
-	return svcCtx.Res, nil
+	return &resp, nil
 }

@@ -2,17 +2,13 @@ package node
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/weblazy/core/mapreduce"
 	"github.com/weblazy/easy/syncx"
 	"github.com/weblazy/easy/timingwheel"
 	"github.com/weblazy/goutil"
-	"github.com/weblazy/socket-cluster/discovery"
-	"github.com/weblazy/socket-cluster/dns"
 	"github.com/weblazy/socket-cluster/logx"
 	"github.com/weblazy/socket-cluster/protocol"
 )
@@ -50,12 +46,12 @@ type (
 		businessClients goutil.Map // Send the message to client
 		// Key: nodeId
 		// Value: *Session
-		transClients goutil.Map // Forward the message to another node
+		// transClients goutil.Map // Forward the message to another node
 		// Key: socket address
 		// Value: protocol.Connection
-		transServices goutil.Map // Receive messages forwarded by other nodes
-		nodeTimeout   int64      // Node heartbeat timeout time
-		clientTimeout int64      // Client heartbeat timeout time
+		// transServices goutil.Map // Receive messages forwarded by other nodes
+		nodeTimeout   int64 // Node heartbeat timeout time
+		clientTimeout int64 // Client heartbeat timeout time
 	}
 )
 
@@ -81,14 +77,12 @@ func NewNode(cfg *NodeConf) (Node, error) {
 		startTime:        time.Now(),
 		timer:            timer,
 		clientConns:      goutil.AtomicMap(),
-		transClients:     goutil.AtomicMap(),
-		transServices:    goutil.AtomicMap(),
 		businessClients:  goutil.AtomicMap(),
 		nodeTimeout:      cfg.nodePingInterval * 3,   // The timeout is three times as long as the interval between heartbeats
 		clientTimeout:    cfg.clientPingInterval * 3, // The timeout is three times as long as the interval between heartbeats
 	}
 	nodeObj.nodeConf.discoveryHandler.SetNodeId(cfg.nodeId)
-	cfg.internalProtocolHandler.ListenAndServe(cfg.internalPort, nodeObj.onTransConnect)
+	// cfg.internalProtocolHandler.ListenAndServe(cfg.internalPort, nodeObj.onTransConnect)
 	cfg.protocolHandler.ListenAndServe(cfg.port, nodeObj.onClientConnect)
 	nodeObj.sendPing()
 	nodeObj.register()
@@ -140,44 +134,44 @@ func (this *node) SendToClientId(clientId string, req []byte) error {
 				source <- ipArr[key]
 			}
 		}, func(item interface{}) {
-			ip := item.(string)
-			if ip == this.nodeConf.nodeId {
-				this.clientIdSessions.RangeNextMap(clientId, func(k1, k2 string, se interface{}) bool {
-					err = se.(*Session).Conn.WriteMsg(req)
-					if err != nil {
-						logx.LogHandler.Error(err)
-					}
-					return true
-				})
-			} else {
-				connect, ok := this.transClients.Load(ip)
-				if ok {
-					conn, ok := connect.(protocol.Connection)
-					if !ok {
-						return
-					}
-					clientsMsg := ClientsMsg{
-						ReceiveClientIds: []string{clientId},
-						Data:             req,
-					}
-					clientsMsgBytes, err := proto.Marshal(&clientsMsg)
-					if err != nil {
-						logx.LogHandler.Error(err)
-					}
-					transReq := Msg{
-						MsgType: ClientMsgType,
-						Data:    clientsMsgBytes,
-					}
-					reqBytes, err := proto.Marshal(&transReq)
-					err = conn.WriteMsg(reqBytes)
-					if err != nil {
-						logx.LogHandler.Error(err)
-					}
-				} else {
-					logx.LogHandler.Errorf("node:%s not online", ip)
-					return
+			// ip := item.(string)
+			// if ip == this.nodeConf.nodeId {
+			this.clientIdSessions.RangeNextMap(clientId, func(k1, k2 string, se interface{}) bool {
+				err = se.(*Session).Conn.WriteMsg(req)
+				if err != nil {
+					logx.LogHandler.Error(err)
 				}
-			}
+				return true
+			})
+			// } else {
+			// 	connect, ok := this.transClients.Load(ip)
+			// 	if ok {
+			// 		conn, ok := connect.(protocol.Connection)
+			// 		if !ok {
+			// 			return
+			// 		}
+			// 		clientsMsg := ClientsMsg{
+			// 			ReceiveClientIds: []string{clientId},
+			// 			Data:             req,
+			// 		}
+			// 		clientsMsgBytes, err := proto.Marshal(&clientsMsg)
+			// 		if err != nil {
+			// 			logx.LogHandler.Error(err)
+			// 		}
+			// 		transReq := Msg{
+			// 			MsgType: ClientMsgType,
+			// 			Data:    clientsMsgBytes,
+			// 		}
+			// 		reqBytes, err := proto.Marshal(&transReq)
+			// 		err = conn.WriteMsg(reqBytes)
+			// 		if err != nil {
+			// 			logx.LogHandler.Error(err)
+			// 		}
+			// 	} else {
+			// 		logx.LogHandler.Errorf("node:%s not online", ip)
+			// 		return
+			// 	}
+			// }
 		})
 	}
 	return nil
@@ -200,49 +194,49 @@ func (this *node) SendToClientIds(clientIds []string, req []byte) error {
 	localClientIds, _ := clientMap[this.nodeConf.nodeId]
 	delete(clientMap, this.nodeConf.nodeId)
 	// Concurrent sends to other nodes
-	mapreduce.MapVoid(func(source chan<- interface{}) {
-		for k1 := range clientMap {
+	// mapreduce.MapVoid(func(source chan<- interface{}) {
+	// 	for k1 := range clientMap {
 
-			source <- &BatchData{ip: k1, clientIds: clientMap[k1]}
-		}
-	}, func(item interface{}) {
-		batchData := item.(*BatchData)
-		connect, ok := this.transClients.Load(batchData.ip)
-		if ok {
-			conn, ok := connect.(protocol.Connection)
-			if !ok {
-				return
-			}
-			ids := make([]string, 0)
-			for k1 := range batchData.clientIds {
-				ids = append(ids, batchData.clientIds[k1])
-			}
-			clientsMsg := ClientsMsg{
-				ReceiveClientIds: ids,
-				Data:             req,
-			}
-			clientsMsgBytes, err := proto.Marshal(&clientsMsg)
-			if err != nil {
-				logx.LogHandler.Error(err)
-			}
-			msg := Msg{
-				MsgType: ClientMsgType,
-				Data:    clientsMsgBytes,
-			}
-			msgBytes, err := proto.Marshal(&msg)
-			if err != nil {
-				logx.LogHandler.Error(err)
-			}
-			err = conn.WriteMsg(msgBytes)
-			if err != nil {
-				logx.LogHandler.Error(err)
-			}
-		} else {
-			logx.LogHandler.Error("node:%s not online", batchData.ip)
-			return
-		}
+	// 		source <- &BatchData{ip: k1, clientIds: clientMap[k1]}
+	// 	}
+	// }, func(item interface{}) {
+	// 	batchData := item.(*BatchData)
+	// 	connect, ok := this.transClients.Load(batchData.ip)
+	// 	if ok {
+	// 		conn, ok := connect.(protocol.Connection)
+	// 		if !ok {
+	// 			return
+	// 		}
+	// 		ids := make([]string, 0)
+	// 		for k1 := range batchData.clientIds {
+	// 			ids = append(ids, batchData.clientIds[k1])
+	// 		}
+	// 		clientsMsg := ClientsMsg{
+	// 			ReceiveClientIds: ids,
+	// 			Data:             req,
+	// 		}
+	// 		clientsMsgBytes, err := proto.Marshal(&clientsMsg)
+	// 		if err != nil {
+	// 			logx.LogHandler.Error(err)
+	// 		}
+	// 		msg := Msg{
+	// 			MsgType: ClientMsgType,
+	// 			Data:    clientsMsgBytes,
+	// 		}
+	// 		msgBytes, err := proto.Marshal(&msg)
+	// 		if err != nil {
+	// 			logx.LogHandler.Error(err)
+	// 		}
+	// 		err = conn.WriteMsg(msgBytes)
+	// 		if err != nil {
+	// 			logx.LogHandler.Error(err)
+	// 		}
+	// 	} else {
+	// 		logx.LogHandler.Error("node:%s not online", batchData.ip)
+	// 		return
+	// 	}
 
-	})
+	// })
 	// Concurrent sends to clients
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		for k1 := range localClientIds {
@@ -305,147 +299,147 @@ func (this *node) onClientClose(connect protocol.Connection) {
 	this.clientConns.Delete(addr)
 }
 
-func (this *node) onTransConnect(connect protocol.Connection) {
-	defer func() {
-		if connect != nil {
-			connect.Close()
-		}
-	}()
-	this.timer.SetTimer(connect.Addr(), connect, authTime)
-	for {
-		msg, err := connect.ReadMsg()
-		if err != nil {
-			logx.LogHandler.Error(err)
-			break
-		}
-		this.onTransClientMsg(connect, msg)
-	}
-}
+// func (this *node) onTransConnect(connect protocol.Connection) {
+// 	defer func() {
+// 		if connect != nil {
+// 			connect.Close()
+// 		}
+// 	}()
+// 	this.timer.SetTimer(connect.Addr(), connect, authTime)
+// 	for {
+// 		msg, err := connect.ReadMsg()
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 			break
+// 		}
+// 		this.onTransClientMsg(connect, msg)
+// 	}
+// }
 
 // OnTransMsg handle internal communication node messages
-func (this *node) onTransServerMsg(conn protocol.Connection, msg []byte) {
-	var transMsg Msg
-	err := proto.Unmarshal(msg, &transMsg)
-	if err != nil {
-		logx.LogHandler.Error(err, string(msg))
-		return
-	}
-	switch transMsg.MsgType {
+// func (this *node) onTransServerMsg(conn protocol.Connection, msg []byte) {
+// 	var transMsg Msg
+// 	err := proto.Unmarshal(msg, &transMsg)
+// 	if err != nil {
+// 		logx.LogHandler.Error(err, string(msg))
+// 		return
+// 	}
+// 	switch transMsg.MsgType {
 
-	case ClientMsgType: // Message forwarded to the client
-		var clientsMsg ClientsMsg
-		err = proto.Unmarshal(transMsg.Data, &clientsMsg)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
-		for k1 := range clientsMsg.ReceiveClientIds {
-			receiveClientId := clientsMsg.ReceiveClientIds[k1]
-			this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
-				err = se.(*Session).Conn.WriteMsg(clientsMsg.Data)
-				if err != nil {
-					logx.LogHandler.Error(err)
-				}
-				return true
-			})
-		}
+// 	case ClientMsgType: // Message forwarded to the client
+// 		var clientsMsg ClientsMsg
+// 		err = proto.Unmarshal(transMsg.Data, &clientsMsg)
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 		}
+// 		for k1 := range clientsMsg.ReceiveClientIds {
+// 			receiveClientId := clientsMsg.ReceiveClientIds[k1]
+// 			this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
+// 				err = se.(*Session).Conn.WriteMsg(clientsMsg.Data)
+// 				if err != nil {
+// 					logx.LogHandler.Error(err)
+// 				}
+// 				return true
+// 			})
+// 		}
 
-	case PingMsgType: // The heartbeat message
+// 	case PingMsgType: // The heartbeat message
 
-	default: // The unknow message
-		logx.LogHandler.Info(transMsg)
-	}
+// 	default: // The unknow message
+// 		logx.LogHandler.Info(transMsg)
+// 	}
 
-}
+// }
 
 // OnTransMsg handle internal communication node messages
-func (this *node) onTransClientMsg(conn protocol.Connection, msg []byte) {
-	var transMsg Msg
-	err := proto.Unmarshal(msg, &transMsg)
-	if err != nil {
-		logx.LogHandler.Error(err, string(msg))
-		return
-	}
-	switch transMsg.MsgType {
-	case AuthNodeMsgType: // Authentication message
-		var authMsg AuthMsg
-		err = proto.Unmarshal(transMsg.Data, &authMsg)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
-		err = this.authTrans(conn, &authMsg)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
+// func (this *node) onTransClientMsg(conn protocol.Connection, msg []byte) {
+// 	var transMsg Msg
+// 	err := proto.Unmarshal(msg, &transMsg)
+// 	if err != nil {
+// 		logx.LogHandler.Error(err, string(msg))
+// 		return
+// 	}
+// 	switch transMsg.MsgType {
+// 	case AuthNodeMsgType: // Authentication message
+// 		var authMsg AuthMsg
+// 		err = proto.Unmarshal(transMsg.Data, &authMsg)
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 		}
+// 		err = this.authTrans(conn, &authMsg)
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 		}
 
-	case PingMsgType: // The heartbeat message
-	case AuthBusinessClientMsgType: // Authentication message
-		var authMsg AuthMsg
-		err = proto.Unmarshal(transMsg.Data, &authMsg)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
-		err = this.authBusinessClient(conn, &authMsg)
-		if err != nil {
-			logx.LogHandler.Error(err)
-			return
-		}
-		bindNodeIdMsg := BindNodeIdMsg{NodeId: this.nodeConf.nodeId}
+// 	case PingMsgType: // The heartbeat message
+// 	case AuthBusinessClientMsgType: // Authentication message
+// 		var authMsg AuthMsg
+// 		err = proto.Unmarshal(transMsg.Data, &authMsg)
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 		}
+// 		err = this.authBusinessClient(conn, &authMsg)
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 			return
+// 		}
+// 		bindNodeIdMsg := BindNodeIdMsg{NodeId: this.nodeConf.nodeId}
 
-		bindNodeIdMsgBytes, err := proto.Marshal(&bindNodeIdMsg)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
-		bindNodeIdReq := Msg{
-			MsgType: BindNodeIdMsgType,
-			Data:    bindNodeIdMsgBytes,
-		}
-		reqBytes, err := proto.Marshal(&bindNodeIdReq)
+// 		bindNodeIdMsgBytes, err := proto.Marshal(&bindNodeIdMsg)
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 		}
+// 		bindNodeIdReq := Msg{
+// 			MsgType: BindNodeIdMsgType,
+// 			Data:    bindNodeIdMsgBytes,
+// 		}
+// 		reqBytes, err := proto.Marshal(&bindNodeIdReq)
 
-		err = conn.WriteMsg(reqBytes)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
-	case ClientMsgType: // Message forwarded to the client
-		addr := conn.Addr()
-		_, ok := this.businessClients.Load(addr)
-		if !ok {
-			logx.LogHandler.Error(errors.New("un auth connect"))
-			return
-		}
-		var clientsMsg ClientsMsg
-		err = proto.Unmarshal(transMsg.Data, &clientsMsg)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
-		for k1 := range clientsMsg.ReceiveClientIds {
-			receiveClientId := clientsMsg.ReceiveClientIds[k1]
-			this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
-				err = se.(*Session).Conn.WriteMsg(clientsMsg.Data)
-				if err != nil {
-					logx.LogHandler.Error(err)
-				}
-				return true
-			})
-		}
+// 		err = conn.WriteMsg(reqBytes)
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 		}
+// 	case ClientMsgType: // Message forwarded to the client
+// 		addr := conn.Addr()
+// 		_, ok := this.businessClients.Load(addr)
+// 		if !ok {
+// 			logx.LogHandler.Error(errors.New("un auth connect"))
+// 			return
+// 		}
+// 		var clientsMsg ClientsMsg
+// 		err = proto.Unmarshal(transMsg.Data, &clientsMsg)
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 		}
+// 		for k1 := range clientsMsg.ReceiveClientIds {
+// 			receiveClientId := clientsMsg.ReceiveClientIds[k1]
+// 			this.clientIdSessions.RangeNextMap(receiveClientId, func(k1, k2 string, se interface{}) bool {
+// 				err = se.(*Session).Conn.WriteMsg(clientsMsg.Data)
+// 				if err != nil {
+// 					logx.LogHandler.Error(err)
+// 				}
+// 				return true
+// 			})
+// 		}
 
-	default: // The unknow message
-		logx.LogHandler.Info(transMsg)
-	}
+// 	default: // The unknow message
+// 		logx.LogHandler.Info(transMsg)
+// 	}
 
-}
+// }
 
 // AuthTrans Auth the node
-func (this *node) authTrans(conn protocol.Connection, authMsg *AuthMsg) error {
-	nodeId := authMsg.NodeId
-	this.timer.RemoveTimer(conn.Addr()) // Cancel timeingwheel task
-	if authMsg.Password != this.nodeConf.password {
-		logx.LogHandler.Infof("Connect:%s,Wrong password:%s", nodeId, authMsg.Password)
-		conn.Close()
-		return fmt.Errorf("auth faild")
-	}
-	this.transClients.Store(nodeId, conn)
-	return nil
-}
+// func (this *node) authTrans(conn protocol.Connection, authMsg *AuthMsg) error {
+// 	nodeId := authMsg.NodeId
+// 	this.timer.RemoveTimer(conn.Addr()) // Cancel timeingwheel task
+// 	if authMsg.Password != this.nodeConf.password {
+// 		logx.LogHandler.Infof("Connect:%s,Wrong password:%s", nodeId, authMsg.Password)
+// 		conn.Close()
+// 		return fmt.Errorf("auth faild")
+// 	}
+// 	this.transClients.Store(nodeId, conn)
+// 	return nil
+// }
 
 // AuthTrans Auth the node
 func (this *node) authBusinessClient(conn protocol.Connection, authMsg *AuthMsg) error {
@@ -466,23 +460,10 @@ func (this *node) sendPing() {
 		for {
 			time.Sleep(time.Duration(this.nodeConf.nodePingInterval) * time.Second)
 			// update node info
-			transClients := make([]interface{}, 0)
-			this.transClients.Range(func(k1, v1 interface{}) bool {
-				transClients = append(transClients, k1)
-				return true
-			})
-			transServices := make([]interface{}, 0)
-			this.transServices.Range(func(k1, v1 interface{}) bool {
-				transServices = append(transServices, k1)
-				return true
-			})
-
 			nodeInfo := map[string]interface{}{
-				"node_id":        this.nodeConf.nodeId,
-				"trans_clients":  transClients,
-				"trans_services": transServices,
-				"client_count":   this.clientConns.Len(),
-				"timestamp":      time.Now().Unix(),
+				"node_id":      this.nodeConf.nodeId,
+				"client_count": this.clientConns.Len(),
+				"timestamp":    time.Now().Unix(),
 			}
 			nodeInfoByte, err := json.Marshal(nodeInfo)
 			if err != nil {
@@ -492,23 +473,23 @@ func (this *node) sendPing() {
 			if err != nil {
 				logx.LogHandler.Error(err)
 			}
-			err = this.updateNodeList()
+			// err = this.updateNodeList()
 			if err != nil {
 				logx.LogHandler.Error(err)
 			}
 			// send to other node
-			this.transServices.Range(func(k, v interface{}) bool {
-				conn, ok := v.(protocol.Connection)
-				if !ok {
-					return true
-				}
+			// this.transServices.Range(func(k, v interface{}) bool {
+			// 	conn, ok := v.(protocol.Connection)
+			// 	if !ok {
+			// 		return true
+			// 	}
 
-				err := conn.WriteMsg(PingMsg)
-				if err != nil {
-					logx.LogHandler.Error(err)
-				}
-				return true
-			})
+			// 	err := conn.WriteMsg(PingMsg)
+			// 	if err != nil {
+			// 		logx.LogHandler.Error(err)
+			// 	}
+			// 	return true
+			// })
 		}
 	}()
 }
@@ -516,98 +497,98 @@ func (this *node) sendPing() {
 // Register
 func (this *node) register() {
 	this.nodeConf.discoveryHandler.Register()
-	watchChan := make(chan discovery.EventType, 1)
-	go this.nodeConf.discoveryHandler.WatchService(watchChan)
-	go func() {
-		for {
-			select {
-			case _, ok := <-watchChan:
-				if !ok {
-					logx.LogHandler.Infof("channel close\n")
-					return
-				}
-				err := this.updateNodeList()
-				if err != nil {
-					logx.LogHandler.Error(err)
-				}
-			}
-		}
-	}()
+	// watchChan := make(chan discovery.EventType, 1)
+	// go this.nodeConf.discoveryHandler.WatchService(watchChan)
+	// go func() {
+	// 	for {
+	// 		select {
+	// 		case _, ok := <-watchChan:
+	// 			if !ok {
+	// 				logx.LogHandler.Infof("channel close\n")
+	// 				return
+	// 			}
+	// 			err := this.updateNodeList()
+	// 			if err != nil {
+	// 				logx.LogHandler.Error(err)
+	// 			}
+	// 		}
+	// 	}
+	// }()
 	// init
-	err := this.updateNodeList()
-	if err != nil {
-		logx.LogHandler.Error(err)
-	}
+	// err := this.updateNodeList()
+	// if err != nil {
+	// 	logx.LogHandler.Error(err)
+	// }
 }
 
 // UpdateNodeList Add handles addition request
-func (this *node) updateNodeList() error {
-	nodeMap := make(map[string]int)
-	for k1 := range this.nodeConf.hostList {
-		nodeList, port, err := dns.DnsParse(this.nodeConf.hostList[k1])
-		if err != nil {
-			logx.LogHandler.Error(err)
-			return err
-		}
-		for k2 := range nodeList {
-			nodeMap[nodeList[k2]+":"+port] = 1
-		}
-	}
+// func (this *node) updateNodeList() error {
+// 	nodeMap := make(map[string]int)
+// 	for k1 := range this.nodeConf.hostList {
+// 		nodeList, port, err := dns.DnsParse(this.nodeConf.hostList[k1])
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 			return err
+// 		}
+// 		for k2 := range nodeList {
+// 			nodeMap[nodeList[k2]+":"+port] = 1
+// 		}
+// 	}
 
-	for k1 := range nodeMap {
-		addr := k1
-		if addr == this.nodeConf.nodeId {
-			continue
-		}
+// 	for k1 := range nodeMap {
+// 		addr := k1
+// 		if addr == this.nodeConf.nodeId {
+// 			continue
+// 		}
 
-		// Connection already exists
-		_, ok := this.transServices.LoadOrStore(addr, "")
-		if ok {
-			continue
-		}
-		conn, err := this.nodeConf.internalProtocolHandler.Dial(addr)
-		if err != nil {
-			logx.LogHandler.Errorf("dial:%s", err.Error())
-			this.transServices.Delete(addr)
-			continue
-		}
+// 		// Connection already exists
+// 		_, ok := this.transServices.LoadOrStore(addr, "")
+// 		if ok {
+// 			continue
+// 		}
+// 		conn, err := this.nodeConf.internalProtocolHandler.Dial(addr)
+// 		if err != nil {
+// 			logx.LogHandler.Errorf("dial:%s", err.Error())
+// 			this.transServices.Delete(addr)
+// 			continue
+// 		}
 
-		auth := AuthMsg{
-			Password: this.nodeConf.password,
-			NodeId:   this.nodeConf.nodeId,
-		}
-		authBytes, err := proto.Marshal(&auth)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
-		data := Msg{
-			MsgType: AuthNodeMsgType,
-			Data:    authBytes,
-		}
-		reqBytes, err := proto.Marshal(&data)
-		if err != nil {
-			logx.LogHandler.Error(err)
-		}
-		err = conn.WriteMsg(reqBytes)
-		if err != nil {
-			logx.LogHandler.Info(err)
-		}
-		this.transServices.Store(addr, conn)
-		go func(addr string, conn protocol.Connection) {
-			defer func(addr string, conn protocol.Connection) {
-				this.transServices.Delete(addr)
-				if conn != nil {
-					conn.Close()
-				}
-			}(addr, conn)
-			for {
-				msg, err := conn.ReadMsg()
-				if err != nil {
-					break
-				}
-				this.onTransServerMsg(conn, msg)
-			}
-		}(addr, conn)
-	}
-	return nil
-}
+// 		auth := AuthMsg{
+// 			Password: this.nodeConf.password,
+// 			NodeId:   this.nodeConf.nodeId,
+// 		}
+// 		authBytes, err := proto.Marshal(&auth)
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 		}
+// 		data := Msg{
+// 			MsgType: AuthNodeMsgType,
+// 			Data:    authBytes,
+// 		}
+// 		reqBytes, err := proto.Marshal(&data)
+// 		if err != nil {
+// 			logx.LogHandler.Error(err)
+// 		}
+// 		err = conn.WriteMsg(reqBytes)
+// 		if err != nil {
+// 			logx.LogHandler.Info(err)
+// 		}
+// 		this.transServices.Store(addr, conn)
+// 		go func(addr string, conn protocol.Connection) {
+// 			defer func(addr string, conn protocol.Connection) {
+// 				this.transServices.Delete(addr)
+// 				if conn != nil {
+// 					conn.Close()
+// 				}
+// 			}(addr, conn)
+// 			for {
+// 				msg, err := conn.ReadMsg()
+// 				if err != nil {
+// 					break
+// 				}
+// 				this.onTransServerMsg(conn, msg)
+// 			}
+// 		}(addr, conn)
+// 	}
+// 	return nil
+// }
