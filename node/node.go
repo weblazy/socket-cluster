@@ -8,8 +8,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/weblazy/core/mapreduce"
-	"github.com/weblazy/easy/utils/syncx"
-	"github.com/weblazy/easy/utils/timingwheel"
+	"github.com/weblazy/easy/syncx"
+	"github.com/weblazy/easy/timingwheel"
 	"github.com/weblazy/goutil"
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/dns"

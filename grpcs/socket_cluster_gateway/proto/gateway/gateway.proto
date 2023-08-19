@@ -1,0 +1,42 @@
+
+syntax = "proto3";
+
+package gateway;
+
+option go_package = "./gateway";
+
+message IsOnlineRequest{
+  string client_id = 1;
+
+}
+message IsOnlineResponse{
+  int64 code = 1;
+  string msg = 2;
+  bool is_online = 3;
+
+}
+message SendToClientIdRequest{
+  string client_id = 1;
+  bytes data = 2;
+
+}
+message SendToClientIdResponse{
+  int64 code = 1;
+  string msg = 2;
+
+}
+message SendToClientIdsRequest{
+  repeated string client_ids = 1;
+  bytes data = 2;
+
+}
+message SendToClientIdsResponse{
+  int64 code = 1;
+  string msg = 2;
+
+}
+
+
+service GatewayService{
+  rpc IsOnline(IsOnlineRequest) returns (IsOnlineResponse);  rpc SendToClientId(SendToClientIdRequest) returns (SendToClientIdResponse);  rpc SendToClientIds(SendToClientIdsRequest) returns (SendToClientIdsResponse);
+}

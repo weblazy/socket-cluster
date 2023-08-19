@@ -3,7 +3,7 @@ package unsafehash
 import (
 	"sort"
 
-	esaySort "github.com/weblazy/easy/utils/sort"
+	"github.com/weblazy/easy/sortx"
 )
 
 type Segment struct {
@@ -23,14 +23,14 @@ type SegmentHash struct {
 }
 
 func NewSegmentHash(segmentList ...*Segment) *SegmentHash {
-	list := make([]esaySort.Sort, len(segmentList))
+	list := make([]sortx.Sort, len(segmentList))
 	for k1 := range segmentList {
 		list = append(list, esaySort.Sort{
 			Obj:  segmentList[k1],
 			Sort: segmentList[k1].Position,
 		})
 	}
-	sort.Sort(esaySort.SortList(list))
+	sort.Sort(sortx.SortList(list))
 	return &SegmentHash{
 		segmentList: list,
 	}
@@ -58,7 +58,7 @@ func (c *SegmentHash) Get(key int64) interface{} {
 
 func (c *SegmentHash) search(key int64) int {
 	n := len(c.segmentList)
-	i := sort.Search(n, func(i int) bool { return c.segmentList[i].Sort >= key })
+	i := sortx.Search(n, func(i int) bool { return c.segmentList[i].Sort >= key })
 	if i < n {
 		return i
 	} else {
