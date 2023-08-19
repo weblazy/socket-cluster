@@ -3,6 +3,7 @@ package unsafehash
 import (
 	"sort"
 
+	"github.com/spf13/cast"
 	"github.com/weblazy/easy/sortx"
 )
 
@@ -19,18 +20,18 @@ func NewSegment(position int64, list []interface{}) *Segment {
 }
 
 type SegmentHash struct {
-	segmentList []esaySort.Sort
+	segmentList *sortx.SortList
 }
 
 func NewSegmentHash(segmentList ...*Segment) *SegmentHash {
-	list := make([]sortx.Sort, len(segmentList))
+	list := sortx.NewSortList(sortx.ASC)
 	for k1 := range segmentList {
-		list = append(list, esaySort.Sort{
+		list.List = append(list.List, sortx.Sort{
 			Obj:  segmentList[k1],
-			Sort: segmentList[k1].Position,
+			Sort: cast.ToFloat64(segmentList[k1].Position),
 		})
 	}
-	sort.Sort(sortx.SortList(list))
+	sort.Sort(list)
 	return &SegmentHash{
 		segmentList: list,
 	}
@@ -38,27 +39,27 @@ func NewSegmentHash(segmentList ...*Segment) *SegmentHash {
 
 func (c *SegmentHash) Append(segmentList ...*Segment) {
 	for k1 := range segmentList {
-		c.segmentList = append(c.segmentList, esaySort.Sort{
+		c.segmentList.List = append(c.segmentList.List, sortx.Sort{
 			Obj:  segmentList[k1],
-			Sort: segmentList[k1].Position,
+			Sort: cast.ToFloat64(segmentList[k1].Position),
 		})
 	}
-	sort.Sort(esaySort.SortList(c.segmentList))
+	sort.Sort(c.segmentList)
 }
 
 func (c *SegmentHash) Get(key int64) interface{} {
-	if len(c.segmentList) == 0 || key > c.segmentList[len(c.segmentList)-1].Sort {
+	if len(c.segmentList.List) == 0 || cast.ToFloat64(key) > c.segmentList.List[len(c.segmentList.List)-1].Sort {
 		// out of range
 		return nil
 	}
 	index := c.search(key)
-	i := key % int64(len(c.segmentList[index].Obj.(*Segment).List))
-	return c.segmentList[index].Obj.(*Segment).List[i]
+	i := key % int64(len(c.segmentList.List[index].Obj.(*Segment).List))
+	return c.segmentList.List[index].Obj.(*Segment).List[i]
 }
 
 func (c *SegmentHash) search(key int64) int {
-	n := len(c.segmentList)
-	i := sortx.Search(n, func(i int) bool { return c.segmentList[i].Sort >= key })
+	n := len(c.segmentList.List)
+	i := sort.Search(n, func(i int) bool { return c.segmentList.List[i].Sort >= cast.ToFloat64(key) })
 	if i < n {
 		return i
 	} else {

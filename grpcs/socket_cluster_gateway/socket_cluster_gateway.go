@@ -5,9 +5,9 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"socket_cluster/grpcs/socket_cluster_gateway/config"
-	"socket_cluster/grpcs/socket_cluster_gateway/handler"
-	"socket_cluster/grpcs/socket_cluster_gateway/proto/gateway"
+	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/config"
+	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/handler"
+	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/proto/gateway"
 
 	"github.com/weblazy/easy/closes"
 	"github.com/weblazy/easy/econfig"

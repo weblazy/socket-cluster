@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 
-	"socket_cluster/grpcs/socket_cluster_gateway/logic/gateway_logic"
-	"socket_cluster/grpcs/socket_cluster_gateway/proto/gateway"
+	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/logic/gateway_logic"
+	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/proto/gateway"
 
 	"github.com/weblazy/easy/code_err"
 )

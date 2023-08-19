@@ -88,7 +88,7 @@ func (this *RedisDiscovery) GetInfo() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	sortList := make([]sortx.Sort, 0)
+	sortList := sortx.NewSortList(sortx.DESC)
 	expire := now - this.timeout
 	for k1 := range addrMap {
 		addrObj := make(map[string]interface{})
@@ -97,15 +97,15 @@ func (this *RedisDiscovery) GetInfo() ([]string, error) {
 			return nil, err
 		}
 		if cast.ToInt64(addrObj["timestamp"]) > expire {
-			sortList = append(sortList, sortx.Sort{
+			sortList.List = append(sortList.List, sortx.Sort{
 				Obj:  k1,
-				Sort: cast.ToInt64(addrObj["client_count"]),
+				Sort: cast.ToFloat64(addrObj["client_count"]),
 			})
 		}
 	}
-	sort.Sort(sortx.SortList(sortList))
-	for k1 := range sortList {
-		list = append(list, sortList[k1].Obj.(string))
+	sort.Sort(sortList)
+	for k1 := range sortList.List {
+		list = append(list, sortList.List[k1].Obj.(string))
 	}
 	return list, nil
 }

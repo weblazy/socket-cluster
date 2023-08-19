@@ -1,7 +1,7 @@
 package gateway_logic
 
 import (
-	"socket_cluster/grpcs/socket_cluster_gateway/proto/gateway"
+	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/proto/gateway"
 
 	"github.com/weblazy/easy/code_err"
 )
