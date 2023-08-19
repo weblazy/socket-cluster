@@ -90,6 +90,17 @@ func (s *EtcdDiscovery) Register() error {
 	return nil
 }
 
+func (s *EtcdDiscovery) GetServerList() (map[string]string, error) {
+	resp, err := s.cli.Get(context.Background(), s.key)
+	if err != nil {
+		return nil, err
+	}
+	for _, obj := range resp.Kvs {
+		s.serverList[string(obj.Key)] = string(obj.Value)
+	}
+	return s.serverList, nil
+}
+
 // ListenLeaseRespChan Monitor lease renewals
 func (s *EtcdDiscovery) ListenLeaseRespChan() {
 	for leaseKeepResp := range s.keepAliveChan {

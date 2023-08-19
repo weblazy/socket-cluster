@@ -109,3 +109,7 @@ func (this *RedisDiscovery) GetInfo() ([]string, error) {
 	}
 	return list, nil
 }
+
+func (this *RedisDiscovery) GetServerList() (map[string]string, error) {
+	return nil, nil
+}

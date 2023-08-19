@@ -19,4 +19,6 @@ type ServiceDiscovery interface {
 	UpdateInfo([]byte) error
 	// Register registers the NodeID and notify other nodes
 	Register() error
+	// WatchService Listens for a new node to start
+	GetServerList() (map[string]string, error)
 }
