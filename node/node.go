@@ -83,6 +83,7 @@ func NewNode(cfg *NodeConf) (Node, error) {
 	}
 	nodeObj.nodeConf.discoveryHandler.SetNodeId(cfg.nodeId)
 	// cfg.internalProtocolHandler.ListenAndServe(cfg.internalPort, nodeObj.onTransConnect)
+
 	cfg.protocolHandler.ListenAndServe(cfg.port, nodeObj.onClientConnect)
 	nodeObj.sendPing()
 	nodeObj.register()

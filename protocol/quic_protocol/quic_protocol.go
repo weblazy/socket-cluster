@@ -1,7 +1,6 @@
 package quic_protocol
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/lucas-clemente/quic-go"
@@ -20,13 +19,13 @@ func (this *QuicProtocol) ListenAndServe(port int64, onConnect func(conn protoco
 		logx.LogHandler.Error(err)
 	}
 	for {
-		session, err := listener.Accept(context.Background())
+		session, err := listener.Accept()
 		if err != nil {
 			logx.LogHandler.Error(err)
 		} else {
 			go func(session quic.Session) {
 				// Use only the first stream
-				stream, err := session.AcceptStream(context.Background())
+				stream, err := session.AcceptStream()
 				if err != nil {
 					panic(err)
 				}
@@ -45,7 +44,7 @@ func (this *QuicProtocol) Dial(addr string) (protocol.Connection, error) {
 		return nil, err
 	}
 	// Use only the first stream
-	stream, err := session.OpenStreamSync(context.Background())
+	stream, err := session.OpenStreamSync()
 	if err != nil {
 		return nil, err
 	}
