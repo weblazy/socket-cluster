@@ -7,7 +7,7 @@ import (
 type (
 	BusinessClient interface {
 		// IsOnline gets the online status of the clientId
-		IsOnlineIsOnline(req *gateway.IsOnlineRequest) (*gateway.IsOnlineResponse, error)
+		IsOnline(clientId string) (bool, error)
 		// SendToClientId sends a message to a clientId
 		SendToClientId(req *gateway.SendToClientIdRequest) (*gateway.SendToClientIdResponse, error)
 		//  SendToClientId sends a message to multiple clientIds

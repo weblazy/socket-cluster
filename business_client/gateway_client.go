@@ -103,9 +103,58 @@ func (g *GatewayClient) SendToClientId(req *gateway.SendToClientIdRequest) (*gat
 	return nil, nil
 }
 
+type BatchData struct {
+	ip        string
+	clientIds []string
+}
+
 func (g *GatewayClient) SendToClientIds(req *gateway.SendToClientIdsRequest) (*gateway.SendToClientIdsResponse, error) {
+	if req == nil {
+		return &gateway.SendToClientIdsResponse{
+			Code: -1,
+			Msg:  "message is nil",
+		}, nil
+	}
+	clientMap, err := g.businessClientConf.sessionStorageHandler.GetClientsIps(req.ClientIds)
+	if err != nil {
+		return &gateway.SendToClientIdsResponse{
+			Code: -1,
+			Msg:  err.Error(),
+		}, nil
+	}
+	// Concurrent sends to other nodes
+	mapreduce.MapVoid(func(source chan<- interface{}) {
+		for k1 := range clientMap {
+			source <- &BatchData{ip: k1, clientIds: clientMap[k1]}
+		}
+	}, func(item interface{}) {
+		batchData := item.(*BatchData)
+		connect, ok := g.nodeIdMap.Load(batchData.ip)
+		if ok {
+			conn, ok := connect.(gateway.GatewayServiceClient)
+			if !ok {
+				return
+			}
+			ids := make([]string, 0)
+			for k1 := range batchData.clientIds {
+				ids = append(ids, batchData.clientIds[k1])
+			}
+			_, err = conn.SendToClientIds(context.Background(), &gateway.SendToClientIdsRequest{
+				ClientIds: ids,
+				Data:      req.Data,
+			})
+			if err != nil {
+				logx.LogHandler.Error(err)
+			}
+		} else {
+			logx.LogHandler.Error("node:%s not online", batchData.ip)
+			return
+		}
+
+	})
+
 	return &gateway.SendToClientIdsResponse{}, nil
 }
-func (g *GatewayClient) IsOnlineIsOnline(req *gateway.IsOnlineRequest) (*gateway.IsOnlineResponse, error) {
-	return &gateway.IsOnlineResponse{}, nil
+func (g *GatewayClient) IsOnline(clientId string) (bool, error) {
+	return g.sessionStorageHandler.IsOnline(clientId), nil
 }
