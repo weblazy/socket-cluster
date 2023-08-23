@@ -103,9 +103,9 @@ func (g *GatewayClient) SendToClientId(req *gateway.SendToClientIdRequest) (*gat
 	return nil, nil
 }
 
-func (g *GatewayClient) SendToClientIds(clientIds []string, req []byte) error {
-	return nil
+func (g *GatewayClient) SendToClientIds(req *gateway.SendToClientIdsRequest) (*gateway.SendToClientIdsResponse, error) {
+	return &gateway.SendToClientIdsResponse{}, nil
 }
-func (g *GatewayClient) IsOnline(clientId string) bool {
-	return false
+func (g *GatewayClient) IsOnlineIsOnline(req *gateway.IsOnlineRequest) (*gateway.IsOnlineResponse, error) {
+	return &gateway.IsOnlineResponse{}, nil
 }
