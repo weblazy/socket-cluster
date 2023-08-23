@@ -6,14 +6,12 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/config"
 	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/handler"
 	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/proto/gateway"
 	"github.com/weblazy/socket-cluster/node"
 
-	"github.com/weblazy/easy/closes"
-	"github.com/weblazy/easy/econfig"
 	"github.com/weblazy/easy/grpc/grpc_server"
+	"github.com/weblazy/easy/grpc/grpc_server/grpc_server_config"
 )
 
 var Cmd = &cli.Command{
@@ -29,10 +27,9 @@ var Cmd = &cli.Command{
 	// },
 }
 
-func Run(c context.Context, n node.Node) error {
-	defer closes.Close()
-	econfig.InitGlobalViper(&config.Conf, config.LocalConfig)
-	s := grpc_server.NewGrpcServer(config.Conf.GrpcServerConfig)
+func Run(c context.Context, n node.Node, grpcConf *grpc_server_config.Config) error {
+	// defer closes.Close()
+	s := grpc_server.NewGrpcServer(grpcConf)
 	gatewayService := handler.NewGatewayService(n)
 
 	gateway.RegisterGatewayServiceServer(s, gatewayService)

@@ -17,13 +17,12 @@ type Server struct {
 	Node node.Node
 }
 
-func (s *Server) Run(ctx context.Context, nodeConf *node.NodeConf) {
+func (s *Server) Run(ctx context.Context, nodeConf *node.NodeConf, grpcConf *grpc_server_config.Config) {
 	serverNode, err := node.NewNode(nodeConf)
 	if err != nil {
 		elog.ErrorCtx(ctx, "msg", zap.Error(err))
 	}
-	cfg := grpc_server_config.DefaultConfig()
-	server := grpc_server.NewGrpcServer(cfg)
+	server := grpc_server.NewGrpcServer(grpcConf)
 	gateway.RegisterGatewayServiceServer(server.Server, handler.NewGatewayService(serverNode))
 	err = server.Init()
 	if err != nil {
