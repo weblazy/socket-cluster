@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/spf13/cast"
+	"github.com/weblazy/easy/db/eredis"
 	"github.com/weblazy/easy/sortx"
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/logx"
@@ -18,16 +18,15 @@ import (
 type RedisDiscovery struct {
 	discovery.ServiceDiscovery
 	nodeId     string
-	adminRedis *redis.Client
+	adminRedis *eredis.RedisClient
 	key        string
 	timeout    int64
 }
 
 // NewRedisDiscovery return a RedisDiscovery
-func NewRedisDiscovery(conf *redis.Options) *RedisDiscovery {
-	rds := redis.NewClient(conf)
+func NewRedisDiscovery(adminRedis *eredis.RedisClient) *RedisDiscovery {
 	return &RedisDiscovery{
-		adminRedis: rds,
+		adminRedis: adminRedis,
 		timeout:    120,
 	}
 }

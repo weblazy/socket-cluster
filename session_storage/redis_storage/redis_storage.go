@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/cast"
+	"github.com/weblazy/easy/db/eredis"
 	"github.com/weblazy/socket-cluster/logx"
 	"github.com/weblazy/socket-cluster/session_storage"
 )
@@ -13,7 +14,7 @@ import (
 type RedisStorage struct {
 	session_storage.SessionStorage
 	clientTimeout int64 // client heartbeat timeout time
-	redisClient   *redis.Client
+	redisClient   *eredis.RedisClient
 }
 
 type RedisNode struct {
@@ -22,8 +23,7 @@ type RedisNode struct {
 }
 
 // NewRedisStorage return a RedisStorage
-func NewRedisStorage(redisConf *redis.Options) *RedisStorage {
-	redisClient := redis.NewClient(redisConf)
+func NewRedisStorage(redisClient *eredis.RedisClient) *RedisStorage {
 	return &RedisStorage{redisClient: redisClient, clientTimeout: 360}
 }
 
