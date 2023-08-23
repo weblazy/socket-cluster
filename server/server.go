@@ -14,7 +14,7 @@ import (
 )
 
 type Server struct {
-	Node *node.Node
+	Node node.Node
 }
 
 func (s *Server) Run(ctx context.Context, nodeConf *node.NodeConf) {
