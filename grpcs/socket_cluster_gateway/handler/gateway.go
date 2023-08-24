@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/logic/gateway_logic"
 	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/proto/gateway"
@@ -48,6 +49,8 @@ func (h *GatewayService) SendToClientId(ctx context.Context, req *gateway.SendTo
 func (h *GatewayService) SendToClientIds(ctx context.Context, req *gateway.SendToClientIdsRequest) (*gateway.SendToClientIdsResponse, error) {
 	resp := gateway.SendToClientIdsResponse{}
 	err := h.Node.SendToClientIds(req.ClientIds, req.Data)
+	fmt.Printf("-------testlog2%#v,%#v\n", string(req.Data), err.Error())
+
 	if err != nil {
 		resp.Code = -1
 		resp.Msg = err.Error()

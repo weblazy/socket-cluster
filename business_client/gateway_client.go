@@ -139,6 +139,7 @@ func (g *GatewayClient) SendToClientIds(req *gateway.SendToClientIdsRequest) (*g
 			for k1 := range batchData.clientIds {
 				ids = append(ids, batchData.clientIds[k1])
 			}
+			fmt.Printf("-------testlog1%#v,%#v\n", ids, string(req.Data))
 			_, err = conn.SendToClientIds(context.Background(), &gateway.SendToClientIdsRequest{
 				ClientIds: ids,
 				Data:      req.Data,

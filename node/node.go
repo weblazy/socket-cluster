@@ -241,6 +241,8 @@ func (this *node) SendToClientIds(clientIds []string, req []byte) error {
 	// Concurrent sends to clients
 	mapreduce.MapVoid(func(source chan<- interface{}) {
 		for k1 := range localClientIds {
+			fmt.Printf("-------testlog3%#v,%#v\n", k1, localClientIds)
+
 			this.clientIdSessions.RangeNextMap(localClientIds[k1], func(key1 string, key2 string, value interface{}) bool {
 				source <- value
 				return true
