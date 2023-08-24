@@ -11,8 +11,8 @@ type WatchChan chan EventType
 
 // ServiceDiscovery
 type ServiceDiscovery interface {
-	// SetNodeId sets nodeId
-	SetNodeId(nodeId string)
+	// SetNodeAddr sets nodeAddr
+	SetNodeAddr(nodeAddr string)
 	// WatchService Listens for a new node to start
 	WatchService(watchChan WatchChan)
 	// UpdateInfo Updates the information for this node

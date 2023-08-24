@@ -79,7 +79,7 @@ func (g *GatewayClient) SendToClientId(req *gateway.SendToClientIdRequest) (*gat
 			}
 		}, func(item interface{}) {
 			ip := item.(string)
-			connect, ok := g.nodeIdMap.Load(ip)
+			connect, ok := g.nodeIpMap.Load(ip)
 			if ok {
 				conn, ok := connect.(gateway.GatewayServiceClient)
 				if !ok {
@@ -129,7 +129,7 @@ func (g *GatewayClient) SendToClientIds(req *gateway.SendToClientIdsRequest) (*g
 		}
 	}, func(item interface{}) {
 		batchData := item.(*BatchData)
-		connect, ok := g.nodeIdMap.Load(batchData.ip)
+		connect, ok := g.nodeIpMap.Load(batchData.ip)
 		if ok {
 			conn, ok := connect.(gateway.GatewayServiceClient)
 			if !ok {

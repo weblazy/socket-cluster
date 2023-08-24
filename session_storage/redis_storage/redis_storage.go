@@ -35,9 +35,9 @@ func (this *RedisStorage) GetIps(clientId string) ([]string, error) {
 }
 
 // BindClientId set online with clientId
-func (this *RedisStorage) BindClientId(nodeId string, clientId string) error {
+func (this *RedisStorage) BindClientId(nodeAddr string, clientId string) error {
 	now := time.Now().Unix()
-	err := this.redisClient.ZAdd(context.Background(), session_storage.ClientPrefix+clientId, &redis.Z{Score: cast.ToFloat64(now), Member: nodeId}).Err()
+	err := this.redisClient.ZAdd(context.Background(), session_storage.ClientPrefix+clientId, &redis.Z{Score: cast.ToFloat64(now), Member: nodeAddr}).Err()
 	if err != nil {
 		return err
 	}
@@ -97,9 +97,9 @@ func (this *RedisStorage) IsOnline(clientId string) bool {
 }
 
 // OnClientPing receive client heartbeat
-func (this *RedisStorage) OnClientPing(nodeId string, clientId string) error {
+func (this *RedisStorage) OnClientPing(nodeAddr string, clientId string) error {
 	now := time.Now().Unix()
-	err := this.redisClient.ZAdd(context.Background(), session_storage.ClientPrefix+clientId, &redis.Z{Score: cast.ToFloat64(now), Member: nodeId}).Err()
+	err := this.redisClient.ZAdd(context.Background(), session_storage.ClientPrefix+clientId, &redis.Z{Score: cast.ToFloat64(now), Member: nodeAddr}).Err()
 	if err != nil {
 		return err
 	}

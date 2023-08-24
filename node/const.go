@@ -11,8 +11,9 @@ const (
 	DefaultPassword           = "password"
 	defaultClientPingInterval = 120
 	DefaultNodePingInterval   = 10
-	defaultInternalPort       = 9527
-	defaultPort               = 9528
+	defaultInternalPort       = 9528
+	defaultPort               = 9527
+	defaultAddr               = "127.0.0.1:9528"
 	NodeAddress               = "node_address"
 	authTime                  = 10 * time.Second
 )

@@ -6,9 +6,9 @@ const (
 
 type SessionStorage interface {
 	IsOnline(clientId string) bool
-	BindClientId(nodeId string, clientId string) error
+	BindClientId(nodeAddr string, clientId string) error
 	GetIps(clientId string) ([]string, error)
 	GetClientsIps(clientIds []string) (map[string][]string, error)
 	ClientIdsOnline(clientIds []string) []string
-	OnClientPing(nodeId string, clientId string) error
+	OnClientPing(nodeAddr string, clientId string) error
 }

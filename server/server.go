@@ -22,6 +22,7 @@ func (s *Server) Run(ctx context.Context, nodeConf *node.NodeConf, grpcConf *grp
 	if err != nil {
 		elog.ErrorCtx(ctx, "msg", zap.Error(err))
 	}
+	s.Node = serverNode
 	server := grpc_server.NewGrpcServer(grpcConf)
 	gateway.RegisterGatewayServiceServer(server.Server, handler.NewGatewayService(serverNode))
 	err = server.Init()

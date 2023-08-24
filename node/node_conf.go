@@ -15,9 +15,7 @@ type (
 	}
 	// NodeConf node config
 	NodeConf struct {
-		hostList           []string                   // A list of IP or domain names for DNS resolution
-		host               string                     // The ip or domain of the node
-		nodeId             string                     // Node unique identification
+		addr               string                     // The ip or domain of the node
 		port               int64                      // Node clientPort
 		internalPort       int64                      // Node internalPort
 		password           string                     // Password for auth when connect to other node
@@ -39,11 +37,9 @@ type (
 )
 
 // NewNodeConf creates a new NodeConf.
-func NewNodeConf(host string, protocolHandler protocol.Protocol, sessionStorageHandler session_storage.SessionStorage, discoveryHandler discovery.ServiceDiscovery, onMsg func(context *Context)) *NodeConf {
+func NewNodeConf(addr string, protocolHandler protocol.Protocol, sessionStorageHandler session_storage.SessionStorage, discoveryHandler discovery.ServiceDiscovery, onMsg func(context *Context)) *NodeConf {
 	return &NodeConf{
-		host:               host,
-		hostList:           []string{host},
-		nodeId:             GetUUID(),
+		addr:               defaultAddr,
 		port:               defaultPort,
 		password:           DefaultPassword,
 		clientPingInterval: defaultClientPingInterval,
@@ -89,9 +85,9 @@ func (conf *NodeConf) WithClientInterval(pingInterval int64) *NodeConf {
 	return conf
 }
 
-// WithHostList sets the host list for node cluster
-func (conf *NodeConf) WithHostList(hostList []string) *NodeConf {
-	conf.hostList = hostList
+// WithAddr sets the addr for node cluster
+func (conf *NodeConf) WithAddr(addr string) *NodeConf {
+	conf.addr = addr
 	return conf
 }
 
