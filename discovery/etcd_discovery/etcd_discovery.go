@@ -8,6 +8,7 @@ import (
 
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/logx"
+	"github.com/weblazy/socket-cluster/node"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -21,7 +22,7 @@ type EtcdDiscovery struct {
 	serverList    map[string]string // service list
 	lock          sync.Mutex
 	lease         int64
-	nodeId        string
+	nodeAddr      string
 	key           string
 	val           string // value
 	leaseID       clientv3.LeaseID
@@ -37,12 +38,13 @@ func NewEtcdDiscovery(conf clientv3.Config) *EtcdDiscovery {
 	return &EtcdDiscovery{
 		cli:        cli,
 		serverList: make(map[string]string),
+		key:        node.NodeAddress,
 	}
 }
 
-// SetNodeId sets a nodeId
-func (this *EtcdDiscovery) SetNodeId(nodeId string) {
-	this.nodeId = nodeId
+// SetNodeAddr sets a nodeAddr
+func (this *EtcdDiscovery) SetNodeAddr(nodeAddr string) {
+	this.nodeAddr = nodeAddr
 }
 
 // WatchService Listens for a new node to start

@@ -17,7 +17,7 @@ import (
 // RedisDiscovery
 type RedisDiscovery struct {
 	discovery.ServiceDiscovery
-	nodeId     string
+	nodeAddr   string
 	adminRedis *eredis.RedisClient
 	key        string
 	timeout    int64
@@ -28,12 +28,13 @@ func NewRedisDiscovery(adminRedis *eredis.RedisClient) *RedisDiscovery {
 	return &RedisDiscovery{
 		adminRedis: adminRedis,
 		timeout:    120,
+		key:        node.NodeAddress,
 	}
 }
 
-// SetNodeId sets a nodeId
-func (this *RedisDiscovery) SetNodeId(nodeId string) {
-	this.nodeId = nodeId
+// SetNodeAddr sets a addr
+func (this *RedisDiscovery) SetNodeAddr(addr string) {
+	this.nodeAddr = addr
 }
 
 // WatchService Listens for a new node to start
@@ -59,7 +60,7 @@ func (s *RedisDiscovery) Close() error {
 
 // Register registers the NodeID and notify other nodes
 func (this *RedisDiscovery) Register() error {
-	err := this.adminRedis.Publish(context.Background(), this.key, this.nodeId).Err()
+	err := this.adminRedis.Publish(context.Background(), this.key, this.nodeAddr).Err()
 	if err != nil {
 		return err
 	}
@@ -68,7 +69,7 @@ func (this *RedisDiscovery) Register() error {
 
 // UpdateInfo Update the information for this node
 func (this *RedisDiscovery) UpdateInfo(nodeInfoByte []byte) error {
-	err := this.adminRedis.HSet(context.Background(), node.NodeAddress, this.nodeId, string(nodeInfoByte)).Err()
+	err := this.adminRedis.HSet(context.Background(), node.NodeAddress, this.nodeAddr, string(nodeInfoByte)).Err()
 	if err != nil {
 		return err
 	}
@@ -110,5 +111,13 @@ func (this *RedisDiscovery) GetInfo() ([]string, error) {
 }
 
 func (this *RedisDiscovery) GetServerList() (map[string]string, error) {
-	return nil, nil
+	addrMap, err := this.adminRedis.HGetAll(context.Background(), node.NodeAddress).Result()
+	if err != nil {
+		return nil, err
+	}
+	resp := map[string]string{}
+	for k, v := range addrMap {
+		resp[k] = v
+	}
+	return resp, nil
 }
