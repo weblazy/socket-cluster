@@ -81,7 +81,7 @@ func NewNode(cfg *NodeConf) (Node, error) {
 		nodeTimeout:      cfg.nodePingInterval * 3,   // The timeout is three times as long as the interval between heartbeats
 		clientTimeout:    cfg.clientPingInterval * 3, // The timeout is three times as long as the interval between heartbeats
 	}
-	nodeObj.nodeConf.discoveryHandler.SetNodeId(cfg.nodeId)
+	nodeObj.nodeConf.discoveryHandler.SetNodeAddr(cfg.addr)
 	// cfg.internalProtocolHandler.ListenAndServe(cfg.internalPort, nodeObj.onTransConnect)
 
 	cfg.protocolHandler.ListenAndServe(cfg.port, nodeObj.onClientConnect)
@@ -102,12 +102,12 @@ func (this *node) SetClientIdOnline(conn protocol.Connection, clientId string) e
 			this.clientIdSessions.DeleteWithoutLock(oldClientId, addr)
 		}
 	})
-	return this.nodeConf.sessionStorageHandler.BindClientId(this.nodeConf.nodeId, clientId)
+	return this.nodeConf.sessionStorageHandler.BindClientId(this.nodeConf.addr, clientId)
 }
 
 // OnClientPing updates the client heartbeat status
 func (this *node) OnClientPing(clientId string) error {
-	return this.nodeConf.sessionStorageHandler.OnClientPing(this.nodeConf.nodeId, clientId)
+	return this.nodeConf.sessionStorageHandler.OnClientPing(this.nodeConf.addr, clientId)
 }
 
 // IsOnline determine if a clientId is online
@@ -192,8 +192,8 @@ func (this *node) SendToClientIds(clientIds []string, req []byte) error {
 	if err != nil {
 		return err
 	}
-	localClientIds, _ := clientMap[this.nodeConf.nodeId]
-	delete(clientMap, this.nodeConf.nodeId)
+	localClientIds, _ := clientMap[this.nodeConf.addr]
+	delete(clientMap, this.nodeConf.addr)
 	// Concurrent sends to other nodes
 	// mapreduce.MapVoid(func(source chan<- interface{}) {
 	// 	for k1 := range clientMap {
@@ -462,7 +462,7 @@ func (this *node) sendPing() {
 			time.Sleep(time.Duration(this.nodeConf.nodePingInterval) * time.Second)
 			// update node info
 			nodeInfo := map[string]interface{}{
-				"node_id":      this.nodeConf.nodeId,
+				"node_addr":    this.nodeConf.addr,
 				"client_count": this.clientConns.Len(),
 				"timestamp":    time.Now().Unix(),
 			}
