@@ -21,11 +21,12 @@ var (
 )
 
 type WsProtocol struct {
+	ClientPath string
 }
 
 func (this *WsProtocol) ListenAndServe(port int64, onConnect func(conn protocol.Connection)) error {
 	e := echo.New()
-	e.GET("/client", func(c echo.Context) error {
+	e.GET(this.ClientPath, func(c echo.Context) error {
 		connect, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 		if err != nil {
 			if _, ok := err.(websocket.HandshakeError); !ok {
