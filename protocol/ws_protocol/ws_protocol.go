@@ -22,10 +22,10 @@ var (
 
 type WsProtocol struct {
 	ClientPath  string
-	HandlerFunc echo.HandlerFunc
+	HandlerFunc func(conn protocol.Connection) echo.HandlerFunc
 }
 
-func NewWsProtocol(clientPath string, h echo.HandlerFunc) *WsProtocol {
+func NewWsProtocol(clientPath string, h func(conn protocol.Connection) echo.HandlerFunc) *WsProtocol {
 	return &WsProtocol{
 		ClientPath:  clientPath,
 		HandlerFunc: h,
@@ -42,11 +42,12 @@ func (this *WsProtocol) ListenAndServe(port int64, onConnect func(conn protocol.
 			}
 			return err
 		}
-		err = this.HandlerFunc(c)
-		if err !=nil{
+		conn := NewWsConnection(connect)
+		handler := this.HandlerFunc(conn)
+		err = handler(c)
+		if err != nil {
 			return err
 		}
-		conn := NewWsConnection(connect)
 		onConnect(conn)
 		return nil
 	})
