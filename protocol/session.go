@@ -10,6 +10,7 @@ type Connection interface {
 	WriteMsg(data []byte) error
 	Close() error
 	Addr() string
+	ConnProtocol() string
 }
 
 type Session struct {

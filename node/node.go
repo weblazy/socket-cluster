@@ -7,7 +7,6 @@ import (
 
 	"github.com/weblazy/core/mapreduce"
 	"github.com/weblazy/easy/syncx"
-	"github.com/weblazy/easy/timingwheel"
 	"github.com/weblazy/goutil"
 	"github.com/weblazy/socket-cluster/logx"
 	"github.com/weblazy/socket-cluster/protocol"
@@ -39,8 +38,8 @@ type (
 		// Key: socket address
 		// Value: *Session
 		clientConns goutil.Map
-		timer       *timingwheel.TimingWheel // Timingwheel Close connects that timeout without authentication
-		startTime   time.Time                // Start time
+		// timer       *timingwheel.TimingWheel // Timingwheel Close connects that timeout without authentication
+		startTime time.Time // Start time
 		// Key: socket address
 		// Value: *Session
 		businessClients goutil.Map // Send the message to client
@@ -57,29 +56,29 @@ type (
 
 // NewNode return a Node
 func NewNode(cfg *NodeConf) (Node, error) {
-	timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
-		// TODO Count the number of unauthenticated connections
-		logx.LogHandler.Infof("%s auth timeout", k)
-		if v.(protocol.Connection) != nil {
-			err := v.(protocol.Connection).Close()
-			if err != nil {
-				logx.LogHandler.Error(err)
-			}
-		}
-	})
+	// timer, err := timingwheel.NewTimingWheel(time.Second, 30, func(k, v interface{}) {
+	// 	// TODO Count the number of unauthenticated connections
+	// 	logx.LogHandler.Infof("%s auth timeout", k)
+	// 	if v.(protocol.Connection) != nil {
+	// 		err := v.(protocol.Connection).Close()
+	// 		if err != nil {
+	// 			logx.LogHandler.Error(err)
+	// 		}
+	// 	}
+	// })
 
-	if err != nil {
-		return nil, err
-	}
+	// if err != nil {
+	// 	return nil, err
+	// }
 	nodeObj := &node{
 		nodeConf:         cfg,
 		clientIdSessions: syncx.NewConcurrentDoubleMap(32),
 		startTime:        time.Now(),
-		timer:            timer,
-		clientConns:      goutil.AtomicMap(),
-		businessClients:  goutil.AtomicMap(),
-		nodeTimeout:      cfg.nodePingInterval * 3,   // The timeout is three times as long as the interval between heartbeats
-		clientTimeout:    cfg.clientPingInterval * 3, // The timeout is three times as long as the interval between heartbeats
+		// timer:            timer,
+		clientConns:     goutil.AtomicMap(),
+		businessClients: goutil.AtomicMap(),
+		nodeTimeout:     cfg.nodePingInterval * 3,   // The timeout is three times as long as the interval between heartbeats
+		clientTimeout:   cfg.clientPingInterval * 3, // The timeout is three times as long as the interval between heartbeats
 	}
 	nodeObj.nodeConf.discoveryHandler.SetNodeAddr(cfg.addr)
 	// cfg.internalProtocolHandler.ListenAndServe(cfg.internalPort, nodeObj.onTransConnect)
@@ -93,7 +92,10 @@ func NewNode(cfg *NodeConf) (Node, error) {
 // SetOnline sets the clientId to online
 func (this *node) SetClientIdOnline(conn protocol.Connection, clientId string) error {
 	addr := conn.Addr()
-	this.timer.RemoveTimer(addr) // Cancel timeingwheel task
+	// if conn.ConnProtocol() != ws_protocol.WsConnProtocol {
+	// 	this.timer.RemoveTimer(addr) // Cancel timeingwheel task
+	// }
+
 	session := &Session{Conn: conn, ClientId: clientId}
 	this.clientConns.Store(addr, session)
 	this.clientIdSessions.StoreWithPlugin(clientId, addr, session, func() {
@@ -264,8 +266,10 @@ func (this *node) onClientConnect(connect protocol.Connection) {
 		}
 	}()
 	this.nodeConf.plugin.OnConnect(connect)
-	// The timeout unbound clientId connect will be closed
-	this.timer.SetTimer(connect.Addr(), connect, authTime)
+	// if connect.ConnProtocol() != ws_protocol.WsConnProtocol {
+	// 	// The timeout unbound clientId connect will be closed
+	// 	this.timer.SetTimer(connect.Addr(), connect, authTime)
+	// }
 	for {
 		msg, err := connect.ReadMsg()
 		if err != nil {
@@ -443,17 +447,17 @@ func (this *node) onClientClose(connect protocol.Connection) {
 // }
 
 // AuthTrans Auth the node
-func (this *node) authBusinessClient(conn protocol.Connection, authMsg *AuthMsg) error {
-	addr := conn.Addr()
-	this.timer.RemoveTimer(addr) // Cancel timeingwheel task
-	if authMsg.Password != this.nodeConf.password {
-		logx.LogHandler.Infof("Connect:%s,Wrong password:%s", addr, authMsg.Password)
-		conn.Close()
-		return fmt.Errorf("auth faild")
-	}
-	this.businessClients.Store(addr, conn)
-	return nil
-}
+// func (this *node) authBusinessClient(conn protocol.Connection, authMsg *AuthMsg) error {
+// 	addr := conn.Addr()
+// 	this.timer.RemoveTimer(addr) // Cancel timeingwheel task
+// 	if authMsg.Password != this.nodeConf.password {
+// 		logx.LogHandler.Infof("Connect:%s,Wrong password:%s", addr, authMsg.Password)
+// 		conn.Close()
+// 		return fmt.Errorf("auth faild")
+// 	}
+// 	this.businessClients.Store(addr, conn)
+// 	return nil
+// }
 
 // SendPing send node Heartbeat
 func (this *node) sendPing() {

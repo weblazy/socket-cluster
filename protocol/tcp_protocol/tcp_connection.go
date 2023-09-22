@@ -13,6 +13,8 @@ type TcpConnection struct {
 	flowProtocolHandler protocol.Proto
 }
 
+const TcpConnProtocol = "tcp"
+
 func NewTcpConnection(conn net.Conn) *TcpConnection {
 	return &TcpConnection{
 		Conn:                conn,
@@ -50,4 +52,8 @@ func (this *TcpConnection) Close() error {
 
 func (this *TcpConnection) SetFlowProtocolHandler(flowProtocolHandler protocol.Proto) {
 	this.flowProtocolHandler = flowProtocolHandler
+}
+
+func (this *TcpConnection) ConnProtocol() string {
+	return TcpConnProtocol
 }
