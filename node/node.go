@@ -1,16 +1,20 @@
 package node
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/weblazy/core/mapreduce"
+	"github.com/weblazy/easy/econfig"
+	"github.com/weblazy/easy/elog"
 	"github.com/weblazy/easy/syncx"
 	"github.com/weblazy/easy/timingwheel"
 	"github.com/weblazy/goutil"
 	"github.com/weblazy/socket-cluster/logx"
 	"github.com/weblazy/socket-cluster/protocol"
+	"go.uber.org/zap"
 )
 
 type (
@@ -129,6 +133,9 @@ func (this *node) SendToClientId(clientId string, req []byte) error {
 		return fmt.Errorf("message is nil")
 	}
 	ipArr, err := this.nodeConf.sessionStorageHandler.GetIps(clientId)
+	if econfig.GlobalViper.GetBool("BaseConfig.Debug") {
+		elog.InfoCtx(context.Background(), "SendToClientId", zap.String("clientId", clientId), zap.String("req", string(req)), zap.Any("ipArr", ipArr))
+	}
 	if err == nil {
 		mapreduce.MapVoid(func(source chan<- interface{}) {
 			for key := range ipArr {
@@ -140,7 +147,7 @@ func (this *node) SendToClientId(clientId string, req []byte) error {
 			this.clientIdSessions.RangeNextMap(clientId, func(k1, k2 string, se interface{}) bool {
 				err = se.(*Session).Conn.WriteMsg(req)
 				if err != nil {
-					logx.LogHandler.Error(err)
+					elog.InfoCtx(context.Background(), "SendToClientId", zap.String("clientId", clientId), zap.String("req", string(req)), zap.Error(err))
 				}
 				return true
 			})

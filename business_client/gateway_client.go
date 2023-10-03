@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/weblazy/core/mapreduce"
+	"github.com/weblazy/easy/econfig"
+	"github.com/weblazy/easy/elog"
 	"github.com/weblazy/easy/grpc/grpc_client"
 	"github.com/weblazy/easy/grpc/grpc_client/grpc_client_config"
 	"github.com/weblazy/goutil"
@@ -12,6 +14,7 @@ import (
 	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/proto/gateway"
 	"github.com/weblazy/socket-cluster/logx"
 	"github.com/weblazy/socket-cluster/session_storage"
+	"go.uber.org/zap"
 )
 
 type GatewayClient struct {
@@ -89,12 +92,15 @@ func (g *GatewayClient) SendToClientId(req *gateway.SendToClientIdRequest) (*gat
 					ClientId: req.ClientId,
 					Data:     req.Data,
 				}
-				conn.SendToClientId(context.Background(), clientsMsg)
+				if econfig.GlobalViper.GetBool("BaseConfig.Debug") {
+					elog.InfoCtx(context.Background(), "testlogmsg", zap.Any("clientsMsg", clientsMsg), zap.String("ip", ip))
+				}
+				_, err := conn.SendToClientId(context.Background(), clientsMsg)
 				if err != nil {
-					logx.LogHandler.Error(err)
+					elog.InfoCtx(context.Background(), "msg", zap.Any("req", req), zap.Error(err))
 				}
 			} else {
-				logx.LogHandler.Errorf("node:%s not online", ip)
+				elog.InfoCtx(context.Background(), "node not online", zap.Any("req", req), zap.String("ip", ip))
 				return
 			}
 
@@ -139,12 +145,13 @@ func (g *GatewayClient) SendToClientIds(req *gateway.SendToClientIdsRequest) (*g
 			for k1 := range batchData.clientIds {
 				ids = append(ids, batchData.clientIds[k1])
 			}
+
 			_, err = conn.SendToClientIds(context.Background(), &gateway.SendToClientIdsRequest{
 				ClientIds: ids,
 				Data:      req.Data,
 			})
 			if err != nil {
-				logx.LogHandler.Error(err)
+				elog.InfoCtx(context.Background(), "msg", zap.Any("req", req), zap.Error(err))
 			}
 		} else {
 			logx.LogHandler.Error("node:%s not online", batchData.ip)
