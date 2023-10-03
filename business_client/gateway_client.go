@@ -45,6 +45,10 @@ func NewGatewayClient(cfg *BusinessClientConf) *GatewayClient {
 			}
 		}
 	}()
+	err := gatewayClient.updateNodeList()
+	if err != nil {
+		elog.ErrorCtx(context.Background(), "updateNodeList", zap.Error(err))
+	}
 	return &gatewayClient
 }
 
