@@ -13,15 +13,13 @@ import (
 	"github.com/weblazy/socket-cluster/discovery"
 	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/proto/gateway"
 	"github.com/weblazy/socket-cluster/logx"
-	"github.com/weblazy/socket-cluster/session_storage"
 	"go.uber.org/zap"
 )
 
 type GatewayClient struct {
-	nodeIpMap             goutil.Map                     // Receive messages forwarded by other nodes
-	nodeIdMap             goutil.Map                     // Receive messages forwarded by other nodes
-	sessionStorageHandler session_storage.SessionStorage // On-line state storage components
-	businessClientConf    *BusinessClientConf
+	nodeIpMap          goutil.Map // Receive messages forwarded by other nodes
+	nodeIdMap          goutil.Map // Receive messages forwarded by other nodes
+	businessClientConf *BusinessClientConf
 }
 
 func NewGatewayClient(cfg *BusinessClientConf) *GatewayClient {
@@ -74,7 +72,7 @@ func (g *GatewayClient) SendToClientId(req *gateway.SendToClientIdRequest) (*gat
 	if req == nil {
 		return nil, fmt.Errorf("message is nil")
 	}
-	ipArr, err := g.sessionStorageHandler.GetIps(req.ClientId)
+	ipArr, err := g.businessClientConf.sessionStorageHandler.GetIps(req.ClientId)
 	if err == nil {
 		mapreduce.MapVoid(func(source chan<- interface{}) {
 			for key := range ipArr {
@@ -163,5 +161,5 @@ func (g *GatewayClient) SendToClientIds(req *gateway.SendToClientIdsRequest) (*g
 	return &gateway.SendToClientIdsResponse{}, nil
 }
 func (g *GatewayClient) IsOnline(clientId string) (bool, error) {
-	return g.sessionStorageHandler.IsOnline(clientId), nil
+	return g.businessClientConf.sessionStorageHandler.IsOnline(clientId), nil
 }

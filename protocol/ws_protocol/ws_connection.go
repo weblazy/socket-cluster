@@ -8,6 +8,8 @@ import (
 	"github.com/weblazy/socket-cluster/protocol"
 )
 
+const WsConnProtocol = "ws"
+
 type WsConnection struct {
 	Conn  *websocket.Conn
 	Mutex sync.Mutex
@@ -61,4 +63,8 @@ func OriginMiddlewareFunc(next echo.HandlerFunc) echo.HandlerFunc {
 		c.Response().Header().Set("Access-Control-Allow-Headers", "*")
 		return next(c)
 	}
+}
+
+func (this *WsConnection) ConnProtocol() string {
+	return WsConnProtocol
 }
