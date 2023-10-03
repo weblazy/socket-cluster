@@ -94,10 +94,11 @@ func (g *GatewayClient) SendToClientId(req *gateway.SendToClientIdRequest) (*gat
 					ClientId: req.ClientId,
 					Data:     req.Data,
 				}
+
+				resp, err := conn.SendToClientId(context.Background(), clientsMsg)
 				if econfig.GlobalViper.GetBool("BaseConfig.Debug") {
-					elog.InfoCtx(context.Background(), "testlogmsg", zap.Any("clientsMsg", clientsMsg), zap.String("ip", ip))
+					elog.InfoCtx(context.Background(), "testlogmsg", zap.Any("clientsMsg", clientsMsg), zap.String("ip", ip), zap.Any("resp", resp))
 				}
-				_, err := conn.SendToClientId(context.Background(), clientsMsg)
 				if err != nil {
 					elog.InfoCtx(context.Background(), "msg", zap.Any("req", req), zap.Error(err))
 				}

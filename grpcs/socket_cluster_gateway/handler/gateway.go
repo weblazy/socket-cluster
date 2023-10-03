@@ -6,8 +6,11 @@ import (
 	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/logic/gateway_logic"
 	"github.com/weblazy/socket-cluster/grpcs/socket_cluster_gateway/proto/gateway"
 	"github.com/weblazy/socket-cluster/node"
+	"go.uber.org/zap"
 
 	"github.com/weblazy/easy/code_err"
+	"github.com/weblazy/easy/econfig"
+	"github.com/weblazy/easy/elog"
 )
 
 type GatewayService struct {
@@ -36,6 +39,9 @@ func (h *GatewayService) IsOnline(ctx context.Context, req *gateway.IsOnlineRequ
 }
 
 func (h *GatewayService) SendToClientId(ctx context.Context, req *gateway.SendToClientIdRequest) (*gateway.SendToClientIdResponse, error) {
+	if econfig.GlobalViper.GetBool("BaseConfig.Debug") {
+		elog.InfoCtx(ctx, "SendToClientId", zap.Any("req", req))
+	}
 	resp := gateway.SendToClientIdResponse{}
 	err := h.Node.SendToClientId(req.ClientId, req.Data)
 	if err != nil {
