@@ -65,6 +65,7 @@ func (g *GatewayClient) updateNodeList() error {
 			continue
 		}
 		cfg := grpc_client_config.DefaultConfig()
+		cfg.Addr = addr
 		client := grpc_client.NewGrpcClient(cfg)
 		gatewayClient := gateway.NewGatewayServiceClient(client)
 		g.nodeIpMap.Store(addr, gatewayClient)
